@@ -55,7 +55,7 @@ export class Game extends Scene
         this.progressBar = this.add.rectangle(0, height, 0, 10, 0x00ffff).setOrigin(0, 1);
 
         // Player: Small cyan square, center of screen
-        this.player = this.add.rectangle(width / 2, height / 2, 20, 20, 0x00ffff) as any;
+        this.player = this.add.rectangle(width / 2, height / 2, 25, 25, 0x00ffff) as any;
         this.physics.add.existing(this.player);
         this.player.body.setCollideWorldBounds(true);
         
@@ -165,7 +165,7 @@ export class Game extends Scene
         }
 
         // --- Player Movement (Existing) ---
-        const speed = this.isDashing ? 1200 : 600;
+        const speed = this.isDashing ? this.dashSpeed : this.speed;
         this.player.body.setVelocity(0);
         let inputX = 0;
         let inputY = 0;
