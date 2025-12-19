@@ -109,6 +109,7 @@ export const EditorOverlay = () => {
     const [images, setImages] = useState<File[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [status, setStatus] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
         const showEditor = () => setIsVisible(true);
@@ -125,6 +126,7 @@ export const EditorOverlay = () => {
         }
 
         setIsGenerating(true);
+        setErrorMessage('');
         setStatus('Scanning Audio Frequency...');
 
         try {
@@ -154,7 +156,16 @@ export const EditorOverlay = () => {
                 })
             });
 
-            if (!response.ok) throw new Error('Generation failed');
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    errorData = { error: `Server Error (${response.status}): ${errorText.substring(0, 100)}` };
+                }
+                throw new Error(errorData.error || `Server Error: ${response.status}`);
+            }
 
             const levelData = await response.json();
             
@@ -183,8 +194,9 @@ export const EditorOverlay = () => {
 
             EventBus.emit('load-level', payload);
             setIsVisible(false);
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            console.error('Generation failed:', error);
+            setErrorMessage(error.message || 'Unknown error occurred');
             setStatus('Error generating level.');
         } finally {
             setIsGenerating(false);
@@ -265,6 +277,20 @@ export const EditorOverlay = () => {
                             CLOSE
                         </button>
                     </div>
+
+                    {errorMessage && (
+                        <div style={{ 
+                            padding: '15px', 
+                            backgroundColor: 'rgba(255, 0, 0, 0.2)', 
+                            border: '1px solid #ff0000', 
+                            color: '#ffcccc', 
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            marginBottom: '20px'
+                        }}>
+                            ⚠️ {errorMessage}
+                        </div>
+                    )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         {/* Left Column: Inputs */}

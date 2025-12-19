@@ -58,6 +58,15 @@ const schema = {
   required: ["metadata", "theme", "timeline"],
 };
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+  maxDuration: 60, // Increase timeout for AI generation (optional, if on Vercel Pro)
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -67,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-pro",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
