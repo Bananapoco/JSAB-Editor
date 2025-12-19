@@ -1,14 +1,8 @@
-import { GameObjects, Scene } from 'phaser';
-
+import { Scene, GameObjects } from 'phaser';
 import { EventBus } from '../EventBus';
 
 export class MainMenu extends Scene
 {
-    background: GameObjects.Image;
-    logo: GameObjects.Image;
-    title: GameObjects.Text;
-    logoTween: Phaser.Tweens.Tween | null;
-
     constructor ()
     {
         super('MainMenu');
@@ -16,61 +10,168 @@ export class MainMenu extends Scene
 
     create ()
     {
-        this.background = this.add.image(512, 384, 'background');
+        const { width, height } = this.scale;
 
-        this.logo = this.add.image(512, 300, 'logo').setDepth(100);
+        // Background
+        this.cameras.main.setBackgroundColor('#111111');
 
-        this.title = this.add.text(512, 460, 'Main Menu', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5).setDepth(100);
+        // Decorative Shapes (JSAB style)
+        const graphics = this.add.graphics();
+        
+        // Dark diagonal background splash
+        graphics.fillStyle(0x000000, 0.5);
+        graphics.beginPath();
+        graphics.moveTo(width * 0.4, 0);
+        graphics.lineTo(width, 0);
+        graphics.lineTo(width, height);
+        graphics.lineTo(width * 0.2, height);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Logo - centered vertically
+        const logo = this.add.image(100, height / 2, 'logo').setOrigin(0, 0.5).setScale(1.5);
+
+
+        // --- Menu Buttons ---
+        // We'll place them on the right side, skewed
+        const startX = width * 0.55;
+        const startY = height * 0.4;
+        const gap = 120;
+
+        this.createMenuButton(startX, startY, 'MAKE LEVEL', 0x00ffff, () => {
+            console.log('Make Level Clicked');
+            this.scene.start('Game');
+        });
+
+        this.createMenuButton(startX + 40, startY + gap, 'VIEW LEVELS', 0xff0099, () => {
+            console.log('View Levels Clicked');
+        });
+
+        // --- Bottom Bar / Settings ---
+        // Profile
+        const profileContainer = this.add.container(50, height - 80);
+        const profileBg = this.add.rectangle(0, 0, 200, 60, 0x222222).setOrigin(0, 0.5);
+        const profileText = this.add.text(20, 0, 'User Profile', { fontFamily: 'Arial', fontSize: '24px', color: '#ffffff' }).setOrigin(0, 0.5);
+        profileContainer.add([profileBg, profileText]);
+        
+        // Interactive Profile
+        profileBg.setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => console.log('Profile Clicked'));
+
+
+        // Settings (Bottom Right)
+        const settingsContainer = this.add.container(width - 50, height - 80);
+        const settingsText = this.add.text(0, 0, 'SETTINGS', { fontFamily: 'Arial Black', fontSize: '24px', color: '#888888' }).setOrigin(1, 0.5);
+        settingsContainer.add(settingsText);
+
+        settingsText.setInteractive({ useHandCursor: true })
+            .on('pointerover', () => settingsText.setColor('#ffffff'))
+            .on('pointerout', () => settingsText.setColor('#888888'))
+            .on('pointerdown', () => console.log('Settings Clicked'));
+
 
         EventBus.emit('current-scene-ready', this);
     }
-    
-    changeScene ()
-    {
-        if (this.logoTween)
-        {
-            this.logoTween.stop();
-            this.logoTween = null;
-        }
 
-        this.scene.start('Game');
-    }
-
-    moveLogo (reactCallback: ({ x, y }: { x: number, y: number }) => void)
+    createMenuButton(x: number, y: number, text: string, color: number, callback: () => void)
     {
-        if (this.logoTween)
-        {
-            if (this.logoTween.isPlaying())
-            {
-                this.logoTween.pause();
-            }
-            else
-            {
-                this.logoTween.play();
-            }
-        } 
-        else
-        {
-            this.logoTween = this.tweens.add({
-                targets: this.logo,
-                x: { value: 750, duration: 3000, ease: 'Back.easeInOut' },
-                y: { value: 80, duration: 1500, ease: 'Sine.easeOut' },
-                yoyo: true,
-                repeat: -1,
-                onUpdate: () => {
-                    if (reactCallback)
-                    {
-                        reactCallback({
-                            x: Math.floor(this.logo.x),
-                            y: Math.floor(this.logo.y)
-                        });
-                    }
-                }
+        const buttonWidth = 400;
+        const buttonHeight = 80;
+        const skew = -0.2; // Skew factor for "fast" look
+
+        const container = this.add.container(x, y);
+
+        // Background graphics for the button
+        const bg = this.add.graphics();
+        // Draw skewed rectangle
+        // We define the path relative to 0,0 of the container
+        bg.fillStyle(0x000000, 0.8);
+        bg.lineStyle(4, color, 1);
+        
+        const w = buttonWidth;
+        const h = buttonHeight;
+        const offset = h * 0.4; // controls skew amount
+        
+        // Skewed rect path
+        bg.beginPath();
+        bg.moveTo(offset, 0);
+        bg.lineTo(w + offset, 0);
+        bg.lineTo(w, h);
+        bg.lineTo(0, h);
+        bg.closePath();
+        bg.fillPath();
+        bg.strokePath();
+
+        // Hit Area for interaction (approximate with a rect or polygon)
+        // Phaser hit areas don't support skew directly on shape, but we can set a polygon
+        const hitPoly = new Phaser.Geom.Polygon([
+            offset, 0,
+            w + offset, 0,
+            w, h,
+            0, h
+        ]);
+
+        bg.setInteractive(hitPoly, Phaser.Geom.Polygon.Contains);
+        
+        // Text
+        const btnText = this.add.text(w / 2 + offset / 2, h / 2, text, {
+            fontFamily: 'Arial Black',
+            fontSize: '32px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        container.add([bg, btnText]);
+
+        // Hover Effects
+        bg.on('pointerover', () => {
+            bg.clear();
+            bg.fillStyle(color, 1); // Fill with color on hover
+            bg.lineStyle(4, 0xffffff, 1);
+            bg.beginPath();
+            bg.moveTo(offset, 0);
+            bg.lineTo(w + offset, 0);
+            bg.lineTo(w, h);
+            bg.lineTo(0, h);
+            bg.closePath();
+            bg.fillPath();
+            bg.strokePath();
+            
+            btnText.setColor('#000000'); // Invert text
+            
+            // Slide animation
+            this.tweens.add({
+                targets: container,
+                x: x + 20,
+                duration: 100,
+                ease: 'Power1'
             });
-        }
+        });
+
+        bg.on('pointerout', () => {
+            bg.clear();
+            bg.fillStyle(0x000000, 0.8);
+            bg.lineStyle(4, color, 1);
+            bg.beginPath();
+            bg.moveTo(offset, 0);
+            bg.lineTo(w + offset, 0);
+            bg.lineTo(w, h);
+            bg.lineTo(0, h);
+            bg.closePath();
+            bg.fillPath();
+            bg.strokePath();
+
+            btnText.setColor('#ffffff');
+
+            // Slide back
+            this.tweens.add({
+                targets: container,
+                x: x,
+                duration: 100,
+                ease: 'Power1'
+            });
+        });
+
+        bg.on('pointerdown', callback);
     }
 }
+
