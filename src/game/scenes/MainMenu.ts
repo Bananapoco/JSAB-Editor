@@ -18,7 +18,7 @@ export class MainMenu extends Scene
         // Decorative Shapes (JSAB style)
         const graphics = this.add.graphics();
         
-        // Dark diagonal background splash
+        // Dark diagonal background splash - Scaled to screen
         graphics.fillStyle(0x000000, 0.5);
         graphics.beginPath();
         graphics.moveTo(width * 0.4, 0);
@@ -28,15 +28,18 @@ export class MainMenu extends Scene
         graphics.closePath();
         graphics.fillPath();
 
-        // Logo - centered vertically
-        const logo = this.add.image(100, height / 2, 'logo').setOrigin(0, 0.5).setScale(1.5);
+        // Logo - centered vertically, responsive position
+        const logo = this.add.image(width * 0.1, height / 2, 'logo').setOrigin(0, 0.5);
+        // Scale logo based on screen height, max scale 1.5
+        const logoScale = Math.min(height / 600, 1.5); 
+        logo.setScale(logoScale);
 
 
         // --- Menu Buttons ---
         // We'll place them on the right side, skewed
         const startX = width * 0.55;
         const startY = height * 0.4;
-        const gap = 120;
+        const gap = 120; // This can also be dynamic if needed
 
         this.createMenuButton(startX, startY, 'MAKE LEVEL', 0x00ffff, () => {
             EventBus.emit('open-editor');
@@ -48,6 +51,10 @@ export class MainMenu extends Scene
 
         EventBus.on('load-level', () => {
             this.scene.start('Game');
+        });
+
+        EventBus.on('go-to-main-menu', () => {
+            this.scene.start('MainMenu');
         });
 
         // --- Bottom Bar / Settings ---
@@ -76,6 +83,17 @@ export class MainMenu extends Scene
         EventBus.emit('current-scene-ready', this);
     }
 
+    resize(gameSize: Phaser.Structs.Size, baseSize: Phaser.Structs.Size, displaySize: Phaser.Structs.Size, resolution: number)
+    {
+        const width = gameSize.width;
+        const height = gameSize.height;
+
+        this.cameras.resize(width, height);
+        
+        // Re-create the UI elements to fit new size
+        this.children.removeAll(); 
+        this.create();
+    }
     createMenuButton(x: number, y: number, text: string, color: number, callback: () => void)
     {
         const buttonWidth = 400;

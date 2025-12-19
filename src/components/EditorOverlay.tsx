@@ -1,103 +1,112 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { EventBus } from '../game/EventBus';
 
-const DropZone = ({ 
+const CardInput = ({ 
     label, 
+    icon,
     accept, 
     onFileSelect, 
-    multiple = false,
     color = '#00ffff',
     files = []
 }: { 
     label: string, 
+    icon: string,
     accept: string, 
     onFileSelect: (files: File[]) => void, 
-    multiple?: boolean,
     color?: string,
     files?: File[]
 }) => {
-    const [isDragging, setIsDragging] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const handleDrag = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.type === "dragenter" || e.type === "dragover") {
-            setIsDragging(true);
-        } else if (e.type === "dragleave") {
-            setIsDragging(false);
-        }
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            onFileSelect(Array.from(e.dataTransfer.files));
-        }
-    };
-
-    const handleClick = () => {
-        inputRef.current?.click();
-    };
+    const [isHovered, setIsHovered] = useState(false);
 
     return (
         <div 
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={handleClick}
+            onClick={() => inputRef.current?.click()}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             style={{
-                border: `2px dashed ${isDragging ? '#fff' : color}`,
-                backgroundColor: isDragging ? `${color}22` : 'rgba(0,0,0,0.5)',
-                borderRadius: '12px',
-                padding: '30px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                position: 'relative',
-                minHeight: '150px',
+                flex: 1,
+                backgroundColor: '#000',
+                border: `4px solid ${isHovered ? '#fff' : '#222'}`,
+                height: '250px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                boxShadow: isDragging ? `0 0 20px ${color}44` : 'none'
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                position: 'relative',
+                transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: isHovered ? `0 0 30px ${color}44` : 'none'
             }}
         >
             <input 
                 ref={inputRef}
                 type="file" 
                 accept={accept} 
-                multiple={multiple}
                 onChange={(e) => e.target.files && onFileSelect(Array.from(e.target.files))}
                 style={{ display: 'none' }}
             />
             
-            <div style={{ fontSize: '40px', marginBottom: '10px', opacity: 0.8 }}>
-                {multiple ? '🖼️' : '🎵'}
+            {/* Colored Top Bar */}
+            <div style={{ 
+                position: 'absolute', top: 0, left: 0, width: '100%', height: '10px', 
+                backgroundColor: color 
+            }}></div>
+
+            <div style={{ 
+                fontSize: '60px', 
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                filter: isHovered ? 'brightness(1.2)' : 'brightness(1)'
+            }}>
+                {icon === '🎵' ? (
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 18V5L21 3V16" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="6" cy="18" r="3" fill={color}/>
+                        <circle cx="18" cy="16" r="3" fill={color}/>
+                    </svg>
+                ) : icon === '👾' ? (
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="4" width="16" height="16" rx="2" fill={color}/>
+                        <circle cx="9" cy="9" r="1.5" fill="#000"/>
+                        <circle cx="15" cy="9" r="1.5" fill="#000"/>
+                        <rect x="8" y="13" width="8" height="2" rx="1" fill="#000"/>
+                        <rect x="6" y="6" width="2" height="2" rx="0.5" fill="#000"/>
+                        <rect x="16" y="6" width="2" height="2" rx="0.5" fill="#000"/>
+                        <rect x="6" y="16" width="2" height="2" rx="0.5" fill="#000"/>
+                        <rect x="16" y="16" width="2" height="2" rx="0.5" fill="#000"/>
+                    </svg>
+                ) : (
+                    <span>{icon}</span>
+                )}
             </div>
             
             <div style={{ 
                 fontFamily: 'Arial Black', 
-                color: color, 
+                color: isHovered ? '#fff' : color, 
+                fontSize: '24px',
                 textTransform: 'uppercase',
-                fontSize: '14px',
                 letterSpacing: '1px'
             }}>
                 {label}
             </div>
 
-            <div style={{ marginTop: '10px', fontSize: '12px', color: '#888' }}>
-                {files.length > 0 ? (
-                    <span style={{ color: '#fff' }}>
-                        {files.length === 1 ? files[0].name : `${files.length} files selected`}
-                    </span>
-                ) : (
-                    "Drag & Drop or Click to Browse"
-                )}
-            </div>
+            {files.length > 0 && (
+                <div style={{ 
+                    marginTop: '15px', 
+                    color: '#fff', 
+                    fontFamily: 'Arial', 
+                    fontSize: '14px',
+                    backgroundColor: '#222',
+                    padding: '5px 15px',
+                    borderRadius: '20px'
+                }}>
+                    ✓ SELECTED
+                </div>
+            )}
         </div>
     );
 };
@@ -119,6 +128,21 @@ export const EditorOverlay = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!isVisible) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && !isGenerating) {
+                e.preventDefault();
+                setIsVisible(false);
+                EventBus.emit('go-to-main-menu');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isVisible, isGenerating]);
+
     const handleGenerate = async () => {
         if (!audioFile) {
             alert('Please upload an MP3 first!');
@@ -127,77 +151,76 @@ export const EditorOverlay = () => {
 
         setIsGenerating(true);
         setErrorMessage('');
-        setStatus('Scanning Audio Frequency...');
+        setStatus('INITIALIZING DUAL-MODEL PIPELINE...');
 
         try {
             // Get audio duration
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const arrayBuffer = await audioFile.arrayBuffer();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            const bufferForDecode = arrayBuffer.slice(0);
+            const audioBuffer = await audioContext.decodeAudioData(bufferForDecode);
             const duration = audioBuffer.duration;
 
-            setStatus('Processing Visual Assets...');
+            if (duration < 5) {
+                if (!confirm(`Warning: Audio is very short (${duration.toFixed(2)}s). Continue?`)) {
+                    setIsGenerating(false);
+                    return;
+                }
+            }
+
+            setStatus('ANALYZING AUDIO WAVEFORM & ASSETS...');
             const base64Images = await Promise.all(
-                images.map(img => new Promise<string>((resolve) => {
+                images.map(img => new Promise<{data: string, type: string}>((resolve) => {
                     const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onloadend = () => resolve({
+                        data: reader.result as string,
+                        type: img.type || 'image/png'
+                    });
                     reader.readAsDataURL(img);
                 }))
             );
 
-            setStatus('Gemini AI: Designing Level Patterns...');
+            const audioBase64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(audioFile);
+            });
+
+            setStatus('GEMINI 3: CONSTRUCTING LEVEL GEOMETRY...');
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
                     images: base64Images,
+                    audioData: audioBase64,
                     duration
                 })
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorData;
-                try {
-                    errorData = JSON.parse(errorText);
-                } catch (e) {
-                    errorData = { error: `Server Error (${response.status}): ${errorText.substring(0, 100)}` };
-                }
-                throw new Error(errorData.error || `Server Error: ${response.status}`);
-            }
+            if (!response.ok) throw new Error('Generation Failed');
 
             const levelData = await response.json();
             
-            setStatus('Synchronizing Timelines...');
-            // Create object URLs for assets
+            setStatus('FINALIZING SYNC...');
             const audioUrl = URL.createObjectURL(audioFile);
             const imageMappings: Record<string, string> = {};
-            
             images.forEach((img, i) => {
                 imageMappings[`asset_${i}`] = URL.createObjectURL(img);
             });
 
-            const payload = {
-                levelData,
-                audioUrl,
-                imageMappings
-            };
-
-            // "Upload" to local community hub
+            const payload = { levelData, audioUrl, imageMappings };
+            
             const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');
             savedLevels.unshift(payload);
             localStorage.setItem('community_levels', JSON.stringify(savedLevels));
-
-            // Store globally for Game scene to pick up if it's just starting
             (window as any).pendingLevelData = payload;
 
             EventBus.emit('load-level', payload);
             setIsVisible(false);
         } catch (error: any) {
-            console.error('Generation failed:', error);
             setErrorMessage(error.message || 'Unknown error occurred');
-            setStatus('Error generating level.');
+            setStatus('SYSTEM FAILURE');
         } finally {
             setIsGenerating(false);
         }
@@ -208,223 +231,103 @@ export const EditorOverlay = () => {
     return (
         <div style={{
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: 'rgba(5, 5, 10, 0.98)', 
-            backdropFilter: 'blur(10px)',
+            backgroundColor: '#000', 
             color: 'white', display: 'flex',
-            flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'column',
             zIndex: 1000, fontFamily: 'Arial, sans-serif'
         }}>
-            {/* Background decorative elements */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '5px', background: 'linear-gradient(90deg, #00ffff, #ff0099)' }}></div>
-            
+            {/* Header */}
+            <div style={{ 
+                height: '100px', display: 'flex', alignItems: 'center', padding: '0 60px',
+                background: 'linear-gradient(90deg, #31B4BF, #2A9FA8)',
+                clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0 100%)'
+            }}>
+                <h1 style={{ 
+                    fontFamily: 'Arial Black', fontSize: '48px', margin: 0, color: '#fff',
+                    textTransform: 'uppercase', letterSpacing: '-2px'
+                }}>
+                    NEW PROJECT
+                </h1>
+            </div>
+
             {isGenerating ? (
-                <div style={{ textAlign: 'center', position: 'relative' }}>
-                    <div className="spinner"></div>
-                    <h2 style={{ 
-                        marginTop: '40px', 
-                        fontFamily: 'Arial Black', 
-                        color: '#fff',
-                        fontSize: '24px',
-                        letterSpacing: '2px',
-                        textTransform: 'uppercase'
-                    }}>
-                        {status}
-                    </h2>
-                    <div style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>Please wait while the AI composes your track</div>
-                    <style jsx>{`
-                        .spinner {
-                            width: 80px;
-                            height: 80px;
-                            border: 8px solid rgba(255, 255, 255, 0.1);
-                            border-left-color: #00ffff;
-                            border-right-color: #ff0099;
-                            border-radius: 50%;
-                            animation: spin 1s linear infinite;
-                            margin: 0 auto;
-                        }
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `}</style>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ 
+                        width: '100px', height: '100px', border: '10px solid #222', borderTopColor: '#ff0099', 
+                        borderRadius: '50%', animation: 'spin 1s linear infinite' 
+                    }}></div>
+                    <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#fff' }}>{status}</h2>
+                    <style jsx>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
                 </div>
             ) : (
-                <div style={{ width: '90%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.3s ease-out' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h1 style={{ 
-                            fontFamily: 'Arial Black', 
-                            fontSize: '36px', 
-                            margin: 0,
-                            background: 'linear-gradient(45deg, #fff, #aaa)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
-                        }}>
-                            NEW PROJECT
-                        </h1>
+                <div style={{ flex: 1, padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '50px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+                    
+                    {/* Prompt Input */}
+                    <div>
+                        <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>TRACK CONCEPT</div>
+                        <input 
+                            type="text" 
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            placeholder="Describe your level theme (e.g., 'Neon Cyberpunk Pursuit')..."
+                            style={{ 
+                                width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
+                                color: '#fff', fontFamily: 'Arial', outline: 'none'
+                            }}
+                            onFocus={(e) => e.currentTarget.style.borderBottomColor = '#fff'}
+                            onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
+                        />
+                    </div>
+
+                    {/* Cards Container */}
+                    <div style={{ display: 'flex', gap: '40px' }}>
+                        <CardInput 
+                            label="AUDIO TRACK" 
+                            icon="🎵"
+                            accept="audio/mp3" 
+                            color="#00ffff"
+                            onFileSelect={(f) => setAudioFile(f[0])}
+                            files={audioFile ? [audioFile] : []}
+                        />
+                        <CardInput 
+                            label="BOSS ASSETS" 
+                            icon="👾"
+                            accept="image/*" 
+                            color="#ff0099"
+                            onFileSelect={setImages}
+                            files={images}
+                        />
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <button 
+                            onClick={handleGenerate}
+                            style={{ 
+                                flex: 2, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
+                                fontFamily: 'Arial Black', fontSize: '32px', letterSpacing: '2px',
+                                cursor: 'pointer', transform: 'skew(-10deg)',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ffff'; e.currentTarget.style.color = '#00ffff'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#666'; }}
+                        >
+                            CREATE
+                        </button>
+
                         <button 
                             onClick={() => setIsVisible(false)}
                             style={{ 
-                                background: 'transparent', 
-                                border: '1px solid #333', 
-                                color: '#666', 
-                                padding: '10px 20px',
-                                cursor: 'pointer',
-                                borderRadius: '20px',
-                                fontSize: '12px',
-                                fontWeight: 'bold'
+                                flex: 1, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
+                                fontFamily: 'Arial Black', fontSize: '24px', cursor: 'pointer', transform: 'skew(-10deg)'
                             }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ff0000'; e.currentTarget.style.color = '#ff0000'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#666'; }}
                         >
-                            CLOSE
+                            BACK
                         </button>
                     </div>
 
-                    {errorMessage && (
-                        <div style={{ 
-                            padding: '15px', 
-                            backgroundColor: 'rgba(255, 0, 0, 0.2)', 
-                            border: '1px solid #ff0000', 
-                            color: '#ffcccc', 
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
-                            ⚠️ {errorMessage}
-                        </div>
-                    )}
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        {/* Left Column: Inputs */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div style={{ 
-                                backgroundColor: '#111', 
-                                padding: '20px', 
-                                borderRadius: '16px',
-                                border: '1px solid #222'
-                            }}>
-                                <label style={{ 
-                                    display: 'block', 
-                                    color: '#888', 
-                                    fontSize: '12px', 
-                                    fontWeight: 'bold', 
-                                    marginBottom: '10px',
-                                    letterSpacing: '1px'
-                                }}>
-                                    LEVEL CONCEPT
-                                </label>
-                                <textarea 
-                                    value={prompt}
-                                    onChange={(e) => setPrompt(e.target.value)}
-                                    placeholder="Describe the boss patterns, theme, and atmosphere..."
-                                    style={{ 
-                                        width: '100%', 
-                                        height: '100px', 
-                                        backgroundColor: 'transparent', 
-                                        color: 'white', 
-                                        border: 'none', 
-                                        outline: 'none',
-                                        fontSize: '16px',
-                                        resize: 'none',
-                                        fontFamily: 'Arial'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <DropZone 
-                                        label="Upload Audio (MP3)" 
-                                        accept="audio/mp3" 
-                                        color="#00ffff"
-                                        onFileSelect={(f) => setAudioFile(f[0])}
-                                        files={audioFile ? [audioFile] : []}
-                                    />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <DropZone 
-                                        label="Boss Sprites (PNG)" 
-                                        accept="image/*" 
-                                        multiple={true}
-                                        color="#ff0099"
-                                        onFileSelect={setImages}
-                                        files={images}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column: Preview / Info */}
-                        <div style={{ 
-                            backgroundColor: '#111', 
-                            borderRadius: '16px', 
-                            padding: '30px',
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            border: '1px solid #222',
-                            position: 'relative',
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{ 
-                                position: 'absolute', 
-                                top: 0, 
-                                left: 0, 
-                                width: '100%', 
-                                height: '100%', 
-                                backgroundImage: 'radial-gradient(circle at 50% 50%, #1a1a1a 0%, #111 70%)',
-                                zIndex: 0
-                            }}></div>
-                            
-                            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                                <div style={{ 
-                                    width: '60px', 
-                                    height: '60px', 
-                                    backgroundColor: '#222', 
-                                    borderRadius: '12px', 
-                                    margin: '0 auto 20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    ✨
-                                </div>
-                                <h3 style={{ margin: '0 0 10px', color: '#fff' }}>AI Architect</h3>
-                                <p style={{ margin: 0, color: '#666', fontSize: '14px', lineHeight: '1.5' }}>
-                                    Gemini will analyze your audio waveform and visual assets to construct a beat-synced level timeline.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button 
-                        onClick={handleGenerate}
-                        style={{
-                            marginTop: '20px',
-                            padding: '25px', 
-                            backgroundColor: '#fff', 
-                            color: '#000', 
-                            border: 'none', 
-                            cursor: 'pointer', 
-                            fontSize: '18px', 
-                            borderRadius: '12px', 
-                            fontFamily: 'Arial Black',
-                            letterSpacing: '2px',
-                            textTransform: 'uppercase',
-                            transition: 'transform 0.1s ease',
-                            boxShadow: '0 5px 20px rgba(255,255,255,0.1)'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                        INITIALIZE GENERATION
-                    </button>
-                    
-                    <style jsx>{`
-                        @keyframes fadeIn {
-                            from { opacity: 0; transform: translateY(20px); }
-                            to { opacity: 1; transform: translateY(0); }
-                        }
-                    `}</style>
                 </div>
             )}
         </div>

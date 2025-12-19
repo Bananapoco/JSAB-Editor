@@ -4,7 +4,10 @@ import { EventBus } from '../game/EventBus';
 export const CommunityHubOverlay = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [levels, setLevels] = useState<any[]>([]);
+    const [selectedLevel, setSelectedLevel] = useState<any>(null);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const levelRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
     useEffect(() => {
         const showHub = () => {
@@ -17,21 +20,69 @@ export const CommunityHubOverlay = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!isVisible) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setIsVisible(false);
+                return;
+            }
+
+            if (levels.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedIndex(prev => {
+                    const newIndex = prev < levels.length - 1 ? prev + 1 : prev;
+                    setSelectedLevel(levels[newIndex]);
+                    // Scroll into view
+                    setTimeout(() => {
+                        levelRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 0);
+                    return newIndex;
+                });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedIndex(prev => {
+                    const newIndex = prev > 0 ? prev - 1 : 0;
+                    setSelectedLevel(levels[newIndex]);
+                    // Scroll into view
+                    setTimeout(() => {
+                        levelRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 0);
+                    return newIndex;
+                });
+            } else if (e.key === 'Enter' && selectedLevel) {
+                e.preventDefault();
+                playLevel();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isVisible, levels, selectedLevel]);
+
     const fetchLevels = async () => {
         setIsLoading(true);
-        // In a real app, this would be: await fetch('/api/levels')
         setTimeout(() => {
             const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');
             setLevels(savedLevels);
+            if (savedLevels.length > 0) {
+                setSelectedIndex(0);
+                setSelectedLevel(savedLevels[0]);
+            }
             setIsLoading(false);
-        }, 600);
+        }, 300);
     };
 
-    const playLevel = (level: any) => {
+    const playLevel = () => {
+        if (!selectedLevel) return;
         EventBus.emit('load-level', {
-            levelData: level.levelData,
-            audioUrl: level.audioUrl,
-            imageMappings: level.imageMappings
+            levelData: selectedLevel.levelData,
+            audioUrl: selectedLevel.audioUrl,
+            imageMappings: selectedLevel.imageMappings
         });
         setIsVisible(false);
         EventBus.emit('start-game'); 
@@ -42,263 +93,274 @@ export const CommunityHubOverlay = () => {
     return (
         <div style={{
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: '#050505', 
+            backgroundColor: '#000', 
             color: 'white', display: 'flex',
-            flexDirection: 'column', alignItems: 'center',
+            flexDirection: 'column',
             zIndex: 1001, fontFamily: 'Arial, sans-serif',
-            overflowY: 'auto',
-            paddingTop: '60px'
+            overflow: 'hidden'
         }}>
-            {/* Header Area */}
+            {/* --- TOP BAR --- */}
             <div style={{ 
-                width: '100%', 
-                maxWidth: '1200px', 
+                height: '80px', 
+                backgroundColor: '#31B4BF', 
                 display: 'flex', 
-                justifyContent: 'space-between', 
                 alignItems: 'center', 
-                marginBottom: '40px',
-                padding: '0 20px'
+                padding: '0 40px',
+                justifyContent: 'space-between',
+                boxShadow: '0 0 20px rgba(0,255,255,0.4)',
+                zIndex: 10,
+                clipPath: 'polygon(0 0, 100% 0, 100% 85%, 98% 100%, 0 100%)'
             }}>
-                <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <span style={{ fontSize: '30px' }}>🎵</span>
                     <h1 style={{ 
+                        margin: 0, 
                         fontFamily: 'Arial Black', 
-                        fontSize: '48px', 
-                        margin: 0,
-                        letterSpacing: '-2px',
-                        color: '#ff0099',
-                        textShadow: '0 0 20px rgba(255, 0, 153, 0.5)'
-                    }}>
-                        COMMUNITY
-                    </h1>
-                    <div style={{ color: '#666', fontSize: '14px', marginTop: '5px' }}>
-                        BROWSE & PLAY USER CREATED LEVELS
-                    </div>
+                        fontSize: '32px', 
+                        color: 'white',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px'
+                    }}>PLAYLIST</h1>
                 </div>
 
-                <button 
-                    onClick={() => setIsVisible(false)}
-                    style={{ 
-                        backgroundColor: 'transparent', 
-                        color: '#fff', 
-                        border: '2px solid #333', 
-                        padding: '12px 24px',
-                        fontSize: '14px', 
-                        cursor: 'pointer',
-                        borderRadius: '30px',
-                        fontFamily: 'Arial Black',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#fff';
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#333';
-                        e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                >
-                    EXIT HUB
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                     <div style={{ 
+                         backgroundColor: '#000', 
+                         padding: '8px 20px', 
+                         borderRadius: '30px', 
+                         color: '#00ffff',
+                         fontFamily: 'Arial Black',
+                         fontSize: '16px',
+                         border: '2px solidrgb(54, 242, 242)'
+                     }}>
+                     </div>
+                </div>
             </div>
 
-            {/* Content Area */}
-            {isLoading ? (
+            {/* --- MAIN CONTENT SPLIT --- */}
+            <div style={{ display: 'flex', flex: 1, height: 'calc(100% - 80px)' }}>
+                
+                {/* --- LEFT COLUMN: TRACK DETAILS --- */}
                 <div style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    color: '#444'
+                    width: '400px', 
+                    backgroundColor: '#0a0a0a', 
+                    borderRight: '2px solid #222',
+                    padding: '40px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    boxShadow: '10px 0 30px rgba(0,0,0,0.5)',
+                    zIndex: 5
                 }}>
-                    <div className="loader"></div>
-                    <p style={{ marginTop: '20px', fontSize: '14px', letterSpacing: '2px' }}>FETCHING DATABASE...</p>
-                    <style jsx>{`
-                        .loader {
-                            width: 40px;
-                            height: 40px;
-                            border: 4px solid #333;
-                            border-top-color: #ff0099;
-                            border-radius: 50%;
-                            animation: spin 0.8s linear infinite;
-                        }
-                        @keyframes spin { 100% { transform: rotate(360deg); } }
-                    `}</style>
-                </div>
-            ) : (
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                    gap: '20px', 
-                    width: '100%', 
-                    maxWidth: '1200px',
-                    padding: '0 20px 60px'
-                }}>
-                    {levels.length === 0 ? (
-                        <div style={{ 
-                            gridColumn: '1/-1', 
-                            textAlign: 'center', 
-                            color: '#444', 
-                            padding: '100px 0',
-                            border: '2px dashed #222',
-                            borderRadius: '20px'
-                        }}>
-                            <h2 style={{ color: '#666' }}>No Levels Found</h2>
-                            <p>Create the first level in the Editor!</p>
-                        </div>
-                    ) : (
-                        levels.map((level, i) => (
-                            <div 
-                                key={i} 
-                                onClick={() => playLevel(level)}
-                                className="level-card"
-                                style={{ 
-                                    backgroundColor: '#111', 
-                                    borderRadius: '16px',
-                                    overflow: 'hidden',
-                                    cursor: 'pointer', 
-                                    transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                                    border: '1px solid #222',
-                                    position: 'relative'
+                    {selectedLevel ? (
+                        <>
+                            {/* Album Art Placeholder */}
+                            <div style={{ 
+                                width: '300px', 
+                                height: '300px', 
+                                backgroundColor: '#111', 
+                                border: '2px solid #333',
+                                marginBottom: '30px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                boxShadow: '0 0 20px rgba(0,0,0,0.5)'
+                            }}>
+                                <div style={{ 
+                                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+                                    background: 'linear-gradient(135deg, #111 0%, #222 100%)' 
+                                }}></div>
+                                <div style={{ 
+                                    fontSize: '80px', 
+                                    filter: 'drop-shadow(0 0 10px rgba(255,0,153,0.5))'
+                                }}>👾</div>
+                                
+                                {/* Decorative tech lines */}
+                                <div style={{ position: 'absolute', top: '10%', left: '0', width: '100%', height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                                <div style={{ position: 'absolute', bottom: '10%', left: '0', width: '100%', height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                            </div>
+
+                            <h2 style={{ 
+                                margin: '0 0 10px 0', 
+                                fontFamily: 'Arial Black', 
+                                fontSize: '32px', 
+                                color: '#fff', 
+                                textAlign: 'center',
+                                textTransform: 'uppercase',
+                                lineHeight: '1.1',
+                                textShadow: '0 0 10px rgba(255,255,255,0.3)'
+                            }}>
+                                {selectedLevel.levelData.metadata.bossName}
+                            </h2>
+                            
+                            <div style={{ color: '#00ffff', fontFamily: 'Arial Black', fontSize: '16px', marginBottom: '40px', letterSpacing: '1px' }}>
+                                by AI ARCHITECT
+                            </div>
+
+                            <div style={{ width: '100%', textAlign: 'left', marginBottom: 'auto', padding: '0 20px' }}>
+                                <div style={{ color: '#444', fontSize: '12px', fontFamily: 'Arial Black', marginBottom: '10px' }}>DESCRIPTION</div>
+                                <div style={{ color: '#888', fontSize: '14px', lineHeight: '1.5', fontFamily: 'Arial', maxHeight: '120px', overflowY: 'auto' }}>
+                                    {selectedLevel.levelData.explanation || "No description provided."}
+                                </div>
+                            </div>
+
+                            {/* Play Button */}
+                            <button 
+                                onClick={playLevel}
+                                style={{
+                                    width: '100%',
+                                    padding: '20px',
+                                    background: 'linear-gradient(90deg, #ff0099, #ff0055)',
+                                    border: 'none',
+                                    color: '#fff',
+                                    fontFamily: 'Arial Black',
+                                    fontSize: '24px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '2px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    transform: 'skew(-10deg)',
+                                    boxShadow: '0 0 20px rgba(255, 0, 153, 0.4)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.filter = 'brightness(1.2)';
+                                    e.currentTarget.style.transform = 'skew(-10deg) scale(1.02)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.filter = 'brightness(1)';
+                                    e.currentTarget.style.transform = 'skew(-10deg) scale(1)';
                                 }}
                             >
-                                {/* Card Header / Thumbnail Placeholder */}
-                                <div style={{ 
-                                    height: '140px', 
-                                    backgroundColor: '#1a1a1a',
-                                    position: 'relative',
-                                    overflow: 'hidden',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
+                                START TRACK
+                            </button>
+                        </>
+                    ) : (
+                        <div style={{ color: '#444', marginTop: '150px', fontFamily: 'Arial Black', fontSize: '20px' }}>
+                            SELECT A TRACK
+                        </div>
+                    )}
+                </div>
+
+                {/* --- RIGHT COLUMN: LIST --- */}
+                <div style={{ flex: 1, backgroundColor: '#000', padding: '0', overflowY: 'auto' }}>
+                    {/* Header Row */}
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '80px 3fr 2fr 100px', 
+                        padding: '20px 40px',
+                        borderBottom: '2px solid #222',
+                        color: '#ff0099',
+                        fontFamily: 'Arial Black',
+                        fontSize: '14px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
+                    }}>
+                        <div>RANK</div>
+                        <div>TRACK TITLE</div>
+                        <div>ARTIST</div>
+                        <div>TIME</div>
+                    </div>
+
+                    {/* List Items */}
+                    {levels.length === 0 ? (
+                        <div style={{ padding: '60px', textAlign: 'center', color: '#333' }}>
+                            <div style={{ fontSize: '40px', marginBottom: '20px' }}>📂</div>
+                            <div style={{ fontFamily: 'Arial Black', fontSize: '20px' }}>NO LEVELS FOUND</div>
+                            <div style={{ marginTop: '10px' }}>Create your first level in the Editor!</div>
+                        </div>
+                    ) : (
+                        levels.map((level, i) => {
+                            const isSelected = i === selectedIndex;
+                            return (
+                                <div 
+                                    key={i}
+                                    ref={(el) => { levelRefs.current[i] = el; }}
+                                    onClick={() => {
+                                        setSelectedIndex(i);
+                                        setSelectedLevel(level);
+                                    }}
+                                    onDoubleClick={playLevel}
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '80px 3fr 2fr 100px',
+                                        padding: '25px 40px',
+                                        borderBottom: '1px solid #111',
+                                        backgroundColor: isSelected ? '#111' : 'transparent',
+                                        cursor: 'pointer',
+                                        alignItems: 'center',
+                                        transition: 'all 0.1s',
+                                        borderLeft: isSelected ? '5px solid #00ffff' : '5px solid transparent'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isSelected) e.currentTarget.style.backgroundColor = '#0a0a0a';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
                                     <div style={{ 
-                                        width: '120%', 
-                                        height: '100%', 
-                                        background: `linear-gradient(135deg, ${level.levelData.theme.backgroundColor || '#000'} 0%, #000 100%)`,
-                                        opacity: 0.5
-                                    }}></div>
-                                    <div style={{
-                                        position: 'absolute',
-                                        fontSize: '40px',
-                                        opacity: 0.2
+                                        fontFamily: 'Arial Black', 
+                                        color: isSelected ? '#00ffff' : '#444', 
+                                        fontSize: '20px' 
                                     }}>
-                                        👾
+                                        S
                                     </div>
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: '10px',
-                                        right: '10px',
-                                        backgroundColor: '#000',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '10px',
-                                        color: '#fff',
-                                        fontWeight: 'bold'
+                                    <div style={{ 
+                                        fontSize: '20px', 
+                                        fontFamily: 'Arial Black', 
+                                        textTransform: 'uppercase', 
+                                        color: isSelected ? '#fff' : '#aaa' 
                                     }}>
+                                        {level.levelData.metadata.bossName}
+                                    </div>
+                                    <div style={{ 
+                                        color: isSelected ? '#00ffff' : '#555', 
+                                        fontFamily: 'Arial Black',
+                                        fontSize: '14px' 
+                                    }}>
+                                        AI ARCHITECT
+                                    </div>
+                                    <div style={{ fontFamily: 'monospace', color: '#666', fontSize: '14px' }}>
                                         {Math.floor(level.levelData.metadata.duration)}s
                                     </div>
                                 </div>
-
-                                {/* Card Body */}
-                                <div style={{ padding: '20px' }}>
-                                    <h3 style={{ 
-                                        margin: '0 0 5px', 
-                                        color: '#fff', 
-                                        fontSize: '18px',
-                                        fontFamily: 'Arial Black',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                    }}>
-                                        {level.levelData.metadata.bossName}
-                                    </h3>
-                                    
-                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                        <span style={{ 
-                                            fontSize: '10px', 
-                                            backgroundColor: '#222', 
-                                            padding: '4px 8px', 
-                                            borderRadius: '4px', 
-                                            color: '#888' 
-                                        }}>
-                                            AI GENERATED
-                                        </span>
-                                        <span style={{ 
-                                            fontSize: '10px', 
-                                            backgroundColor: '#222', 
-                                            padding: '4px 8px', 
-                                            borderRadius: '4px', 
-                                            color: '#00ffff' 
-                                        }}>
-                                            HARDCORE
-                                        </span>
-                                    </div>
-
-                                    <p style={{ 
-                                        margin: 0, 
-                                        fontSize: '13px', 
-                                        color: '#666', 
-                                        lineHeight: '1.4',
-                                        height: '36px',
-                                        overflow: 'hidden',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical'
-                                    }}>
-                                        {level.levelData.explanation || "No description provided."}
-                                    </p>
-                                </div>
-
-                                {/* Hover Overlay */}
-                                <div className="play-overlay" style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    backgroundColor: 'rgba(0,0,0,0.8)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    opacity: 0,
-                                    transition: 'opacity 0.2s'
-                                }}>
-                                    <div style={{
-                                        border: '2px solid #fff',
-                                        borderRadius: '50%',
-                                        width: '60px',
-                                        height: '60px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <div style={{
-                                            width: 0, 
-                                            height: 0, 
-                                            borderTop: '10px solid transparent',
-                                            borderBottom: '10px solid transparent',
-                                            borderLeft: '16px solid #fff',
-                                            marginLeft: '4px'
-                                        }}></div>
-                                    </div>
-                                </div>
-
-                                <style jsx>{`
-                                    .level-card:hover {
-                                        transform: translateY(-5px);
-                                        border-color: #ff0099;
-                                        box-shadow: 0 10px 30px -10px rgba(255, 0, 153, 0.3);
-                                    }
-                                    .level-card:hover .play-overlay {
-                                        opacity: 1;
-                                    }
-                                `}</style>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
-            )}
+            </div>
+
+            {/* --- BOTTOM BAR --- */}
+            <div style={{ 
+                position: 'absolute', bottom: 40, right: 60,
+                pointerEvents: 'none'
+            }}>
+                <button 
+                    onClick={() => setIsVisible(false)}
+                    style={{ 
+                        pointerEvents: 'auto',
+                        background: 'transparent', 
+                        border: 'none', 
+                        color: '#fff', 
+                        fontFamily: 'Arial Black', 
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '15px',
+                        textTransform: 'uppercase'
+                    }}
+                >
+                    <span style={{ 
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', 
+                        width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#ff0000',
+                        fontSize: '16px', boxShadow: '0 0 10px rgba(255,0,0,0.5)'
+                    }}>B</span>
+                    BACK
+                </button>
+            </div>
         </div>
     );
 };

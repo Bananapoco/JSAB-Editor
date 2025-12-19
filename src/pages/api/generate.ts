@@ -13,10 +13,6 @@ const schema = {
         bossName: { type: SchemaType.STRING },
         bpm: { type: SchemaType.NUMBER },
         duration: { type: SchemaType.NUMBER },
-        assetMapping: {
-          type: SchemaType.OBJECT,
-          additionalProperties: { type: SchemaType.STRING },
-        },
       },
       required: ["bossName", "duration"],
     },
@@ -72,11 +68,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt, images, duration } = req.body;
+  const { prompt, images, audioData, duration } = req.body;
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: "gemini-3-pro-preview", 
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
@@ -85,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const systemPrompt = `
       You are an expert level designer for a rhythm-based action game similar to "Just Shapes & Beats".
-      Your task is to create a complete level timeline based on a user's description and optional images of boss/obstacles.
+      Your task is to create a complete level timeline based on a user's description, audio track, and optional images of boss/obstacles.
       
       Game Mechanics:
       - Screen size is 1024x768.
@@ -96,25 +92,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       - Color palette should be cohesive. Default JSAB enemy color is pink (#FF0099).
       
       Instructions:
-      1. Analyze the user's prompt: "${prompt}"
-      2. If images are provided, map them to assetIds like "asset_0", "asset_1" etc. and describe their behaviors.
-      3. Create a dense timeline with at least 15-30 events spread across the duration, intensifying during "drops" or "choruses".
-      4. Ensure all timestamps are between 0 and ${duration}.
-      5. Provide a brief explanation of your design choices in the "explanation" field.
+      1. Listen to the provided audio track carefully to identify beats, drops, and mood changes.
+      2. Analyze the user's prompt: "${prompt}"
+      3. If images are provided, map them to assetIds like "asset_0", "asset_1" etc. and describe their behaviors.
+      4. Create a dense timeline with at least 15-30 events spread across the duration, intensifying during "drops" or "choruses".
+      5. Ensure all timestamps are between 0 and ${duration}.
+      6. Provide a brief explanation of your design choices in the "explanation" field.
     `;
+
+    const parts = [
+      { text: systemPrompt },
+    ];
+
+    // Add Audio if present
+    if (audioData) {
+      parts.push({
+        inlineData: {
+          mimeType: "audio/mp3",
+          data: audioData.split(',')[1]
+        }
+      } as any);
+    }
+
+    // Add Images if present
+    if (images && images.length > 0) {
+      images.forEach((img: {data: string, type: string}) => {
+        parts.push({
+            inlineData: {
+              mimeType: img.type,
+              data: img.data.split(',')[1],
+            },
+        } as any);
+      });
+    }
 
     const contents = [
       {
         role: "user",
-        parts: [
-          { text: systemPrompt },
-          ...(images || []).map((img: string) => ({
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: img.split(',')[1], // Remove base64 prefix
-            },
-          })),
-        ],
+        parts: parts,
       },
     ];
 
@@ -128,3 +143,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: error.message });
   }
 }
+

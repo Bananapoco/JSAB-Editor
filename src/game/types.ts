@@ -36,3 +36,4 @@ export interface LevelData {
     timeline: LevelEvent[];
     explanation?: string; // Gemini's explanation of the design
 }
+
