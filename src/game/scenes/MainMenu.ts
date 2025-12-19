@@ -39,12 +39,15 @@ export class MainMenu extends Scene
         const gap = 120;
 
         this.createMenuButton(startX, startY, 'MAKE LEVEL', 0x00ffff, () => {
-            console.log('Make Level Clicked');
-            this.scene.start('Game');
+            EventBus.emit('open-editor');
         });
 
         this.createMenuButton(startX + 40, startY + gap, 'VIEW LEVELS', 0xff0099, () => {
-            console.log('View Levels Clicked');
+            EventBus.emit('open-community-hub');
+        });
+
+        EventBus.on('load-level', () => {
+            this.scene.start('Game');
         });
 
         // --- Bottom Bar / Settings ---
