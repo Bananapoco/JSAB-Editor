@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { EventBus } from '../game/EventBus';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CardInput = ({ 
     label, 
@@ -20,7 +21,9 @@ const CardInput = ({
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-        <div 
+        <motion.div 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => inputRef.current?.click()}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -34,9 +37,8 @@ const CardInput = ({
                 justifyContent: 'center',
                 alignItems: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'border-color 0.2s',
                 position: 'relative',
-                transform: isHovered ? 'scale(1.02)' : 'scale(1)',
                 boxShadow: isHovered ? `0 0 30px ${color}44` : 'none'
             }}
         >
@@ -48,7 +50,6 @@ const CardInput = ({
                 style={{ display: 'none' }}
             />
             
-            {/* Colored Top Bar */}
             <div style={{ 
                 position: 'absolute', top: 0, left: 0, width: '100%', height: '10px', 
                 backgroundColor: color 
@@ -107,7 +108,7 @@ const CardInput = ({
                     ✓ SELECTED
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 
@@ -128,21 +129,6 @@ export const EditorOverlay = () => {
         };
     }, []);
 
-    useEffect(() => {
-        if (!isVisible) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !isGenerating) {
-                e.preventDefault();
-                setIsVisible(false);
-                EventBus.emit('go-to-main-menu');
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isVisible, isGenerating]);
-
     const handleGenerate = async () => {
         if (!audioFile) {
             alert('Please upload an MP3 first!');
@@ -151,15 +137,18 @@ export const EditorOverlay = () => {
 
         setIsGenerating(true);
         setErrorMessage('');
-        setStatus('INITIALIZING DUAL-MODEL PIPELINE...');
+        setStatus('INITIALIZING...');
 
         try {
             // Get audio duration
+            setStatus('DECODING AUDIO...');
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const arrayBuffer = await audioFile.arrayBuffer();
             const bufferForDecode = arrayBuffer.slice(0);
             const audioBuffer = await audioContext.decodeAudioData(bufferForDecode);
             const duration = audioBuffer.duration;
+
+            console.log('Audio duration:', duration, 'seconds');
 
             if (duration < 5) {
                 if (!confirm(`Warning: Audio is very short (${duration.toFixed(2)}s). Continue?`)) {
@@ -168,7 +157,7 @@ export const EditorOverlay = () => {
                 }
             }
 
-            setStatus('ANALYZING AUDIO WAVEFORM & ASSETS...');
+            setStatus('PROCESSING ASSETS...');
             const base64Images = await Promise.all(
                 images.map(img => new Promise<{data: string, type: string}>((resolve) => {
                     const reader = new FileReader();
@@ -186,7 +175,9 @@ export const EditorOverlay = () => {
                 reader.readAsDataURL(audioFile);
             });
 
-            setStatus('GEMINI 3: CONSTRUCTING LEVEL GEOMETRY...');
+            setStatus('AI GENERATING LEVEL...');
+            console.log('Calling /api/generate...');
+            
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -198,11 +189,23 @@ export const EditorOverlay = () => {
                 })
             });
 
-            if (!response.ok) throw new Error('Generation Failed');
+            console.log('API Response status:', response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `API Error: ${response.status}`);
+            }
 
             const levelData = await response.json();
+            console.log('Level data received:', levelData.metadata?.bossName, 'with', levelData.timeline?.length, 'events');
             
-            setStatus('FINALIZING SYNC...');
+            // Validate we got actual level data
+            if (!levelData.timeline || levelData.timeline.length === 0) {
+                throw new Error('Generated level has no events');
+            }
+
+            setStatus('PREPARING GAME...');
+            
             const audioUrl = URL.createObjectURL(audioFile);
             const imageMappings: Record<string, string> = {};
             images.forEach((img, i) => {
@@ -211,125 +214,251 @@ export const EditorOverlay = () => {
 
             const payload = { levelData, audioUrl, imageMappings };
             
-            const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');
-            savedLevels.unshift(payload);
-            localStorage.setItem('community_levels', JSON.stringify(savedLevels));
+            // Save to local storage
+            try {
+                const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');
+                // Create a serializable version (without blob URLs for storage)
+                const storedPayload = {
+                    levelData,
+                    audioUrl: '', // Can't store blob URLs
+                    imageMappings: {}
+                };
+                savedLevels.unshift(storedPayload);
+                // Keep only last 20 levels
+                if (savedLevels.length > 20) savedLevels.pop();
+                localStorage.setItem('community_levels', JSON.stringify(savedLevels));
+            } catch (storageError) {
+                console.warn('Could not save to localStorage:', storageError);
+            }
+
+            // Set pending data for Game scene
             (window as any).pendingLevelData = payload;
 
+            setStatus('LAUNCHING...');
+            
+            // Give React a moment to update, then emit events
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // First emit load-level (Game scene will catch this if already active)
             EventBus.emit('load-level', payload);
+            
+            // Hide overlay
             setIsVisible(false);
+            setIsGenerating(false);
+            
+            console.log('Level loaded and events emitted!');
+            
         } catch (error: any) {
+            console.error('Generation error:', error);
             setErrorMessage(error.message || 'Unknown error occurred');
-            setStatus('SYSTEM FAILURE');
-        } finally {
+            setStatus('ERROR');
             setIsGenerating(false);
         }
     };
 
-    if (!isVisible) return null;
+    const overlayVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.3 } },
+        exit: { opacity: 0 }
+    };
+
+    const contentVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
+    };
 
     return (
-        <div style={{
-            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: '#000', 
-            color: 'white', display: 'flex',
-            flexDirection: 'column',
-            zIndex: 1000, fontFamily: 'Arial, sans-serif'
-        }}>
-            {/* Header */}
-            <div style={{ 
-                height: '100px', display: 'flex', alignItems: 'center', padding: '0 60px',
-                background: 'linear-gradient(90deg, #31B4BF, #2A9FA8)',
-                clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0 100%)'
-            }}>
-                <h1 style={{ 
-                    fontFamily: 'Arial Black', fontSize: '48px', margin: 0, color: '#fff',
-                    textTransform: 'uppercase', letterSpacing: '-2px'
-                }}>
-                    NEW PROJECT
-                </h1>
-            </div>
-
-            {isGenerating ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <AnimatePresence>
+            {isVisible && (
+                <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={overlayVariants}
+                    style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        backgroundColor: '#000', 
+                        color: 'white', display: 'flex',
+                        flexDirection: 'column',
+                        zIndex: 1000, fontFamily: 'Arial, sans-serif'
+                    }}
+                >
+                    {/* Header */}
                     <div style={{ 
-                        width: '100px', height: '100px', border: '10px solid #222', borderTopColor: '#ff0099', 
-                        borderRadius: '50%', animation: 'spin 1s linear infinite' 
-                    }}></div>
-                    <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#fff' }}>{status}</h2>
-                    <style jsx>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-                </div>
-            ) : (
-                <div style={{ flex: 1, padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '50px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-                    
-                    {/* Prompt Input */}
-                    <div>
-                        <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>TRACK CONCEPT</div>
-                        <input 
-                            type="text" 
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="Describe your level theme (e.g., 'Neon Cyberpunk Pursuit')..."
-                            style={{ 
-                                width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
-                                color: '#fff', fontFamily: 'Arial', outline: 'none'
-                            }}
-                            onFocus={(e) => e.currentTarget.style.borderBottomColor = '#fff'}
-                            onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
-                        />
+                        height: '100px', display: 'flex', alignItems: 'center', padding: '0 60px',
+                        background: 'linear-gradient(90deg, #31B4BF, #2A9FA8)',
+                        clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0 100%)'
+                    }}>
+                        <h1 style={{ 
+                            fontFamily: 'Arial Black', fontSize: '48px', margin: 0, color: '#fff',
+                            textTransform: 'uppercase', letterSpacing: '-2px'
+                        }}>
+                            NEW PROJECT
+                        </h1>
                     </div>
 
-                    {/* Cards Container */}
-                    <div style={{ display: 'flex', gap: '40px' }}>
-                        <CardInput 
-                            label="AUDIO TRACK" 
-                            icon="🎵"
-                            accept="audio/mp3" 
-                            color="#00ffff"
-                            onFileSelect={(f) => setAudioFile(f[0])}
-                            files={audioFile ? [audioFile] : []}
-                        />
-                        <CardInput 
-                            label="BOSS ASSETS" 
-                            icon="👾"
-                            accept="image/*" 
-                            color="#ff0099"
-                            onFileSelect={setImages}
-                            files={images}
-                        />
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                        <button 
-                            onClick={handleGenerate}
-                            style={{ 
-                                flex: 2, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
-                                fontFamily: 'Arial Black', fontSize: '32px', letterSpacing: '2px',
-                                cursor: 'pointer', transform: 'skew(-10deg)',
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ffff'; e.currentTarget.style.color = '#00ffff'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#666'; }}
+                    {isGenerating ? (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
-                            CREATE
-                        </button>
-
-                        <button 
-                            onClick={() => setIsVisible(false)}
-                            style={{ 
-                                flex: 1, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
-                                fontFamily: 'Arial Black', fontSize: '24px', cursor: 'pointer', transform: 'skew(-10deg)'
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ff0000'; e.currentTarget.style.color = '#ff0000'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#666'; }}
+                            {status === 'ERROR' ? (
+                                <>
+                                    <div style={{ 
+                                        width: '100px', height: '100px', 
+                                        border: '10px solid #ff0000', 
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '50px'
+                                    }}>
+                                        ✕
+                                    </div>
+                                    <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#ff0000' }}>
+                                        GENERATION FAILED
+                                    </h2>
+                                    <p style={{ color: '#888', marginTop: '10px', maxWidth: '400px', textAlign: 'center' }}>
+                                        {errorMessage}
+                                    </p>
+                                    <motion.button 
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                            setIsGenerating(false);
+                                            setErrorMessage('');
+                                            setStatus('');
+                                        }}
+                                        style={{ 
+                                            marginTop: '30px',
+                                            padding: '15px 40px', 
+                                            backgroundColor: 'transparent', 
+                                            border: '3px solid #ff0099', 
+                                            color: '#ff0099',
+                                            fontFamily: 'Arial Black', 
+                                            fontSize: '20px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        TRY AGAIN
+                                    </motion.button>
+                                </>
+                            ) : (
+                                <>
+                                    <motion.div 
+                                        animate={{ rotate: 360 }}
+                                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                                        style={{ 
+                                            width: '100px', height: '100px', border: '10px solid #222', borderTopColor: '#ff0099', 
+                                            borderRadius: '50%' 
+                                        }}
+                                    />
+                                    <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#fff' }}>
+                                        {status}
+                                    </h2>
+                                    <p style={{ color: '#666', marginTop: '10px' }}>
+                                        This may take up to 60 seconds...
+                                    </p>
+                                </>
+                            )}
+                        </motion.div>
+                    ) : (
+                        <motion.div 
+                            variants={contentVariants}
+                            initial="hidden"
+                            animate="visible"
+                            style={{ flex: 1, padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '50px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}
                         >
-                            BACK
-                        </button>
-                    </div>
+                            
+                            {/* Prompt Input */}
+                            <motion.div variants={itemVariants}>
+                                <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>TRACK CONCEPT</div>
+                                <input 
+                                    type="text" 
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    placeholder="Describe your level theme (e.g., 'Neon Cyberpunk Pursuit')..."
+                                    style={{ 
+                                        width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
+                                        color: '#fff', fontFamily: 'Arial', outline: 'none'
+                                    }}
+                                    onFocus={(e) => e.currentTarget.style.borderBottomColor = '#fff'}
+                                    onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
+                                />
+                            </motion.div>
 
-                </div>
+                            {/* Cards Container */}
+                            <motion.div 
+                                variants={itemVariants}
+                                style={{ display: 'flex', gap: '40px' }}
+                            >
+                                <CardInput 
+                                    label="AUDIO TRACK" 
+                                    icon="🎵"
+                                    accept="audio/*" 
+                                    color="#00ffff"
+                                    onFileSelect={(f) => setAudioFile(f[0])}
+                                    files={audioFile ? [audioFile] : []}
+                                />
+                                <CardInput 
+                                    label="BOSS ASSETS" 
+                                    icon="👾"
+                                    accept="image/*" 
+                                    color="#ff0099"
+                                    onFileSelect={setImages}
+                                    files={images}
+                                />
+                            </motion.div>
+
+                            {/* Actions */}
+                            <motion.div 
+                                variants={itemVariants}
+                                style={{ display: 'flex', gap: '20px', alignItems: 'center' }}
+                            >
+                                <motion.button 
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 255, 255, 0.1)', borderColor: '#00ffff', color: '#00ffff' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={handleGenerate}
+                                    style={{ 
+                                        flex: 2, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
+                                        fontFamily: 'Arial Black', fontSize: '32px', letterSpacing: '2px',
+                                        cursor: 'pointer', transform: 'skew(-10deg)',
+                                        transition: 'color 0.2s, border-color 0.2s'
+                                    }}
+                                >
+                                    CREATE
+                                </motion.button>
+
+                                <motion.button 
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderColor: '#ff0000', color: '#ff0000' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setIsVisible(false)}
+                                    style={{ 
+                                        flex: 1, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
+                                        fontFamily: 'Arial Black', fontSize: '24px', cursor: 'pointer', transform: 'skew(-10deg)',
+                                        transition: 'color 0.2s, border-color 0.2s'
+                                    }}
+                                >
+                                    BACK
+                                </motion.button>
+                            </motion.div>
+
+                        </motion.div>
+                    )}
+                </motion.div>
             )}
-        </div>
+        </AnimatePresence>
     );
 };

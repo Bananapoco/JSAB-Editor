@@ -5,7 +5,7 @@ import { VertexAI } from '@google-cloud/vertexai';
 // Note: This requires GOOGLE_APPLICATION_CREDENTIALS environment variable to be set
 // or running in an environment with default service account access (like Cloud Run).
 const vertexAI = new VertexAI({
-  project: process.env.GCP_PROJECT_ID || 'your-project-id',
+  project: process.env.GCP_PROJECT_ID || 'jsab-editor',
   location: 'us-central1',
 });
 
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Select the Imagen 3 model
     const model = vertexAI.getGenerativeModel({
-      model: 'imagen-3.0-generate-001',
+      model: 'imagen-4.0-generate-001',
     });
 
     // Generate images
