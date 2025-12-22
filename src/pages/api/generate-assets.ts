@@ -61,16 +61,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const result = await model.generateContent(svgPrompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
     
     const apiTime = Date.now() - startTime;
     console.log(`[ASSETS API] Gemini responded in ${apiTime}ms`);
+
+    // Clean up markdown formatting if present
+    text = text.trim();
+    if (text.startsWith('```svg')) {
+      text = text.replace(/^```svg\s*/, '').replace(/\s*```$/, '');
+    } else if (text.startsWith('```xml')) {
+      text = text.replace(/^```xml\s*/, '').replace(/\s*```$/, '');
+    } else if (text.startsWith('```')) {
+      text = text.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    text = text.trim();
 
     // Extract SVG from response (in case Gemini adds extra text despite instructions)
     let svgContent = text;
     const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/);
     if (svgMatch) {
       svgContent = svgMatch[0];
+    } else {
+      console.warn('[ASSETS API] No SVG tags found in response, using full text');
+      console.log('[ASSETS API] First 200 chars:', text.substring(0, 200));
+    }
+
+    // Validate SVG has basic structure
+    if (!svgContent.includes('<svg')) {
+      throw new Error('Generated content does not contain valid SVG markup');
     }
 
     // Convert SVG string to Base64 for the frontend to consume as an image

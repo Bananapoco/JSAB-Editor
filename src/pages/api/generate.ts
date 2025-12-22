@@ -243,8 +243,40 @@ Vary attack types - don't repeat same patterns.`;
     const apiTime = Date.now() - startTime;
     console.log(`[GENERATE API] AI responded in ${apiTime}ms`);
     
-    const responseText = response.text();
-    const levelData = JSON.parse(responseText);
+    let responseText = response.text();
+    
+    // Clean up potential markdown formatting and other artifacts
+    responseText = responseText.trim();
+    
+    // Remove markdown code blocks
+    if (responseText.startsWith('```json')) {
+      responseText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (responseText.startsWith('```')) {
+      responseText = responseText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    // Trim again after markdown removal
+    responseText = responseText.trim();
+    
+    // Additional JSON cleaning - fix common AI formatting errors
+    // Remove trailing commas before closing braces/brackets
+    responseText = responseText.replace(/,(\s*[}\]])/g, '$1');
+    // Remove any BOM or zero-width characters
+    responseText = responseText.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+    let levelData;
+    try {
+      levelData = JSON.parse(responseText);
+    } catch (parseError: any) {
+      console.error('[GENERATE API] JSON Parse Error:', parseError.message);
+      console.error('[GENERATE API] First 500 chars of response:', responseText.substring(0, 500));
+      console.error('[GENERATE API] Last 500 chars of response:', responseText.substring(Math.max(0, responseText.length - 500)));
+      
+      // Save the problematic response to a temporary variable for debugging
+      console.error('[GENERATE API] Full response length:', responseText.length);
+      
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
 
     // Validate and enforce JSAB style
     if (!levelData.theme) {
