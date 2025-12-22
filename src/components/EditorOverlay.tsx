@@ -210,9 +210,9 @@ async function analyzeAudio(audioBuffer: AudioBuffer): Promise<{
     return { bpm, peaks, energyProfile };
 }
 
-// Generate boss sprite via Imagen 3
+// Generate boss sprite via Gemini
 async function generateBossSprite(prompt: string): Promise<string | null> {
-    console.log('[IMAGEN] Generating boss sprite for:', prompt);
+    console.log('[GEMINI] Generating boss sprite for:', prompt);
     
     try {
         const response = await fetch('/api/generate-assets', {
@@ -225,39 +225,47 @@ async function generateBossSprite(prompt: string): Promise<string | null> {
             })
         });
         
-        console.log('[IMAGEN] API Response status:', response.status);
+        console.log('[GEMINI] API Response status:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.error('[IMAGEN] API Error:', errorData);
+            console.error('[GEMINI] API Error:', errorData);
             return null;
         }
         
         const data = await response.json();
-        console.log('[IMAGEN] Response data:', {
+        console.log('[GEMINI] Response data:', {
             imageCount: data.images?.length || 0,
             message: data.message,
             debug: data.debug
         });
         
         if (data.images && data.images.length > 0) {
-            // Convert base64 to blob URL for immediate use
-            const base64 = data.images[0];
+            // Check if it's already a data URL (SVG fallback) or raw base64
+            const imageStr = data.images[0];
+            if (imageStr.startsWith('data:')) {
+                return imageStr;
+            }
+
+            // Convert base64 to blob URL for raw base64 (Imagen style legacy or future support)
+            const base64 = imageStr;
             const binaryString = atob(base64);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-            const blob = new Blob([bytes], { type: 'image/png' });
+            // Detect type - default to png, but if svg fallback it might be svg
+            const type = base64.trim().startsWith('<svg') ? 'image/svg+xml' : 'image/png';
+            const blob = new Blob([bytes], { type });
             const blobUrl = URL.createObjectURL(blob);
-            console.log('[IMAGEN] Created blob URL for boss sprite');
+            console.log('[GEMINI] Created blob URL for boss sprite');
             return blobUrl;
         }
         
-        console.log('[IMAGEN] No images in response');
+        console.log('[GEMINI] No images in response');
         return null;
     } catch (error: any) {
-        console.error('[IMAGEN] Failed to generate boss sprite:', error.message);
+        console.error('[GEMINI] Failed to generate boss sprite:', error.message);
         return null;
     }
 }
@@ -352,11 +360,11 @@ export const EditorOverlay = () => {
                 }))
             );
 
-            // Step 5: Generate boss sprite via Imagen 3 (if no images provided)
+            // Step 5: Generate boss sprite via Gemini (if no images provided)
             let generatedBossUrl: string | null = null;
             if (images.length === 0 && prompt) {
                 setStatus('GENERATING BOSS');
-                setSubStatus('Creating boss sprite with Imagen 3...');
+                setSubStatus('Designing boss sprite with Gemini...');
                 setProgress(45);
                 
                 generatedBossUrl = await generateBossSprite(prompt);
@@ -402,8 +410,8 @@ export const EditorOverlay = () => {
                 const errorData = await response.json().catch(() => ({}));
                 console.error('[EDITOR] API Error:', errorData);
                 
-                if (errorData.code === 'VERTEX_AUTH_ERROR') {
-                    throw new Error('VERTEX_AUTH_ERROR');
+                if (errorData.code === 'VERTEX_AUTH_ERROR' || errorData.code === 'GEMINI_AUTH_ERROR') {
+                    throw new Error(errorData.code);
                 }
                 
                 throw new Error(errorData.error || errorData.details || `API Error: ${response.status}`);
@@ -555,7 +563,7 @@ export const EditorOverlay = () => {
                                         GENERATION FAILED
                                     </h2>
                                     
-                                    {errorMessage === 'VERTEX_AUTH_ERROR' ? (
+                                    {errorMessage === 'VERTEX_AUTH_ERROR' || errorMessage === 'GEMINI_AUTH_ERROR' ? (
                                         <div style={{ 
                                             backgroundColor: '#220000', 
                                             padding: '20px', 
@@ -565,14 +573,13 @@ export const EditorOverlay = () => {
                                             border: '1px solid #ff0000',
                                             textAlign: 'left'
                                         }}>
-                                            <h3 style={{ color: '#ff0000', marginTop: 0 }}>VERTEX AI AUTHENTICATION FAILED</h3>
+                                            <h3 style={{ color: '#ff0000', marginTop: 0 }}>GEMINI API AUTHENTICATION FAILED</h3>
                                             <p style={{ color: '#ccc', lineHeight: '1.6' }}>
-                                                To use Vertex AI (Gemini & Imagen), you must configure Application Default Credentials.
+                                                To use AI level & asset generation, you must configure your Gemini API Key.
                                             </p>
                                             <ol style={{ color: '#ccc', paddingLeft: '20px' }}>
                                                 <li>Check <code>.env.local</code> in <code>template-nextjs/</code></li>
-                                                <li>Ensure <code>GOOGLE_CLOUD_PROJECT</code> is set</li>
-                                                <li>Ensure <code>GOOGLE_APPLICATION_CREDENTIALS</code> points to your JSON key file</li>
+                                                <li>Ensure <code>GEMINI_API_KEY</code> is set with a valid key from Google AI Studio</li>
                                             </ol>
                                             <p style={{ color: '#888', fontSize: '14px', marginTop: '15px' }}>
                                                 See <code>README-API-SETUP.md</code> for details.

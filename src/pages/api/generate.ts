@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { VertexAI, SchemaType } from '@google-cloud/vertexai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 export const config = {
   api: {
@@ -10,103 +10,15 @@ export const config = {
   maxDuration: 180,
 };
 
-// Helper to safely parse JSON with recovery attempts
-function safeJSONParse(text: string): any {
-  console.log('[DEBUG] Attempting to parse response text...');
-  
-  // First, try direct parse
-  try {
-    const result = JSON.parse(text);
-    console.log('[DEBUG] Direct JSON parse successful');
-    return result;
-  } catch (e) {
-    console.log('[DEBUG] Direct JSON parse failed, attempting recovery...');
+// Initialize Google Generative AI
+function getGenAIClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Missing Gemini API Key. Set GEMINI_API_KEY in .env.local');
   }
 
-  // Try to extract JSON from markdown code blocks
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    try {
-      const result = JSON.parse(jsonMatch[1]);
-      console.log('[DEBUG] Markdown extraction successful');
-      return result;
-    } catch (e) {
-      console.log('[DEBUG] Markdown extraction failed');
-    }
-  }
-
-  // Try to find JSON object boundaries
-  const startIdx = text.indexOf('{');
-  const endIdx = text.lastIndexOf('}');
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    try {
-      const result = JSON.parse(text.slice(startIdx, endIdx + 1));
-      console.log('[DEBUG] Boundary extraction successful');
-      return result;
-    } catch (e) {
-      console.log('[DEBUG] Boundary extraction failed');
-    }
-  }
-
-  // Try to fix common JSON issues
-  let fixed = text
-    .replace(/,\s*}/g, '}')
-    .replace(/,\s*]/g, ']')
-    .replace(/'/g, '"')
-    .replace(/\n/g, ' ')
-    .replace(/\t/g, ' ');
-
-  try {
-    const start = fixed.indexOf('{');
-    const end = fixed.lastIndexOf('}');
-    if (start !== -1 && end !== -1) {
-      const result = JSON.parse(fixed.slice(start, end + 1));
-      console.log('[DEBUG] Fixed JSON parse successful');
-      return result;
-    }
-  } catch (e) {
-    console.log('[DEBUG] Fixed JSON parse also failed');
-  }
-
-  throw new Error('Could not parse JSON response from AI');
-}
-
-// Initialize Vertex AI with explicit credentials
-function getVertexAIClient() {
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.VITE_GOOGLE_CLOUD_PROJECT;
-  const location = process.env.GOOGLE_CLOUD_LOCATION || process.env.VITE_GOOGLE_CLOUD_LOCATION || 'us-central1';
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.VITE_GOOGLE_APPLICATION_CREDENTIALS;
-
-  console.log('='.repeat(60));
-  console.log('[VERTEX AI CONFIG]');
-  console.log(`Project ID: ${projectId ? 'Set' : 'MISSING'}`);
-  console.log(`Location: ${location}`);
-  console.log(`Credentials Path: ${credentialsPath ? 'Set' : 'Using ADC/Environment'}`);
-  console.log('='.repeat(60));
-
-  if (!projectId) {
-    throw new Error('Missing Project ID. Set GOOGLE_CLOUD_PROJECT in .env.local');
-  }
-
-  const vertexOptions: any = {
-    project: projectId,
-    location: location,
-  };
-
-  // Explicitly set credentials path if provided
-  if (credentialsPath) {
-    vertexOptions.googleAuthOptions = {
-      keyFilename: credentialsPath
-    };
-  }
-
-  try {
-    const vertex = new VertexAI(vertexOptions);
-    return vertex;
-  } catch (error: any) {
-    console.error('[VERTEX AI INIT ERROR]', error);
-    throw new Error(`Failed to initialize Vertex AI: ${error.message}`);
-  }
+  return new GoogleGenerativeAI(apiKey);
 }
 
 // Schema for Gemini structured output
@@ -178,14 +90,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const maxEvents = Math.min(Math.max(beatsTotal, 40), 120);
 
   console.log('='.repeat(60));
-  console.log('[GENERATE API] Starting level generation via Vertex AI');
+  console.log('[GENERATE API] Starting level generation via Google Gemini API');
   console.log(`[GENERATE API] Duration: ${levelDuration}s, BPM: ${detectedBpm}, Max Events: ${maxEvents}`);
   
   try {
-    const vertexAI = getVertexAIClient();
+    const genAI = getGenAIClient();
 
-    const model = vertexAI.getGenerativeModel({
-      model: "gemini-1.5-flash-002",
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-pro-preview",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema as any,
@@ -232,8 +144,6 @@ Analyze the provided audio track and create a level where every attack, every pa
 
 ### Visual Style (NON-NEGOTIABLE)
 - ALL dangerous elements: **#FF0099** (Neon Hot Pink) - NO OTHER COLORS FOR HAZARDS
-- Background: Dark colors only (#0a0a0f, #0d0d1a, #111122)
-- Player: #00FFFF (Cyan)
 - Shapes: ONLY geometric primitives (circles, squares, triangles, lines)
 - NO complex graphics, NO realistic elements
 
@@ -322,7 +232,7 @@ Vary attack types - don't repeat same patterns.`;
       });
     }
 
-    console.log('[GENERATE API] Calling Vertex AI Gemini...');
+    console.log('[GENERATE API] Calling Gemini...');
     const startTime = Date.now();
     
     const result = await model.generateContent({ 
@@ -333,14 +243,8 @@ Vary attack types - don't repeat same patterns.`;
     const apiTime = Date.now() - startTime;
     console.log(`[GENERATE API] AI responded in ${apiTime}ms`);
     
-    let responseText = '';
-    if (typeof response.candidates?.[0]?.content?.parts?.[0]?.text === 'string') {
-      responseText = response.candidates[0].content.parts[0].text;
-    } else {
-      responseText = JSON.stringify(response);
-    }
-    
-    const levelData = safeJSONParse(responseText);
+    const responseText = response.text();
+    const levelData = JSON.parse(responseText);
 
     // Validate and enforce JSAB style
     if (!levelData.theme) {
@@ -398,14 +302,13 @@ Vary attack types - don't repeat same patterns.`;
   } catch (error: any) {
     console.error('[GENERATE API] ERROR:', error.message);
     
-    // Check specifically for Vertex AI auth errors
-    if (error.message.includes('Could not load the default credentials') || 
-        error.message.includes('Missing Project ID') ||
-        error.message.includes('Unable to authenticate')) {
+    // Check specifically for API Key errors
+    if (error.message.includes('API Key') || 
+        error.message.includes('API_KEY')) {
       return res.status(503).json({ 
-        error: 'Vertex AI Configuration Missing', 
-        code: 'VERTEX_AUTH_ERROR',
-        details: 'Check GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS in .env.local',
+        error: 'Gemini API Configuration Missing', 
+        code: 'GEMINI_AUTH_ERROR',
+        details: 'Check GEMINI_API_KEY in .env.local',
         rawError: error.message
       });
     }
