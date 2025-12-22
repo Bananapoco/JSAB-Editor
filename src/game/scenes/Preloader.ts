@@ -29,10 +29,32 @@ export class Preloader extends Scene
         //  Load the assets for the game - Replace with your own assets
         this.load.setPath('');
         this.load.image('logo', 'jsab-logo.webp');
+        
+        // Load menu audio and PIXL Sugar Rush (using same pattern as Boot.ts)
+        console.log('[Preloader] Loading menu audio...');
+        this.load.audio('menu-music', 'assets/menu-music.mp3');
+        this.load.audio('pixl-sugar-rush', 'assets/PIXL - Sugar Rush (Challenge Loop).mp3');
+        
+        // Add error handlers
+        this.load.on('filecomplete', (key: string) => {
+            console.log('[Preloader] Loaded:', key);
+        });
+        
+        this.load.on('loaderror', (file: any) => {
+            console.error('[Preloader] Failed to load:', file.key, file.url);
+        });
     }
 
     create ()
     {
+        // Verify audio is loaded before starting MainMenu
+        const menuMusicLoaded = this.cache.audio.exists('menu-music');
+        const pixlLoaded = this.cache.audio.exists('pixl-sugar-rush');
+        
+        console.log('[Preloader] Menu music loaded:', menuMusicLoaded);
+        console.log('[Preloader] PIXL Sugar Rush loaded:', pixlLoaded);
+        console.log('[Preloader] Starting MainMenu...');
+        
         this.scene.start('MainMenu');
     }
 }

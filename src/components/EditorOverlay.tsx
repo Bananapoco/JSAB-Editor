@@ -112,6 +112,156 @@ const CardInput = ({
     );
 };
 
+// Audio analysis utilities
+async function analyzeAudio(audioBuffer: AudioBuffer): Promise<{
+    bpm: number;
+    peaks: number[];
+    energyProfile: string;
+}> {
+    console.log('[AUDIO ANALYSIS] Starting BPM and peak detection...');
+    
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+    const duration = audioBuffer.duration;
+    
+    // Calculate energy in windows for beat detection
+    const windowSize = Math.floor(sampleRate * 0.02); // 20ms windows
+    const hopSize = Math.floor(windowSize / 2);
+    const energies: number[] = [];
+    
+    for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
+        let energy = 0;
+        for (let j = 0; j < windowSize; j++) {
+            energy += channelData[i + j] ** 2;
+        }
+        energies.push(Math.sqrt(energy / windowSize));
+    }
+    
+    // Normalize energies
+    const maxEnergy = Math.max(...energies);
+    const normalizedEnergies = energies.map(e => e / maxEnergy);
+    
+    // Find peaks (potential beats)
+    const threshold = 0.5;
+    const minPeakDistance = Math.floor(sampleRate / hopSize * 0.2); // 200ms minimum between peaks
+    const peakIndices: number[] = [];
+    
+    for (let i = 1; i < normalizedEnergies.length - 1; i++) {
+        if (normalizedEnergies[i] > threshold &&
+            normalizedEnergies[i] > normalizedEnergies[i - 1] &&
+            normalizedEnergies[i] > normalizedEnergies[i + 1]) {
+            
+            if (peakIndices.length === 0 || i - peakIndices[peakIndices.length - 1] > minPeakDistance) {
+                peakIndices.push(i);
+            }
+        }
+    }
+    
+    // Convert peak indices to timestamps
+    const peaks = peakIndices.map(i => (i * hopSize) / sampleRate);
+    
+    // Estimate BPM from peak intervals
+    let bpm = 120; // Default
+    if (peaks.length > 2) {
+        const intervals: number[] = [];
+        for (let i = 1; i < Math.min(peaks.length, 50); i++) {
+            intervals.push(peaks[i] - peaks[i - 1]);
+        }
+        
+        // Find most common interval using histogram
+        const intervalCounts = new Map<number, number>();
+        intervals.forEach(interval => {
+            const roundedInterval = Math.round(interval * 20) / 20; // Round to 0.05s
+            intervalCounts.set(roundedInterval, (intervalCounts.get(roundedInterval) || 0) + 1);
+        });
+        
+        let mostCommonInterval = 0.5;
+        let maxCount = 0;
+        intervalCounts.forEach((count, interval) => {
+            if (count > maxCount && interval > 0.2 && interval < 2) {
+                maxCount = count;
+                mostCommonInterval = interval;
+            }
+        });
+        
+        bpm = Math.round(60 / mostCommonInterval);
+        
+        // Adjust to common BPM ranges
+        while (bpm < 60) bpm *= 2;
+        while (bpm > 200) bpm /= 2;
+    }
+    
+    // Determine energy profile
+    const firstThird = normalizedEnergies.slice(0, Math.floor(normalizedEnergies.length / 3));
+    const lastThird = normalizedEnergies.slice(-Math.floor(normalizedEnergies.length / 3));
+    const avgFirst = firstThird.reduce((a, b) => a + b, 0) / firstThird.length;
+    const avgLast = lastThird.reduce((a, b) => a + b, 0) / lastThird.length;
+    
+    let energyProfile = 'dynamic';
+    if (avgLast > avgFirst * 1.5) energyProfile = 'building';
+    else if (avgFirst > avgLast * 1.5) energyProfile = 'fading';
+    else if (avgFirst > 0.6 && avgLast > 0.6) energyProfile = 'intense';
+    else if (avgFirst < 0.4 && avgLast < 0.4) energyProfile = 'calm';
+    
+    console.log(`[AUDIO ANALYSIS] Detected BPM: ${bpm}`);
+    console.log(`[AUDIO ANALYSIS] Found ${peaks.length} rhythm peaks`);
+    console.log(`[AUDIO ANALYSIS] Energy profile: ${energyProfile}`);
+    
+    return { bpm, peaks, energyProfile };
+}
+
+// Generate boss sprite via Imagen 3
+async function generateBossSprite(prompt: string): Promise<string | null> {
+    console.log('[IMAGEN] Generating boss sprite for:', prompt);
+    
+    try {
+        const response = await fetch('/api/generate-assets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: `Boss character for rhythm game: ${prompt}`,
+                style: 'jsab',
+                count: 1
+            })
+        });
+        
+        console.log('[IMAGEN] API Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[IMAGEN] API Error:', errorData);
+            return null;
+        }
+        
+        const data = await response.json();
+        console.log('[IMAGEN] Response data:', {
+            imageCount: data.images?.length || 0,
+            message: data.message,
+            debug: data.debug
+        });
+        
+        if (data.images && data.images.length > 0) {
+            // Convert base64 to blob URL for immediate use
+            const base64 = data.images[0];
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'image/png' });
+            const blobUrl = URL.createObjectURL(blob);
+            console.log('[IMAGEN] Created blob URL for boss sprite');
+            return blobUrl;
+        }
+        
+        console.log('[IMAGEN] No images in response');
+        return null;
+    } catch (error: any) {
+        console.error('[IMAGEN] Failed to generate boss sprite:', error.message);
+        return null;
+    }
+}
+
 export const EditorOverlay = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [prompt, setPrompt] = useState('');
@@ -119,7 +269,9 @@ export const EditorOverlay = () => {
     const [images, setImages] = useState<File[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [status, setStatus] = useState('');
+    const [subStatus, setSubStatus] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [progress, setProgress] = useState(0);
 
     useEffect(() => {
         const showEditor = () => setIsVisible(true);
@@ -131,24 +283,32 @@ export const EditorOverlay = () => {
 
     const handleGenerate = async () => {
         if (!audioFile) {
-            alert('Please upload an MP3 first!');
+            alert('Please upload an audio track first!');
             return;
         }
 
         setIsGenerating(true);
         setErrorMessage('');
-        setStatus('INITIALIZING...');
+        setStatus('INITIALIZING');
+        setSubStatus('Preparing audio analysis...');
+        setProgress(5);
+
+        // Emit event to switch to PIXL Sugar Rush during generation
+        EventBus.emit('level-generation-start');
 
         try {
-            // Get audio duration
-            setStatus('DECODING AUDIO...');
+            // Step 1: Decode audio
+            setStatus('ANALYZING AUDIO');
+            setSubStatus('Decoding waveform...');
+            setProgress(10);
+            
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const arrayBuffer = await audioFile.arrayBuffer();
-            const bufferForDecode = arrayBuffer.slice(0);
-            const audioBuffer = await audioContext.decodeAudioData(bufferForDecode);
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
             const duration = audioBuffer.duration;
 
-            console.log('Audio duration:', duration, 'seconds');
+            console.log('[EDITOR] Audio duration:', duration, 'seconds');
+            console.log('[EDITOR] Sample rate:', audioBuffer.sampleRate);
 
             if (duration < 5) {
                 if (!confirm(`Warning: Audio is very short (${duration.toFixed(2)}s). Continue?`)) {
@@ -157,7 +317,30 @@ export const EditorOverlay = () => {
                 }
             }
 
-            setStatus('PROCESSING ASSETS...');
+            // Step 2: Analyze BPM and rhythm
+            setSubStatus('Detecting BPM and rhythm peaks...');
+            setProgress(20);
+            
+            const audioAnalysis = await analyzeAudio(audioBuffer);
+            console.log('[EDITOR] Audio analysis complete:', audioAnalysis);
+            
+            setSubStatus(`Detected ${audioAnalysis.bpm} BPM, ${audioAnalysis.peaks.length} peaks`);
+            setProgress(30);
+
+            // Step 3: Convert audio to base64
+            setSubStatus('Encoding audio data...');
+            setProgress(35);
+            
+            const audioBase64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(audioFile);
+            });
+
+            // Step 4: Process uploaded images
+            setSubStatus('Processing uploaded assets...');
+            setProgress(40);
+            
             const base64Images = await Promise.all(
                 images.map(img => new Promise<{data: string, type: string}>((resolve) => {
                     const reader = new FileReader();
@@ -169,14 +352,30 @@ export const EditorOverlay = () => {
                 }))
             );
 
-            const audioBase64 = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(audioFile);
-            });
+            // Step 5: Generate boss sprite via Imagen 3 (if no images provided)
+            let generatedBossUrl: string | null = null;
+            if (images.length === 0 && prompt) {
+                setStatus('GENERATING BOSS');
+                setSubStatus('Creating boss sprite with Imagen 3...');
+                setProgress(45);
+                
+                generatedBossUrl = await generateBossSprite(prompt);
+                if (generatedBossUrl) {
+                    console.log('[EDITOR] Boss sprite generated successfully');
+                    setSubStatus('Boss sprite created!');
+                } else {
+                    console.log('[EDITOR] Boss sprite generation failed, continuing without');
+                    setSubStatus('Boss sprite skipped, using geometric shapes');
+                }
+                setProgress(55);
+            }
 
-            setStatus('AI GENERATING LEVEL...');
-            console.log('Calling /api/generate...');
+            // Step 6: Generate level with Gemini
+            setStatus('AI LEVEL DESIGN');
+            setSubStatus('Gemini is choreographing attacks to your music...');
+            setProgress(60);
+
+            console.log('[EDITOR] Calling /api/generate with analysis data...');
             
             const response = await fetch('/api/generate', {
                 method: 'POST',
@@ -185,74 +384,99 @@ export const EditorOverlay = () => {
                     prompt,
                     images: base64Images,
                     audioData: audioBase64,
-                    duration
+                    duration,
+                    bpm: audioAnalysis.bpm,
+                    rhythmPeaks: audioAnalysis.peaks,
+                    audioAnalysis: {
+                        bpm: audioAnalysis.bpm,
+                        energyProfile: audioAnalysis.energyProfile,
+                        peakCount: audioAnalysis.peaks.length
+                    }
                 })
             });
 
-            console.log('API Response status:', response.status);
+            console.log('[EDITOR] API Response status:', response.status);
+            setProgress(80);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `API Error: ${response.status}`);
+                console.error('[EDITOR] API Error:', errorData);
+                
+                if (errorData.code === 'VERTEX_AUTH_ERROR') {
+                    throw new Error('VERTEX_AUTH_ERROR');
+                }
+                
+                throw new Error(errorData.error || errorData.details || `API Error: ${response.status}`);
             }
 
             const levelData = await response.json();
-            console.log('Level data received:', levelData.metadata?.bossName, 'with', levelData.timeline?.length, 'events');
+            console.log('[EDITOR] Level data received:', {
+                bossName: levelData.metadata?.bossName,
+                eventCount: levelData.timeline?.length,
+                bpm: levelData.metadata?.bpm
+            });
             
-            // Validate we got actual level data
             if (!levelData.timeline || levelData.timeline.length === 0) {
-                throw new Error('Generated level has no events');
+                throw new Error('AI generated empty level - please try again');
             }
 
-            setStatus('PREPARING GAME...');
-            
+            setStatus('PREPARING GAME');
+            setSubStatus(`${levelData.timeline.length} attacks choreographed!`);
+            setProgress(90);
+
+            // Step 7: Create blob URLs for assets
             const audioUrl = URL.createObjectURL(audioFile);
             const imageMappings: Record<string, string> = {};
+            
+            // Add uploaded images
             images.forEach((img, i) => {
                 imageMappings[`asset_${i}`] = URL.createObjectURL(img);
             });
+            
+            // Add generated boss sprite if available
+            if (generatedBossUrl) {
+                imageMappings['generated_boss'] = generatedBossUrl;
+            }
 
             const payload = { levelData, audioUrl, imageMappings };
             
             // Save to local storage
             try {
                 const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');
-                // Create a serializable version (without blob URLs for storage)
                 const storedPayload = {
                     levelData,
-                    audioUrl: '', // Can't store blob URLs
-                    imageMappings: {}
+                    audioUrl: '',
+                    imageMappings: {},
+                    createdAt: new Date().toISOString()
                 };
                 savedLevels.unshift(storedPayload);
-                // Keep only last 20 levels
                 if (savedLevels.length > 20) savedLevels.pop();
                 localStorage.setItem('community_levels', JSON.stringify(savedLevels));
             } catch (storageError) {
-                console.warn('Could not save to localStorage:', storageError);
+                console.warn('[EDITOR] Could not save to localStorage:', storageError);
             }
 
             // Set pending data for Game scene
             (window as any).pendingLevelData = payload;
 
-            setStatus('LAUNCHING...');
+            setStatus('LAUNCHING');
+            setSubStatus('Get ready to dance through danger!');
+            setProgress(100);
             
-            // Give React a moment to update, then emit events
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            // First emit load-level (Game scene will catch this if already active)
             EventBus.emit('load-level', payload);
-            
-            // Hide overlay
             setIsVisible(false);
             setIsGenerating(false);
             
-            console.log('Level loaded and events emitted!');
+            console.log('[EDITOR] Level loaded successfully!');
             
         } catch (error: any) {
-            console.error('Generation error:', error);
+            console.error('[EDITOR] Generation error:', error);
             setErrorMessage(error.message || 'Unknown error occurred');
             setStatus('ERROR');
-            setIsGenerating(false);
+            setSubStatus('');
+            setProgress(0);
         }
     };
 
@@ -330,9 +554,36 @@ export const EditorOverlay = () => {
                                     <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#ff0000' }}>
                                         GENERATION FAILED
                                     </h2>
-                                    <p style={{ color: '#888', marginTop: '10px', maxWidth: '400px', textAlign: 'center' }}>
-                                        {errorMessage}
-                                    </p>
+                                    
+                                    {errorMessage === 'VERTEX_AUTH_ERROR' ? (
+                                        <div style={{ 
+                                            backgroundColor: '#220000', 
+                                            padding: '20px', 
+                                            borderRadius: '8px',
+                                            marginTop: '20px',
+                                            maxWidth: '600px',
+                                            border: '1px solid #ff0000',
+                                            textAlign: 'left'
+                                        }}>
+                                            <h3 style={{ color: '#ff0000', marginTop: 0 }}>VERTEX AI AUTHENTICATION FAILED</h3>
+                                            <p style={{ color: '#ccc', lineHeight: '1.6' }}>
+                                                To use Vertex AI (Gemini & Imagen), you must configure Application Default Credentials.
+                                            </p>
+                                            <ol style={{ color: '#ccc', paddingLeft: '20px' }}>
+                                                <li>Check <code>.env.local</code> in <code>template-nextjs/</code></li>
+                                                <li>Ensure <code>GOOGLE_CLOUD_PROJECT</code> is set</li>
+                                                <li>Ensure <code>GOOGLE_APPLICATION_CREDENTIALS</code> points to your JSON key file</li>
+                                            </ol>
+                                            <p style={{ color: '#888', fontSize: '14px', marginTop: '15px' }}>
+                                                See <code>README-API-SETUP.md</code> for details.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#888', marginTop: '10px', maxWidth: '500px', textAlign: 'center' }}>
+                                            {errorMessage}
+                                        </p>
+                                    )}
+
                                     <motion.button 
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
@@ -340,6 +591,8 @@ export const EditorOverlay = () => {
                                             setIsGenerating(false);
                                             setErrorMessage('');
                                             setStatus('');
+                                            setSubStatus('');
+                                            setProgress(0);
                                         }}
                                         style={{ 
                                             marginTop: '30px',
@@ -361,15 +614,41 @@ export const EditorOverlay = () => {
                                         animate={{ rotate: 360 }}
                                         transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                                         style={{ 
-                                            width: '100px', height: '100px', border: '10px solid #222', borderTopColor: '#ff0099', 
+                                            width: '100px', height: '100px', 
+                                            border: '10px solid #222', 
+                                            borderTopColor: '#ff0099', 
                                             borderRadius: '50%' 
                                         }}
                                     />
                                     <h2 style={{ fontFamily: 'Arial Black', fontSize: '32px', marginTop: '40px', color: '#fff' }}>
                                         {status}
                                     </h2>
-                                    <p style={{ color: '#666', marginTop: '10px' }}>
-                                        This may take up to 60 seconds...
+                                    <p style={{ color: '#888', marginTop: '10px', fontSize: '18px' }}>
+                                        {subStatus}
+                                    </p>
+                                    
+                                    {/* Progress bar */}
+                                    <div style={{ 
+                                        width: '400px', 
+                                        height: '8px', 
+                                        backgroundColor: '#222', 
+                                        marginTop: '30px',
+                                        borderRadius: '4px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${progress}%` }}
+                                            transition={{ duration: 0.3 }}
+                                            style={{ 
+                                                height: '100%', 
+                                                backgroundColor: '#ff0099',
+                                                borderRadius: '4px'
+                                            }}
+                                        />
+                                    </div>
+                                    <p style={{ color: '#666', marginTop: '10px', fontSize: '14px' }}>
+                                        {progress}%
                                     </p>
                                 </>
                             )}
@@ -384,17 +663,22 @@ export const EditorOverlay = () => {
                             
                             {/* Prompt Input */}
                             <motion.div variants={itemVariants}>
-                                <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>TRACK CONCEPT</div>
+                                <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>
+                                    TRACK CONCEPT
+                                    <span style={{ fontSize: '14px', color: '#555', marginLeft: '15px', fontFamily: 'Arial' }}>
+                                        (Describes the boss/level theme for AI)
+                                    </span>
+                                </div>
                                 <input 
                                     type="text" 
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
-                                    placeholder="Describe your level theme (e.g., 'Neon Cyberpunk Pursuit')..."
+                                    placeholder="e.g., 'Neon Cyberpunk Boss', 'Geometric Nightmare', 'Pulse Monster'..."
                                     style={{ 
                                         width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
                                         color: '#fff', fontFamily: 'Arial', outline: 'none'
                                     }}
-                                    onFocus={(e) => e.currentTarget.style.borderBottomColor = '#fff'}
+                                    onFocus={(e) => e.currentTarget.style.borderBottomColor = '#ff0099'}
                                     onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
                                 />
                             </motion.div>
@@ -421,6 +705,13 @@ export const EditorOverlay = () => {
                                     files={images}
                                 />
                             </motion.div>
+                            
+                            <motion.p 
+                                variants={itemVariants}
+                                style={{ color: '#555', fontSize: '14px', textAlign: 'center', marginTop: '-30px' }}
+                            >
+                                Boss assets are optional — AI will generate sprites via Imagen 3 if none provided
+                            </motion.p>
 
                             {/* Actions */}
                             <motion.div 
@@ -428,7 +719,7 @@ export const EditorOverlay = () => {
                                 style={{ display: 'flex', gap: '20px', alignItems: 'center' }}
                             >
                                 <motion.button 
-                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(0, 255, 255, 0.1)', borderColor: '#00ffff', color: '#00ffff' }}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 0, 153, 0.1)', borderColor: '#ff0099', color: '#ff0099' }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleGenerate}
                                     style={{ 
@@ -438,15 +729,15 @@ export const EditorOverlay = () => {
                                         transition: 'color 0.2s, border-color 0.2s'
                                     }}
                                 >
-                                    CREATE
+                                    CREATE LEVEL
                                 </motion.button>
 
                                 <motion.button 
-                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderColor: '#ff0000', color: '#ff0000' }}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: '#555', color: '#888' }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => setIsVisible(false)}
                                     style={{ 
-                                        flex: 1, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#666',
+                                        flex: 1, padding: '30px', backgroundColor: 'transparent', border: '4px solid #333', color: '#555',
                                         fontFamily: 'Arial Black', fontSize: '24px', cursor: 'pointer', transform: 'skew(-10deg)',
                                         transition: 'color 0.2s, border-color 0.2s'
                                     }}

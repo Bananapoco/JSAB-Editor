@@ -4,6 +4,12 @@ import { EventBus } from '../EventBus';
 export class MainMenu extends Scene
 {
     private isTransitioning = false;
+    private menuMusic: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
+    private loadingMusic: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
+    private logo: GameObjects.Image;
+    private readonly MENU_MUSIC_PATH = 'assets/menu-music.mp3';
+    private readonly PIXL_SUGAR_RUSH_PATH = 'assets/PIXL - Sugar Rush (Challenge Loop).mp3';
+    private readonly MENU_BPM = 124; // Danimal Cannon - Menu is ~124 BPM
 
     constructor ()
     {
@@ -14,6 +20,9 @@ export class MainMenu extends Scene
     {
         this.isTransitioning = false;
         const { width, height } = this.scale;
+
+        // Play menu music
+        void this.playMenuMusic();
 
         // Background
         this.cameras.main.setBackgroundColor('#111111');
@@ -32,9 +41,9 @@ export class MainMenu extends Scene
         graphics.fillPath();
 
         // Logo
-        const logo = this.add.image(width * 0.1, height / 2, 'logo').setOrigin(0, 0.5);
+        this.logo = this.add.image(width * 0.1, height / 2, 'logo').setOrigin(0, 0.5);
         const logoScale = Math.min(height / 600, 1.5); 
-        logo.setScale(logoScale);
+        this.logo.setScale(logoScale);
 
         // Menu Buttons
         const startX = width * 0.55;
@@ -72,6 +81,10 @@ export class MainMenu extends Scene
             
             console.log('MainMenu: Transitioning to Game scene...');
             
+            // Stop all music when level starts
+            this.stopMenuMusic();
+            this.stopLoadingMusic();
+            
             // Add a brief fade effect
             this.cameras.main.fadeOut(200, 0, 0, 0);
             
@@ -80,9 +93,20 @@ export class MainMenu extends Scene
             });
         };
 
+        // Stop menu music and play PIXL Sugar Rush when level generation starts
+        const handleLevelGenerationStart = () => {
+            console.log('MainMenu: Level generation started, switching to PIXL Sugar Rush');
+            this.stopMenuMusic();
+            void this.playLoadingMusic();
+        };
+
         // Remove any existing listeners first to prevent duplicates
         EventBus.removeAllListeners('load-level');
         EventBus.on('load-level', handleLoadLevel);
+
+        // Listen for level generation start
+        EventBus.removeAllListeners('level-generation-start');
+        EventBus.on('level-generation-start', handleLevelGenerationStart);
 
         // Also handle direct navigation
         EventBus.removeAllListeners('go-to-main-menu');
@@ -112,6 +136,156 @@ export class MainMenu extends Scene
         EventBus.emit('current-scene-ready', this);
     }
 
+    private async playMenuMusic() {
+        // Stop any existing menu music
+        this.stopMenuMusic();
+        
+        // Check if already loaded by Preloader
+        if (!this.cache.audio.exists('menu-music')) {
+            console.log('[MainMenu] Menu music not in cache, attempting to load...');
+            try {
+                await this.ensureAudioLoaded('menu-music', this.MENU_MUSIC_PATH);
+            } catch (e) {
+                console.error('[MainMenu] Failed to load menu music:', e);
+                return;
+            }
+        }
+
+        if (!this.cache.audio.exists('menu-music')) {
+            console.error('[MainMenu] Menu music still missing from cache after load. Aborting playback.');
+            return;
+        }
+        
+        try {
+            // Ensure audio context is running (browsers block auto-play)
+            const soundManager = this.sound as Phaser.Sound.WebAudioSoundManager;
+            if (soundManager.context && soundManager.context.state === 'suspended') {
+                console.log('[MainMenu] Audio context suspended, waiting for user interaction...');
+                const resumeAudio = () => {
+                    soundManager.context.resume().then(() => {
+                        console.log('[MainMenu] Audio context resumed!');
+                        this.input.off('pointerdown', resumeAudio);
+                        // Try playing again once resumed
+                        if (!this.menuMusic) {
+                            void this.playMenuMusic();
+                        }
+                    });
+                };
+                this.input.once('pointerdown', resumeAudio);
+            }
+
+            // Play menu music with loop
+            this.menuMusic = this.sound.add('menu-music', { loop: true }) as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound;
+            this.menuMusic.play();
+            console.log('[MainMenu] Menu music started successfully');
+        } catch (e) {
+            console.error('[MainMenu] Failed to start menu music (cache mismatch?):', e);
+        }
+    }
+
+    private stopMenuMusic() {
+        if (this.menuMusic) {
+            this.menuMusic.stop();
+            this.menuMusic.destroy();
+            this.menuMusic = null;
+            console.log('[MainMenu] Menu music stopped');
+        }
+    }
+
+    private async playLoadingMusic() {
+        // Stop any existing loading music
+        this.stopLoadingMusic();
+        
+        // Check if already loaded by Preloader
+        if (!this.cache.audio.exists('pixl-sugar-rush')) {
+            console.log('[MainMenu] PIXL Sugar Rush not in cache, attempting to load...');
+            try {
+                await this.ensureAudioLoaded('pixl-sugar-rush', this.PIXL_SUGAR_RUSH_PATH);
+            } catch (e) {
+                console.error('[MainMenu] Failed to load PIXL Sugar Rush:', e);
+                return;
+            }
+        }
+
+        if (!this.cache.audio.exists('pixl-sugar-rush')) {
+            console.error('[MainMenu] PIXL Sugar Rush still missing from cache after load. Aborting playback.');
+            return;
+        }
+        
+        try {
+            // Play PIXL Sugar Rush with loop
+            this.loadingMusic = this.sound.add('pixl-sugar-rush', { loop: true }) as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound;
+            this.loadingMusic.play();
+            console.log('[MainMenu] PIXL Sugar Rush started successfully');
+        } catch (e) {
+            console.error('[MainMenu] Failed to start PIXL Sugar Rush (cache mismatch?):', e);
+        }
+    }
+
+    private stopLoadingMusic() {
+        if (this.loadingMusic) {
+            this.loadingMusic.stop();
+            this.loadingMusic.destroy();
+            this.loadingMusic = null;
+            console.log('[MainMenu] PIXL Sugar Rush stopped');
+        }
+    }
+
+    private ensureAudioLoaded(key: string, path: string): Promise<void> {
+        if (this.cache.audio.exists(key)) {
+            console.log(`[MainMenu] Audio "${key}" already in cache`);
+            return Promise.resolve();
+        }
+
+        console.log(`[MainMenu] Loading audio "${key}" from "${path}"...`);
+
+        return new Promise((resolve, reject) => {
+            const encodedPath = encodeURI(path);
+            const timeoutMs = 30000; // Increased to 30 seconds for large files
+
+            const cleanup = () => {
+                this.load.off('filecomplete', onFileComplete);
+                this.load.off('loaderror', onLoadError as any);
+                clearTimeout(timeout);
+            };
+
+            const onFileComplete = (fileKey: string) => {
+                if (fileKey !== key) return;
+                cleanup();
+                resolve();
+            };
+
+            const onLoadError = (file: any) => {
+                if (!file) return;
+                if (file.key !== key) return;
+                cleanup();
+                reject(new Error(`Failed to load audio "${key}" from "${encodedPath}"`));
+            };
+
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error(`Timed out loading audio "${key}" from "${encodedPath}"`));
+            }, timeoutMs);
+
+            // Listen for this specific file completing / failing
+            this.load.on('filecomplete', onFileComplete);
+            this.load.on('loaderror', onLoadError as any);
+
+            this.load.audio(key, encodedPath);
+
+            if (!this.load.isLoading()) {
+                this.load.start();
+            }
+        });
+    }
+
+    shutdown() {
+        // Clean up audio when scene is shut down
+        this.stopMenuMusic();
+        this.stopLoadingMusic();
+        EventBus.removeAllListeners('level-generation-start');
+    }
+
     resize(gameSize: Phaser.Structs.Size, baseSize: Phaser.Structs.Size, displaySize: Phaser.Structs.Size, resolution: number)
     {
         const width = gameSize.width;
@@ -120,6 +294,21 @@ export class MainMenu extends Scene
         this.cameras.resize(width, height);
         this.children.removeAll(); 
         this.create();
+    }
+
+    update(time: number, delta: number)
+    {
+        if (this.logo && !this.isTransitioning) {
+            const beatDuration = 60000 / this.MENU_BPM;
+            const pulse = (time % beatDuration) / beatDuration;
+            
+            // Pulsing effect: expand on the beat and shrink back
+            const baseScale = Math.min(this.scale.height / 600, 1.5);
+            const bounce = Math.exp(-4 * pulse); // Faster decay for a subtler "pop"
+            const targetScale = baseScale * (1 + bounce * 0.03); // Reduced scale increase from 5% to 3%
+            
+            this.logo.setScale(targetScale);
+        }
     }
 
     createMenuButton(x: number, y: number, text: string, color: number, callback: () => void)

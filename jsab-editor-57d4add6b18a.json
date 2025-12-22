@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "jsab-editor",
+  "private_key_id": "57d4add6b18a4ecc94f58e2327b51f81e1fb5090",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCrxNOjphcmpYuI\nDHiR4YYowUHN3V8ChC+yy3INPXshASYqm1FpGJymwkWoOhfMEiMNGVhfRoGEMqT1\n2IyBm41GJigOGJi0NFpoobvk7GeUGIghdKh/dWPktDlePzgo+rCLyV4vIXMMUmD9\nFFdGMSBymMMUOWrwpUohGKip6q4yVZNreeeob6wUoJ2TF0lbcp345cAvcy15An6s\naZY3KNU5h4zAaj10Go+hrXr/NL8opEbKcKzTI/P11PQHJPZiIr22+dn+c/HPGbxs\n+YIhl5gxyOi95JP4RiMOOR6flC1kebUlTKKOQi2Wwzbl9Gtnwv2itLca/G4h4Ne5\nHJF+hQWPAgMBAAECggEAPuRmiXj66Q+cM0g9rUxiDvIT4gi4DPfRbynGrMpiFweQ\nrfEIse5tDTH8x0feBr5tTxKEpP3v1jOk6s9LQvltlM3LxL2EzBaPM9hkL8HPew4w\nae+I8oJM/SRwDO4g5gBEPCqS7bbVpSFUmdWkzvKV6t+8Ld+IJGyg49VfjDd9aLgK\noO07aTU6dWqspFMiNpLU+fWYLA4NhVXm4xk+bVZO7Hu6dQJeOdvC/WVX8e/t5YOP\n5MDm1/qwgCBU947HJDHCJwbjuBvkwWugrc5EcnitacsuzeZYNpg+nfjszHQb7a6F\nU1UZ6IhN9CFwGvjz0Cl9s/0728dvwA/63qZ/7ZfQwQKBgQDjJooT46oAudkWQ31y\nB3UYynKd+iNbZcs0J4jt+6QLpqUe1duvtsF1KnkmqdxsUmkXth1+24ui5s3MwsOa\nE6gEnHiuDT/9SB6IvZ5NhTXMjtXeqtBKYN1a75Em6tjihwGuipCd3qUnFd56xCCg\n1O188HemU4zEd85P6wWulo8leQKBgQDBlaJp04fLwip3kzLXm8yUBgKfcC2JaHv+\nVe9dA4XZ+TAbYJVuq7PciJycHkwT9oUJhen+NK/+1sZn1W5j0/78muYbx462jQlu\nuu6ej93Zb7wGxu/dO5IIyh/PBe4c4uerxl0kKWxkuPksUS8VXmqrnDru+HnS+lg6\naM9WbEtpRwKBgQDESvejfGfavL/Gp4fuVFdylvA5aIHJZ8wUQ93mmkEG+HlUjkaM\nMAg58fxD1yHuUcEThoMyrxKaMY3C1sQlj7rwUS9QaY7Ul9AbJpF4OBdnsD9NbpsU\ny2Q+QyxSTzwhdb2UUZXrdw2NGy7pNDdmBNs9zqf3Cdhpp4aYNWbxmpYVMQKBgQCH\n4nROGpjA03uh0eanaAqTgSCIMGMWiAw5fLL3tIhZeExne0WJmOc5D3/3KmE2xh2e\nkKyuruc3WCWPL0c8tcvQHx8VMuAfjiKn4nmrPct5XLA8hZpLzgv1NYRceoopJrF+\nZ1BsGNOoZBssG5SUSGFSMuk/Y5WIHgief4HC5WON8wKBgG2ZCw9AO8b30OJSqHEh\nlt/0E/igKGv8+o2jW6NoNp2Snsu9wgIFVKmg10kvZjjM2lAldH8CxA5lw728sQ6G\nc6jTTUEoxpMeubnEB0aSHFsWF4QiPFsbL47vC2BNemleGeMDWn8oQSUK1ws6NO9V\nx2TYtlBNkb6pn5jAQe5DxfAm\n-----END PRIVATE KEY-----\n",
+  "client_email": "vertex-api@jsab-editor.iam.gserviceaccount.com",
+  "client_id": "118207170218437041316",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/vertex-api%40jsab-editor.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

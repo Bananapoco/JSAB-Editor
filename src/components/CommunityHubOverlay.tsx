@@ -141,7 +141,7 @@ export const CommunityHubOverlay = () => {
                         clipPath: 'polygon(0 0, 100% 0, 100% 85%, 98% 100%, 0 100%)'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <span style={{ fontSize: '30px' }}>🎵</span>
+                            <span style={{ fontSize: '30px', color: 'white', filter: 'brightness(0) invert(1)' }}>🎵</span>
                             <h1 style={{ 
                                 margin: 0, 
                                 fontFamily: 'Arial Black', 
@@ -150,19 +150,6 @@ export const CommunityHubOverlay = () => {
                                 textTransform: 'uppercase',
                                 letterSpacing: '2px'
                             }}>PLAYLIST</h1>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                             <div style={{ 
-                                 backgroundColor: '#000', 
-                                 padding: '8px 20px', 
-                                 borderRadius: '30px', 
-                                 color: '#00ffff',
-                                 fontFamily: 'Arial Black',
-                                 fontSize: '16px',
-                                 border: '2px solidrgb(54, 242, 242)'
-                             }}>
-                             </div>
                         </div>
                     </div>
 
@@ -370,31 +357,25 @@ export const CommunityHubOverlay = () => {
                     {/* --- BOTTOM BAR --- */}
                     <div style={{ 
                         position: 'absolute', bottom: 40, right: 60,
-                        pointerEvents: 'none'
+                        zIndex: 20
                     }}>
                         <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
+                            whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 0, 153, 0.1)', borderColor: '#ff0099', color: '#ff0099' }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setIsVisible(false)}
                             style={{ 
-                                pointerEvents: 'auto',
-                                background: 'transparent', 
-                                border: 'none', 
-                                color: '#fff', 
+                                padding: '15px 40px', 
+                                backgroundColor: 'transparent', 
+                                border: '4px solid #333', 
+                                color: '#555',
                                 fontFamily: 'Arial Black', 
-                                fontSize: '18px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '15px',
+                                fontSize: '20px', 
+                                cursor: 'pointer', 
+                                transform: 'skew(-10deg)',
+                                transition: 'color 0.2s, border-color 0.2s',
                                 textTransform: 'uppercase'
                             }}
                         >
-                            <span style={{ 
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', 
-                                width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#ff0000',
-                                fontSize: '16px', boxShadow: '0 0 10px rgba(255,0,0,0.5)'
-                            }}>B</span>
                             BACK
                         </motion.button>
                     </div>
