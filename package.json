@@ -30,6 +30,7 @@
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
         "framer-motion": "^12.23.26",
+        "jsonrepair": "^3.13.1",
         "next": "15.3.1",
         "phaser": "^3.90.0",
         "react": "19.0.0",
