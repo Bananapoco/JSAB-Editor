@@ -199,7 +199,7 @@ export class Game extends Scene
         // Sort timeline by timestamp
         this.levelData.timeline.sort((a, b) => a.timestamp - b.timestamp);
 
-        console.log('[GAME] Loading level:', this.levelData.metadata.bossName);
+        console.log('[GAME] Loading level:', this.levelData.metadata.name);
         console.log('[GAME] BPM:', this.levelData.metadata.bpm);
         console.log('[GAME] Duration:', this.levelData.metadata.duration, 's');
         console.log('[GAME] Timeline events:', this.levelData.timeline.length);

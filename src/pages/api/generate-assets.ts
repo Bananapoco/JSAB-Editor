@@ -49,11 +49,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       REQUIREMENTS:
       1. Output ONLY raw SVG code. No markdown, no explanation.
+      2. Must start with <svg and end with </svg>
       2. Style: Minimalist, geometric, dangerous.
-      3. Colors: Primary usage of Neon Pink (#FF0099) and White (#FFFFFF). Black background (#000000) is optional but helps contrast.
+      3. Centered composition
+      3. Color: #FF0099
       4. Viewbox: 512x512.
       5. The shape should be centered and scalable.
-      6. Use simple primitives (circles, rects, paths) for a clean look.
+      6. ONLY use simple geometric primitives: circle, rect, polygon, path, line 
+      7. Fully scalable, no raster effects
+      8. Transparent background
+
+     Examples: sharp triangles, spiked circles, hammer made of polygons.
     `;
 
     console.log('[ASSETS API] Requesting SVG generation...');

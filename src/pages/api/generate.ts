@@ -29,50 +29,48 @@ const schema = {
     metadata: {
       type: SchemaType.OBJECT,
       properties: {
-        bossName: { type: SchemaType.STRING },
-        bpm: { type: SchemaType.NUMBER },
-        duration: { type: SchemaType.NUMBER },
-        energy: { type: SchemaType.STRING },
+        name: { type: SchemaType.STRING, description: "Name of the level or boss" },
+        bpm: { type: SchemaType.NUMBER, description: "Beats per minute of the track. Use whole numbers." },
+        duration: { type: SchemaType.NUMBER, description: "Total duration in seconds. Use whole numbers." },
+        energy: { type: SchemaType.STRING, description: "Overall energy level (low, medium, high, dynamic)" },
       },
-      required: ["bossName", "duration", "bpm"],
+      required: ["name", "duration", "bpm"],
     },
     theme: {
       type: SchemaType.OBJECT,
       properties: {
-        enemyColor: { type: SchemaType.STRING },
-        backgroundColor: { type: SchemaType.STRING },
-        playerColor: { type: SchemaType.STRING },
+        enemyColor: { type: SchemaType.STRING, description: "Color for dangerous elements (Hex code. Always #FF0099)" },
       },
-      required: ["enemyColor", "backgroundColor", "playerColor"],
+      required: ["enemyColor"],
     },
     timeline: {
       type: SchemaType.ARRAY,
       items: {
         type: SchemaType.OBJECT,
         properties: {
-          timestamp: { type: SchemaType.NUMBER },
-          type: { type: SchemaType.STRING },
-          x: { type: SchemaType.NUMBER },
-          y: { type: SchemaType.NUMBER },
-          size: { type: SchemaType.NUMBER },
-          rotation: { type: SchemaType.NUMBER },
-          duration: { type: SchemaType.NUMBER },
-          behavior: { type: SchemaType.STRING },
-          targetX: { type: SchemaType.NUMBER },
-          targetY: { type: SchemaType.NUMBER },
-          speed: { type: SchemaType.NUMBER },
-          count: { type: SchemaType.NUMBER },
-          angle: { type: SchemaType.NUMBER },
-          delay: { type: SchemaType.NUMBER },
-          thickness: { type: SchemaType.NUMBER },
-          pulseCount: { type: SchemaType.NUMBER },
-          rotationSpeed: { type: SchemaType.NUMBER },
-          oscillationFreq: { type: SchemaType.NUMBER },
+          timestamp: { type: SchemaType.NUMBER, description: "Time in seconds (0 to duration). Max 2 decimal places." },
+          type: { type: SchemaType.STRING, description: "Event type. Examples include: laser_beam, spike_ring, projectile_throw, wave, spawn_obstacle, expanding_circle, pulse, particle_burst, screen_shake. Feel free to invent new types that fit JSAB's geometric, rhythm-based style (e.g., 'triangle_trail)" },
+          x: { type: SchemaType.NUMBER, description: "X position (0-1024). Whole numbers only." },
+          y: { type: SchemaType.NUMBER, description: "Y position (0-768). Whole numbers only." },
+          size: { type: SchemaType.NUMBER, description: "Size/radius in pixels. Reasonable range: 20 to 300. Whole numbers only." },
+          rotation: { type: SchemaType.NUMBER, description: "Initial rotation in degrees (0-360). Whole numbers only." },
+          duration: { type: SchemaType.NUMBER, description: "How long the event lasts in seconds. Use simple decimals like 0.5" },
+          behavior: { type: SchemaType.STRING, description: "Movement behavior. Examples: homing, spinning, bouncing, sweep, expand, oscillate. Invent new behaviors if they enhance creativity (e.g., 'spiral' or 'echo')" },
+          targetX: { type: SchemaType.NUMBER, description: "Destination X (0-1024). Whole numbers only." },
+          targetY: { type: SchemaType.NUMBER, description: "Destination Y. Whole numbers only." },
+          speed: { type: SchemaType.NUMBER, description: "Movement speed. Range 50-300. Use whole numbers only." },
+          count: { type: SchemaType.NUMBER, description: "Number of objects (e.g., in a burst or ring). Range 1-20. Whole numbers only." },
+          angle: { type: SchemaType.NUMBER, description: "Angle in degrees (0-360). Whole numbers only." },
+          delay: { type: SchemaType.NUMBER, description: "Warning period before attack is dangerous (0.2-0.5). Simple decimals only." },
+          thickness: { type: SchemaType.NUMBER, description: "Thickness of beams or outlined attacks in pixels. Range 10-60. Whole numbers only." },
+          pulseCount: { type: SchemaType.NUMBER, description: "Number of pulses for bouncing behavior. Whole numbers only." },
+          rotationSpeed: { type: SchemaType.NUMBER, description: "Rotation speed in degrees/sec. Range -360 to 360. Whole numbers only." },
+          oscillationFreq: { type: SchemaType.NUMBER, description: "Frequency for oscillation. Use simple decimals like 1.5." },
         },
         required: ["timestamp", "type", "x", "y"],
       },
     },
-    explanation: { type: SchemaType.STRING },
+    explanation: { type: SchemaType.STRING, description: "Brief explanation of the level design choices" },
   },
   required: ["metadata", "theme", "timeline"],
 } as const;
@@ -102,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         responseMimeType: "application/json",
         responseSchema: schema as any,
         maxOutputTokens: 8192,
-        temperature: 0.9,
+        temperature: 0.5,
       },
     });
 
@@ -115,7 +113,7 @@ The following timestamps have been detected as high-energy peaks in the audio:
 ${rhythmPeaks.slice(0, 30).map((p: number) => `- ${p.toFixed(2)}s`).join('\n')}
 ${rhythmPeaks.length > 30 ? `... and ${rhythmPeaks.length - 30} more peaks` : ''}
 
-IMPORTANT: Place your most intense attacks (spike_ring, laser_beam, dense projectile patterns) at these exact timestamps!
+IMPORTANT: Most intense attacks (spike_ring, laser_beam, dense projectile patterns) at these timestamps
 `;
     }
 
@@ -135,28 +133,36 @@ IMPORTANT: Place your most intense attacks (spike_ring, laser_beam, dense projec
     }
 
     const systemPrompt = `
-You are an expert level designer for "Just Shapes & Beats" (JSAB), creating FULLY DYNAMIC levels that are perfectly synchronized to music.
+You are an expert level designer for "Just Shapes & Beats" (JSAB), creating FULLY DYNAMIC fun levels that are perfectly synchronized to music.
+
+## CRITICAL OUTPUT RULES - FOLLOW EXACTLY:
+- All numeric values MUST be reasonable, human-readable whole numbers or simple decimals (max 3 digits total).
+- Examples of valid numbers: 30, 150, 2.5, 0.3
+- NEVER use scientific notation, extremely long decimals, or numbers with more than 50 digits total.
+- NEVER output a number larger than 10000 or with excessive precision.
+- If unsure about a value, use a safe default (e.g., size: 100, thickness: 30, speed: 80).
+- Every JSON object must close properly with } and arrays with ] — no trailing content or garbage after the final }.
 
 ## YOUR MISSION
-Analyze the provided audio track and create a level where every attack, every pattern, every visual element is choreographed to the music. The player should feel like they're DANCING through danger.
+Analyze the provided audio track and create a level where every attack, every pattern, every visual element is choreographed to the music. Player should feel like they're DANCING through danger.
 
-## ABSOLUTE REQUIREMENTS - JSAB STYLE
+## REQUIREMENTS
 
 ### Visual Style (NON-NEGOTIABLE)
 - ALL dangerous elements: **#FF0099** (Neon Hot Pink) - NO OTHER COLORS FOR HAZARDS
 - Shapes: ONLY geometric primitives (circles, squares, triangles, lines)
 - NO complex graphics, NO realistic elements
 
-### Coordinate System (CRITICAL)
+### Coordinate System
 - Logical space: **1024 x 768** pixels
 - X range: 0 to 1024
 - Y range: 0 to 768
 - Screen center: (512, 384)
 - Safe zones for player spawn: 400-600 X, 300-500 Y (avoid sudden attacks here)
 
-### Fairness & Warning System (ESSENTIAL)
-- EVERY attack must have a warning period (delay: 0.2-0.5 seconds)
-- During warning: object appears WHITE and TRANSPARENT
+### Fairness & Warning System
+- EVERY attack must have a warning period (delay: 0.2-1.0 seconds)
+- During warning: Lowered opacity, gradually changing to peak opacity (0% to 100%) (non-dangerous)
 - After warning: object becomes PINK and SOLID (dangerous)
 - Visual cues: fade-in, pulse before attack, or brief flash
 - NO instant kills, NO unfair surprise attacks
@@ -164,11 +170,11 @@ Analyze the provided audio track and create a level where every attack, every pa
 ${rhythmInfo}
 ${analysisInfo}
 
-## EVENT TYPES & WHEN TO USE THEM
+## Examples of event types (non-exhaustive. Be creative, coming up with new moves. Build off user's input (Example: "User: Cat-themed boss" --> scratch-marks))
 
 ### High-Energy Events (for drops, choruses, intense moments)
 - **laser_beam**: Sweeping beams, rotation 0-360, thickness 15-40
-- **spike_ring**: Circular spike patterns, count 8-16, spinning
+- **spike_ring**: Circular spike patterns, count 8-16, spinning, bouncing off edges of screen violently
 - **projectile_throw** with behavior "homing": Tracking missiles
 - **wave**: Screen-wide horizontal bars
 
@@ -182,7 +188,7 @@ ${analysisInfo}
 - **particle_burst**: Decorative explosions
 - **screen_shake**: Impact emphasis
 
-## BEHAVIOR PARAMETERS (for dynamic movement)
+## Behvaior examples (non-exhaustive. Be creative, coming up with new moves. Build off user's input (Example: "User: Make a hypnotic themed level" --> spiral))
 - **homing**: Tracks player, speed 50-150 (slow chase, beatable)
 - **spinning**: Rotates in place, rotationSpeed in degrees/sec
 - **bouncing**: Pulses to beat, pulseCount = beats to pulse
@@ -205,7 +211,7 @@ ${analysisInfo}
 
 Generate EXACTLY ${maxEvents} events spread across 0 to ${levelDuration} seconds.
 Every timestamp must be between 0 and ${levelDuration}.
-Every attack needs delay (0.2-0.5) for fairness.
+Every attack needs delay (0.2-1.0) for fairness.
 Vary attack types - don't repeat same patterns.`;
 
     const parts: any[] = [{ text: systemPrompt }];
@@ -243,24 +249,32 @@ Vary attack types - don't repeat same patterns.`;
     const apiTime = Date.now() - startTime;
     console.log(`[GENERATE API] AI responded in ${apiTime}ms`);
     
-    let responseText = response.text();
+    let responseText = response.text().trim();
     
-    // Clean up potential markdown formatting and other artifacts
-    responseText = responseText.trim();
-    
-    // Remove markdown code blocks
+    // Remove markdown code blocks if present
     if (responseText.startsWith('```json')) {
       responseText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
     } else if (responseText.startsWith('```')) {
       responseText = responseText.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
-    // Trim again after markdown removal
     responseText = responseText.trim();
-    
-    // Additional JSON cleaning - fix common AI formatting errors
-    // Remove trailing commas before closing braces/brackets
-    responseText = responseText.replace(/,(\s*[}\]])/g, '$1');
+
+    // Emergency fixes for common hallucinations
+    // Truncate insane long numbers (e.g., 500000...000)
+    responseText = responseText.replace(/(\d)\d{50,}/g, '$130');                    // Huge integers → 30
+    responseText = responseText.replace(/([0-9.e+-]{50,})/g, '30');                  // Any crazy float/scientific → 30
+
+    // Remove trailing commas before } or ]
+    responseText = responseText.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+
+    // Remove any trailing garbage after final }
+    const lastBrace = responseText.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      responseText = responseText.substring(0, lastBrace + 1);
+    }
+
+    // Additional JSON cleaning - fix remaining common AI formatting errors
     // Remove any BOM or zero-width characters
     responseText = responseText.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D\uFEFF]/g, '');
 
@@ -275,7 +289,7 @@ Vary attack types - don't repeat same patterns.`;
       // Save the problematic response to a temporary variable for debugging
       console.error('[GENERATE API] Full response length:', responseText.length);
       
-      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+      throw new Error(`Failed to parse AI response as JSON even after cleanup: ${parseError.message}`);
     }
 
     // Validate and enforce JSAB style

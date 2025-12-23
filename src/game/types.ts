@@ -1,36 +1,16 @@
-// Event types supported by the game
-export type LevelEventType = 
-    | 'projectile_throw'
-    | 'spawn_obstacle'
-    | 'laser_beam'
-    | 'expanding_circle'
-    | 'wave'
-    | 'wall'
-    | 'spike_ring'
-    | 'particle_burst'
-    | 'screen_shake'
-    | 'pulse';
+export type LevelEventType = string; // Allow AI creativity (e.g., "triangle_trail", "spiral_laser")
 
-// Behavior types for dynamic movement
-export type EventBehavior = 
-    | 'static'
-    | 'homing'
-    | 'spinning'
-    | 'bouncing'
-    | 'sweep'
-    | 'expand'
-    | 'contract'
-    | 'oscillate';
+export type EventBehavior = string;  // Same — allow new behaviors
 
 export interface LevelEvent {
     timestamp: number;          // When to spawn (seconds from start)
-    type: LevelEventType | string;
+    type: LevelEventType
     x: number;                  // X position (0-1024 logical space)
     y: number;                  // Y position (0-768 logical space)
     size?: number;              // Size in pixels (scaled to screen)
     rotation?: number;          // Initial rotation in degrees
     duration?: number;          // How long the event lasts (seconds)
-    behavior?: EventBehavior | string;
+    behavior?: EventBehavior
     
     // Movement properties
     targetX?: number;           // Target X for sweep/linear movement
@@ -65,7 +45,7 @@ export interface LevelTheme {
 }
 
 export interface LevelMetadata {
-    bossName: string;           // Level/boss name
+    name: string;           // Level/boss name
     duration: number;           // Total duration in seconds
     bpm: number;                // Beats per minute
     energy?: string;            // Energy profile: 'calm', 'building', 'intense', 'dynamic'
