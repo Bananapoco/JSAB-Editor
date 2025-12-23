@@ -273,6 +273,7 @@ async function generateBossSprite(prompt: string): Promise<string | null> {
 export const EditorOverlay = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [prompt, setPrompt] = useState('');
+    const [manualBpm, setManualBpm] = useState('');
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [images, setImages] = useState<File[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -385,6 +386,9 @@ export const EditorOverlay = () => {
 
             console.log('[EDITOR] Calling /api/generate with analysis data...');
             
+            // Use manual BPM if provided and valid, otherwise fallback to detected
+            const finalBpm = manualBpm ? parseFloat(manualBpm) : audioAnalysis.bpm;
+            
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -393,10 +397,10 @@ export const EditorOverlay = () => {
                     images: base64Images,
                     audioData: audioBase64,
                     duration,
-                    bpm: audioAnalysis.bpm,
+                    bpm: finalBpm,
                     rhythmPeaks: audioAnalysis.peaks,
                     audioAnalysis: {
-                        bpm: audioAnalysis.bpm,
+                        bpm: finalBpm,
                         energyProfile: audioAnalysis.energyProfile,
                         peakCount: audioAnalysis.peaks.length
                     }
@@ -668,26 +672,51 @@ export const EditorOverlay = () => {
                             style={{ flex: 1, padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '50px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}
                         >
                             
-                            {/* Prompt Input */}
-                            <motion.div variants={itemVariants}>
-                                <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>
-                                    TRACK CONCEPT
-                                    <span style={{ fontSize: '14px', color: '#555', marginLeft: '15px', fontFamily: 'Arial' }}>
-                                        (Describes the boss/level theme for AI)
-                                    </span>
+                            {/* Prompt and BPM Input Row */}
+                            <motion.div variants={itemVariants} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                                {/* Prompt Input */}
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>
+                                        TRACK CONCEPT
+                                        <span style={{ fontSize: '14px', color: '#555', marginLeft: '15px', fontFamily: 'Arial' }}>
+                                            (Describes the boss/level theme for AI)
+                                        </span>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
+                                        placeholder="e.g., 'Neon Cyberpunk Boss', 'Geometric Nightmare'..."
+                                        style={{ 
+                                            width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
+                                            color: '#fff', fontFamily: 'Arial', outline: 'none'
+                                        }}
+                                        onFocus={(e) => e.currentTarget.style.borderBottomColor = '#ff0099'}
+                                        onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
+                                    />
                                 </div>
-                                <input 
-                                    type="text" 
-                                    value={prompt}
-                                    onChange={(e) => setPrompt(e.target.value)}
-                                    placeholder="e.g., 'Neon Cyberpunk Boss', 'Geometric Nightmare', 'Pulse Monster'..."
-                                    style={{ 
-                                        width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
-                                        color: '#fff', fontFamily: 'Arial', outline: 'none'
-                                    }}
-                                    onFocus={(e) => e.currentTarget.style.borderBottomColor = '#ff0099'}
-                                    onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
-                                />
+
+                                {/* BPM Input */}
+                                <div style={{ width: '200px' }}>
+                                    <div style={{ fontFamily: 'Arial Black', fontSize: '20px', marginBottom: '15px', color: '#888' }}>
+                                        BPM <span style={{ fontSize: '14px', color: '#555', fontWeight: 'normal', fontFamily: 'Arial' }}>(Optional)</span>
+                                    </div>
+                                    <input 
+                                        type="number" 
+                                        value={manualBpm}
+                                        onChange={(e) => setManualBpm(e.target.value)}
+                                        placeholder="Auto"
+                                        min="60"
+                                        max="200"
+                                        step="0.1"
+                                        style={{ 
+                                            width: '100%', padding: '20px', fontSize: '24px', backgroundColor: '#111', border: 'none', borderBottom: '4px solid #333',
+                                            color: '#fff', fontFamily: 'Arial', outline: 'none', textAlign: 'center'
+                                        }}
+                                        onFocus={(e) => e.currentTarget.style.borderBottomColor = '#ff0099'}
+                                        onBlur={(e) => e.currentTarget.style.borderBottomColor = '#333'}
+                                    />
+                                </div>
                             </motion.div>
 
                             {/* Cards Container */}

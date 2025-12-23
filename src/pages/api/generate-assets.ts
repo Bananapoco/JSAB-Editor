@@ -51,15 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       1. Output ONLY raw SVG code. No markdown, no explanation.
       2. Must start with <svg and end with </svg>
       2. Style: Minimalist, geometric, dangerous.
-      3. Centered composition
+      3. Centered and scalable
       3. Color: #FF0099
       4. Viewbox: 512x512.
-      5. The shape should be centered and scalable.
-      6. ONLY use simple geometric primitives: circle, rect, polygon, path, line 
+      6. ONLY use simple geometric primitives: circle, rectangle, triangle, polygon, ect.
       7. Fully scalable, no raster effects
       8. Transparent background
-
-     Examples: sharp triangles, spiked circles, hammer made of polygons.
+      9. Combine primitive shapes to create complex shapes (e.g. a hammer made of polygons or a cat's face made of triangles and circles)
+      10. Use a variety of shapes
     `;
 
     console.log('[ASSETS API] Requesting SVG generation...');

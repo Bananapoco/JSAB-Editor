@@ -27,7 +27,7 @@ export class Game extends Scene
     private levelData: LevelData | null = null;
     private music: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
     private loadingMusic: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
-    private enemyGroup: Phaser.Physics.Arcade.Group;
+    private enemyGroup: Phaser.GameObjects.Group;
     private timelineIndex = 0;
     private isPlaying = false;
     private isDashing = false;
@@ -73,7 +73,7 @@ export class Game extends Scene
         this.pulseGraphics = this.add.graphics();
         this.pulseGraphics.setDepth(-5);
 
-        this.enemyGroup = this.physics.add.group();
+        this.enemyGroup = this.add.group();
 
         // Back to Menu Button
         const backBtn = this.add.text(20, 20, '◀ MENU', {

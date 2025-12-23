@@ -5,7 +5,7 @@ import { jsonrepair } from 'jsonrepair';
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '15mb',
+      sizeLimit: '50mb',
     },
   },
   maxDuration: 180,
@@ -77,14 +77,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt, images, audioData, duration } = req.body;
+  const { prompt, images, audioData, duration, bpm } = req.body;
   const levelDuration = Math.min(duration || 60, 300);
 
   const maxEvents = Math.min(Math.max(Math.floor(levelDuration / 1.2), 30), 100);
 
   console.log('='.repeat(60));
   console.log('[GENERATE API] Starting level generation via Google Gemini API');
-  console.log(`[GENERATE API] Duration: ${levelDuration}s, Target Events: ${maxEvents}`);
+  console.log(`[GENERATE API] Duration: ${levelDuration}s, Target Events: ${maxEvents}, BPM: ${bpm || 'Auto'}`);
 
   try {
     const genAI = getGenAIClient();
@@ -95,12 +95,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         responseMimeType: "application/json",
         responseSchema: schema as any,
         maxOutputTokens: 8192,
-        temperature: 0.6,
+        temperature: 0.7,
       },
     });
 
     let rhythmInfo = '';
-    if (audioData) {
+    // If user provided a specific BPM, force the model to use it
+    if (bpm && !isNaN(parseFloat(bpm))) {
+        const beatInterval = (60 / parseFloat(bpm)).toFixed(3);
+        rhythmInfo = `
+        IMPORTANT: The user has manually specified the BPM as ${bpm}.
+        - Use EXACTLY BPM: ${bpm} for all calculations.
+        - Beat interval: ${beatInterval} seconds.
+        - Do NOT re-detect BPM from the audio — trust this value implicitly.
+        - Still analyze the audio for relative energy changes, drops, and intensity peaks to place events, but snap them to this ${bpm} BPM grid.
+        `;
+    } else if (audioData) {
       rhythmInfo = `
         Analyze the provided audio track directly and accurately detect the BPM (whole number), major rhythm peaks/drops, and overall song structure.
         Place the most intense and complex attacks precisely on the strongest beats and drops you detect — this is critical for impact.
@@ -108,42 +118,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const systemPrompt = `
-You are an expert level designer for "Just Shapes & Beats" (JSAB), creating FULLY DYNAMIC fun levels that are perfectly synchronized to music.
+You are an expert level designer for "Just Shapes & Beats" (JSAB), creating INTENSE, HIGHLY DYNAMIC, PERFECTLY SYNCHRONIZED levels that constantly challenge and force player movement.
 
-## CRITICAL OUTPUT RULES
-- Output ONLY valid, complete JSON. Start with { and end with }. No extra text or markdown.
-- Use simple whole numbers or decimals (e.g., 120, 2.5, 0.3). Never scientific notation or excessive precision.
-- Safe defaults if unsure (size: 100, speed: 100, delay: 0.3).
-- Ensure timeline has approximately ${maxEvents} events (a few less is okay).
+## ABSOLUTE CORE RULES (NEVER BREAK THESE)
+- Player must ALWAYS feel threatened to move. No safe downtime >2
+- Screen is never empty, at least 4 events on screen at all times.
+- Every attack needs movement: spinning, sweeping, homing, expanding, spiraling, bouncing, chasing, ect. 
+- NO static/lingering attacks (e.g., random circles that spawn and stay).
+- Avoid isolated events. Use patterns, combos, clusters 
+- Attacks flow with music like a dance: build tension, explode on drops, ease in calm
+- Output ONLY valid, complete JSON. No extra text, markdown, or explanations outside JSON.
 
-## MISSION
-Create a level where every attack and pattern feels like it's dancing with the music.
+## SYNC & STRUCTURE IMPERATIVE
+- ${bpm ? `STRICTLY USE BPM: ${bpm}` : 'Detect BPM (whole number) and major beats/drops from audio accurately.'}
+- Beat interval = ${bpm ? (60 / parseFloat(bpm)).toFixed(3) : '60 / BPM'}s.
+- Place events on musical grid: full downbeats, half-beats, and quarter-beats (sixteenth notes if needed for fast fills).
+- Cluster patterns
+- Divide song into sections: intro/build-up → verses → drops/chorus → climax → outro.
+- Ramp difficulty
 
-### Coordinate System
-- Screen: 1024 × 768 pixels, center (512, 384)
-- Avoid instant attacks near center at the start
+## MOVEMENT & CHALLENGE MANDATES
+- Combine behaviors: e.g., expanding+rotating, homing+bouncing, sweep+pulse burst.
+- Force dodging: crossing lasers, closing spiral traps, bullet hell bursts, ect.
+- Every attack MUST have warning (delay: 0.2–0.5s): semi-transparent before solid/lethal.
 
-### Fairness & Warning System
-- EVERY dangerous attack must have a warning (delay: 0.2–0.5 seconds)
-- During warning: semi-transparent, non-damaging
-- After delay: solid hot pink and dangerous
+## EVENT DENSITY & VARIETY
+- Generate ~${maxEvents} events; exceed slightly in intense sections.
+- Use ≥6 event types: classic JSAB when fitting (laser_beam, spike_ring, wave, projectile_throw, expanding_circle, pulse, etc.) + new geometric attacks inspired by music/prompt (e.g., "fractal_burst", "claw_scratch", "hypnotic_spiral", "orbiting_blades", "echo_wave").
+- Behaviors: homing, spinning, bouncing, sweep, expand, oscillate, spiral — invent others if needed.
+- Vary speed (80–250), size (40–250), rotation aggressively.
 
-${rhythmInfo}
+## COORDINATE SYSTEM
+- Screen: 1024×768, center (512, 384).
 
-## EVENT TYPES & BEHAVIORS
-Use classic JSAB events when they fit (laser_beam, spike_ring, wave, projectile_throw, expanding_circle, pulse, etc.).
-Feel free to invent new geometric attacks inspired by the music and prompt (e.g., "claw_scratch", "hypnotic_spiral").
-Common behaviors: homing, spinning, bouncing, sweep, expand, oscillate, spiral — invent others if needed.
+## USER DIRECTION & STORY EMPHASIS
+- Strictly follow the user prompt: "${prompt}".
+- Create a cohesive story arc reflecting the prompt's theme (e.g., boss awakening, raging, weakening). Tie events/patterns to narrative phases for immersion.
 
-## SYNC RULES
-- Sync tightly to the detected beat grid
-- Cluster intense events on major drops/peaks
-- Vary density: dense in high-energy, sparse in calm sections
-
-## USER DIRECTION
-"${prompt || 'Create an exciting rhythm-based boss battle'}"
-
-Generate events spread across the full ${levelDuration} seconds. Vary patterns and keep it fair and fun.`;
+Generate full level for ${levelDuration} seconds: alive, musical, creative, brutally fun — perfectly synced, forcing constant skillful movement.`;
 
     const parts: any[] = [{ text: systemPrompt }];
 
