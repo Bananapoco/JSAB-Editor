@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const genAI = getGenAIClient();
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro-latest",
+      model: "gemini-3-pro-preview",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema as any,
