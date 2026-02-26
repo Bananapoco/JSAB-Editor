@@ -110,6 +110,7 @@ export const EditorOverlay = () => {
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [images, setImages] = useState<File[]>([]);
     const [bpm, setBpm] = useState<number | ''>('');
+    const [temperature, setTemperature] = useState(0.8);
     const [isGenerating, setIsGenerating] = useState(false);
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
@@ -157,6 +158,7 @@ export const EditorOverlay = () => {
                     images: base64Images,
                     duration,
                     bpm: bpm || undefined,
+                    temperature,
                 })
             });
 
@@ -408,6 +410,43 @@ export const EditorOverlay = () => {
                                 <span style={{ color: '#555', fontSize: '11px' }}>
                                     Attacks sync to this tempo
                                 </span>
+                            </div>
+
+                            <div style={{
+                                backgroundColor: '#111',
+                                padding: '16px 20px',
+                                borderRadius: '12px',
+                                border: '1px solid #222',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <label style={{
+                                        color: '#888',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        letterSpacing: '1px',
+                                    }}>
+                                        CREATIVITY
+                                    </label>
+                                    <span style={{ color: '#00ffff', fontFamily: 'monospace', fontSize: '12px' }}>
+                                        {temperature.toFixed(2)}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.05}
+                                    value={temperature}
+                                    onChange={(e) => setTemperature(Number(e.target.value))}
+                                    style={{ width: '100%' }}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#555', fontSize: '11px' }}>
+                                    <span>Stable</span>
+                                    <span>Creative</span>
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '15px' }}>

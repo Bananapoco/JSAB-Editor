@@ -72,7 +72,19 @@ const levelSchema = {
                                         width: { type: 'number' },
                                         height: { type: 'number' },
                                         sides: { type: 'number', description: 'For regular polygon (3+ sides)' },
+                                        points: {
+                                            type: 'array',
+                                            description: 'Optional custom polygon points for silhouette shapes (e.g. stars, ears).',
+                                            items: {
+                                                type: 'array',
+                                                items: { type: 'number' },
+                                                minItems: 2,
+                                                maxItems: 2,
+                                            },
+                                        },
                                         fillColor: { type: 'string' },
+                                        strokeColor: { type: 'string' },
+                                        strokeWidth: { type: 'number' },
                                         glowColor: { type: 'string' },
                                         glowRadius: { type: 'number' },
                                         alpha: { type: 'number' },
@@ -97,7 +109,18 @@ const levelSchema = {
                                                     width: { type: 'number' },
                                                     height: { type: 'number' },
                                                     sides: { type: 'number' },
+                                                    points: {
+                                                        type: 'array',
+                                                        items: {
+                                                            type: 'array',
+                                                            items: { type: 'number' },
+                                                            minItems: 2,
+                                                            maxItems: 2,
+                                                        },
+                                                    },
                                                     fillColor: { type: 'string' },
+                                                    strokeColor: { type: 'string' },
+                                                    strokeWidth: { type: 'number' },
                                                     glowColor: { type: 'string' },
                                                     glowRadius: { type: 'number' },
                                                 },
@@ -192,6 +215,108 @@ const timelineSegmentSchema = {
                         rotation: { type: 'number' },
                         duration: { type: 'number' },
                         behavior: { type: 'string', enum: ['homing', 'spinning', 'bouncing', 'static'] },
+                        objectDef: {
+                            type: 'object',
+                            description: 'Optional: full procedural object. Use this for complex or composite motif attacks.',
+                            properties: {
+                                x: { type: 'number' },
+                                y: { type: 'number' },
+                                rotation: { type: 'number' },
+                                scale: { type: 'number' },
+                                spawnTime: { type: 'number' },
+                                despawnTime: { type: 'number' },
+                                shape: {
+                                    type: 'object',
+                                    properties: {
+                                        kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                        radius: { type: 'number' },
+                                        width: { type: 'number' },
+                                        height: { type: 'number' },
+                                        sides: { type: 'number', description: 'For regular polygon (3+ sides)' },
+                                        points: {
+                                            type: 'array',
+                                            description: 'Optional custom polygon points for silhouettes (e.g. stars).',
+                                            items: {
+                                                type: 'array',
+                                                items: { type: 'number' },
+                                                minItems: 2,
+                                                maxItems: 2,
+                                            },
+                                        },
+                                        fillColor: { type: 'string' },
+                                        strokeColor: { type: 'string' },
+                                        strokeWidth: { type: 'number' },
+                                        glowColor: { type: 'string' },
+                                        glowRadius: { type: 'number' },
+                                        alpha: { type: 'number' },
+                                    },
+                                    required: ['kind'],
+                                },
+                                children: {
+                                    type: 'array',
+                                    description: 'Sub-shapes composing a complex object.',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            offsetX: { type: 'number' },
+                                            offsetY: { type: 'number' },
+                                            localRotation: { type: 'number' },
+                                            localScale: { type: 'number' },
+                                            shape: {
+                                                type: 'object',
+                                                properties: {
+                                                    kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                                    radius: { type: 'number' },
+                                                    width: { type: 'number' },
+                                                    height: { type: 'number' },
+                                                    sides: { type: 'number' },
+                                                    points: {
+                                                        type: 'array',
+                                                        items: {
+                                                            type: 'array',
+                                                            items: { type: 'number' },
+                                                            minItems: 2,
+                                                            maxItems: 2,
+                                                        },
+                                                    },
+                                                    fillColor: { type: 'string' },
+                                                    strokeColor: { type: 'string' },
+                                                    strokeWidth: { type: 'number' },
+                                                    glowColor: { type: 'string' },
+                                                    glowRadius: { type: 'number' },
+                                                },
+                                                required: ['kind'],
+                                            },
+                                        },
+                                    },
+                                },
+                                behaviors: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce'] },
+                                            speed: { type: 'number' },
+                                            minScale: { type: 'number' },
+                                            maxScale: { type: 'number' },
+                                            period: { type: 'number' },
+                                            centerX: { type: 'number' },
+                                            centerY: { type: 'number' },
+                                            radius: { type: 'number' },
+                                            angularSpeed: { type: 'number' },
+                                            velocityX: { type: 'number' },
+                                            velocityY: { type: 'number' },
+                                            homingSpeed: { type: 'number' },
+                                            lifetime: { type: 'number' },
+                                            vx: { type: 'number' },
+                                            vy: { type: 'number' },
+                                        },
+                                        required: ['kind'],
+                                    },
+                                },
+                            },
+                            required: ['x', 'y', 'spawnTime'],
+                        },
                     },
                     required: ['timestamp', 'type', 'x', 'y'],
                 },
@@ -221,6 +346,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Build the user message content (text + optional images for vision)
         // Compute beat grid info for the prompt
         const beatSec = bpm ? 60 / bpm : null;
+        const requestedTemperature = typeof (req.body as any)?.temperature === 'number'
+            ? (req.body as any).temperature
+            : 0.8;
+        const temperature = Math.max(0, Math.min(1, requestedTemperature));
+        const headerTemperature = Math.min(0.4, temperature);
         const bpmInfo = bpm
             ? `\n\nBPM: ${bpm} (one beat = ${beatSec!.toFixed(4)}s). CRITICAL: Every event timestamp MUST land on a beat subdivision. Use these grid values:\n- Whole note (4 beats): ${(beatSec! * 4).toFixed(4)}s\n- Half note (2 beats): ${(beatSec! * 2).toFixed(4)}s\n- Quarter note (1 beat): ${beatSec!.toFixed(4)}s\n- 8th note (½ beat): ${(beatSec! / 2).toFixed(4)}s\n- 16th note (¼ beat): ${(beatSec! / 4).toFixed(4)}s\n\nVary the rhythm: heavy attacks on quarter notes during drops/choruses, lighter 8th/16th patterns during buildups, sparse half/whole note hits during calm sections. NOT every single beat — leave breathing room.`
             : '\n\nNo BPM provided — spread events roughly evenly with natural rhythm variation.';
@@ -228,10 +358,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Keep event count within realistic token limits for LLM tool output.
         // Very high counts (e.g. duration * 6 on long songs) can cause timeline omission.
         const targetEvents = Math.min(240, Math.max(48, Math.floor(duration * 1.1)));
+        const minSetPieceEvents = Math.max(6, Math.floor(targetEvents * 0.1));
         const userContent: Anthropic.MessageParam['content'] = [
             {
                 type: 'text',
-                text: `Create a bullet-hell JSAB-style level for this concept: "${prompt}"\n\nSong duration: ${duration} seconds. This is a BULLET HELL game — the screen should always have multiple active hazards. Generate around ${targetEvents} timeline events (minimum 48, maximum 260). Timestamps must be between 0 and ${duration}. Multiple events CAN share the same timestamp (simultaneous spawns). At peak intensity, spawn 3-5 objects on the same beat.${bpmInfo}\n\nIMPORTANT OUTPUT SIZE RULES:\n- Keep most events compact: use timestamp, type, x, y, size, rotation, duration, behavior.\n- objectDef is optional. Use objectDef only for special set-piece attacks (about 5-15 events total).\n- If objectDef is used, include a visible shape/children.\n- ALL hazards are procedural vector shapes (no image assets).`,
+                text: `Create a bullet-hell JSAB-style level for this concept: "${prompt}"\n\nSong duration: ${duration} seconds. This is a BULLET HELL game — the screen should always have multiple active hazards. Generate around ${targetEvents} timeline events (minimum 48, maximum 260). Timestamps must be between 0 and ${duration}. Multiple events CAN share the same timestamp (simultaneous spawns). At peak intensity, spawn 3-5 objects on the same beat.${bpmInfo}\n\nIMPORTANT OUTPUT SIZE RULES:\n- Keep most events compact: use timestamp, type, x, y, size, rotation, duration, behavior.\n- objectDef is optional. Use objectDef for special set-piece attacks (at least ${minSetPieceEvents} events total across the full level).\n- If objectDef is used, include a visible shape or children.\n- Translate important nouns/themes into geometry. Example: cat boss = composite body/head/ears/paws/tail; stars = polygon points; planets = large circles + ring children.\n- ALL hazards are procedural vector shapes (no image assets).`,
             },
         ];
 
@@ -247,6 +378,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const headerResponse = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 2048,
+            temperature: headerTemperature,
             system: `You are an expert level designer for "Just Shapes & Beats" style rhythm games.
 Output ONLY metadata, theme, and a short explanation. Do not output timeline.`,
             tools: [levelHeaderSchema],
@@ -271,30 +403,53 @@ Output ONLY metadata, theme, and a short explanation. Do not output timeline.`,
             throw new Error('The AI generated an invalid level header JSON.');
         }
 
-        // Step 2: Generate timeline in small segments to avoid max_tokens cutoffs.
-        const segmentCount = duration > 240 ? 5 : duration > 150 ? 4 : duration > 90 ? 3 : 2;
-        const eventsPerSegment = Math.max(24, Math.ceil(targetEvents / segmentCount));
-        const mergedTimeline: any[] = [];
+        // Step 2: Generate timeline in smaller windows to avoid max_tokens truncation.
+        const maxWindowSec = 10;
+        const windowCount = Math.max(2, Math.ceil(duration / maxWindowSec));
+        const eventsPerWindow = Math.max(4, Math.min(12, Math.ceil(targetEvents / windowCount)));
+        const timelineSystemPrompt = `Generate only timeline events for the given time range.
+Rules:
+- Screen is 1024x768
+- Events should be varied and playable
+- Bullet hell
+- ALL hazards are procedural vector shape (circle, rect, polygon, or composite children). No image assets.
+- Complex shapes (like a hammer) can be composed of multiple shapes (example: narrow handle rect + wide head rect on top)
+- EVERY objectDef MUST have a "shape" field (top-level) or "children" with shapes. Objects without shapes are invisible and broken.
+- Use polygon points when needed to form stars, claws, ears, tails, rings, and other recognizable silhouettes.
+- RHYTHM: All attack timestamps MUST be quantized to beat subdivisions (quarter, 8th, or 16th notes). Vary density:
+  * Calm/intro sections: sparse attacks on whole/half notes with breathing room
+  * Buildups: increasing density with 8th notes, anticipation patterns
+  * Drops/choruses: dense quarter-note and 8th-note attacks, screen shakes
+  * Breakdowns: 16th-note flurries mixed with pauses for emphasis
+  * NEVER attack on every single beat nonstop — use silence and contrast for impact
+- For composite shapes (e.g. rotating hammer, gear, saw blade, spiral arm), define children with offsetX/offsetY.
+- Behaviors: rotate (continuous spin), pulse (scale breathing), orbit (circle a point), linearMove (constant velocity), homing (track player), bounce (ricochet off walls), dieAfter (lifetime in seconds).
+- objectDef.behaviors can combine multiple behaviors (e.g. rotate + orbit for a spinning orbiting object).
+- ALWAYS include a dieAfter behavior with a reasonable lifetime (2-8 seconds) so objects don't accumulate forever.
+- Place hazards at varied positions — edges, center, diagonals — not just one spot.
+- screen_shake events add dramatic impact at key moments (drops, phase changes).
+- Output timeline sorted by timestamp`;
 
-        for (let i = 0; i < segmentCount; i++) {
-            const start = (duration / segmentCount) * i;
-            const end = i === segmentCount - 1 ? duration : (duration / segmentCount) * (i + 1);
+        const requestTimelineWindow = async (
+            start: number,
+            end: number,
+            desiredEvents: number,
+        ): Promise<any[]> => {
             const segmentPrompt = `Create timeline events for this level concept: "${prompt}".
 Time window: ${start.toFixed(3)}s to ${end.toFixed(3)}s (inclusive).
-Generate about ${eventsPerSegment} events for THIS window only.
-Use compact events only (timestamp,type,x,y,size,rotation,duration,behavior). No objectDef in this mode.
+Generate about ${desiredEvents} events for THIS window only.
+Keep most events compact, but include set-piece objectDefs in this window.
+Target 10-20% set-piece objectDef events for motif-heavy shapes and attacks.
+Each set-piece objectDef must include visible shape and/or children and at least one behavior.
+Translate the prompt's nouns/adjectives into literal geometry (silhouettes/patterns), not only text flavor.
 Timestamps must stay within the window and align to beat subdivisions when BPM is provided.${bpmInfo}
 Output ONLY via create_timeline_segment tool.`;
 
             const segmentResponse = await client.messages.create({
                 model: 'claude-sonnet-4-6',
-                max_tokens: 4096,
-                system: `Generate only timeline events for the given time range.
-Rules:
-- Screen is 1024x768
-- Events should be varied and playable
-- Use screen_shake sparingly at impactful moments
-- Output timeline sorted by timestamp`,
+                max_tokens: 8192,
+                temperature,
+                system: timelineSystemPrompt,
                 tools: [timelineSegmentSchema],
                 tool_choice: { type: 'tool', name: 'create_timeline_segment' },
                 messages: [{ role: 'user', content: [{ type: 'text', text: segmentPrompt }] }],
@@ -302,7 +457,8 @@ Rules:
 
             const segmentToolUse = segmentResponse.content.find(b => b.type === 'tool_use') as Anthropic.ToolUseBlock | undefined;
             if (!segmentToolUse) {
-                throw new Error(`Claude did not return timeline tool_use for segment ${i + 1}/${segmentCount}`);
+                console.warn(`[Claude/timeline] window ${start.toFixed(2)}-${end.toFixed(2)} no tool_use`);
+                return [];
             }
 
             let segmentResult: any;
@@ -312,14 +468,29 @@ Rules:
                     segmentResult = JSON.parse(jsonrepair(segmentResult));
                 }
             } catch (e) {
-                console.error(`Failed to parse/repair timeline segment ${i + 1}:`, e);
-                throw new Error(`The AI generated invalid timeline JSON for segment ${i + 1}.`);
+                console.warn(`[Claude/timeline] window ${start.toFixed(2)}-${end.toFixed(2)} parse error`, e);
+                return [];
             }
 
             const segmentTimeline = Array.isArray(segmentResult.timeline) ? segmentResult.timeline : [];
-            console.log(`[Claude/timeline] segment ${i + 1}/${segmentCount} stop_reason=${segmentResponse.stop_reason} events=${segmentTimeline.length}`);
-            mergedTimeline.push(...segmentTimeline);
-        }
+            console.log(
+                `[Claude/timeline] window ${start.toFixed(2)}-${end.toFixed(2)} stop_reason=${segmentResponse.stop_reason} events=${segmentTimeline.length}`,
+            );
+            return segmentTimeline;
+        };
+
+        const generateTimelineSegments = async () => {
+            const mergedTimeline: any[] = [];
+
+            for (let i = 0; i < windowCount; i++) {
+                const start = (duration / windowCount) * i;
+                const end = i === windowCount - 1 ? duration : (duration / windowCount) * (i + 1);
+                const segmentTimeline = await requestTimelineWindow(start, end, eventsPerWindow);
+                mergedTimeline.push(...segmentTimeline);
+            }
+            return mergedTimeline;
+        };
+        const mergedTimeline = await generateTimelineSegments();
 
         const timeline = mergedTimeline
             .filter((e: any) => e && typeof e.timestamp === 'number')
@@ -353,6 +524,7 @@ Rules:
         console.log(`Timeline Events: ${result.timeline?.length || 0}`);
         console.log(`Duration: ${result.metadata?.duration?.toFixed(2) || '?' }s`);
         console.log(`BPM: ${result.metadata?.bpm || '?'}`);
+        console.log(`Temperature: ${temperature.toFixed(2)}`);
         
         // Write the FULL JSON to a file in the workspace root so it's not truncated by terminal buffers
         try {

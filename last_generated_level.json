@@ -1,594 +1,5235 @@
 {
   "metadata": {
-    "bossName": "Meowter Space",
+    "bossName": "Cosmo the Furious",
     "duration": 32.126104166666664,
     "bpm": 115
   },
   "theme": {
-    "enemyColor": "#C85FFF",
-    "backgroundColor": "#05030F",
-    "playerColor": "#00FFDD"
+    "enemyColor": "#FF6EC7",
+    "backgroundColor": "#05020F",
+    "playerColor": "#A0FFEC"
   },
-  "explanation": "**Meowter Space** is a high-energy bullet-hell boss level featuring a massive cosmic cat boss — \"Astrokat\" — who is furious at the player for trespassing in her galaxy. The arena is a deep space void filled with twinkling stars and a slow-rotating ringed planet in the background.\n\n**Visual Identity:**\n- Deep space black/navy background (`#05030F`) with scattered procedural star dots\n- Boss and all hazards rendered in cosmic purple (`#C85FFF`) — the cat's fur, paws, claws, and spikeballs all glow in neon violet\n- Player ship rendered in cyan-teal (`#00FFDD`) so it pops against the dark field\n- The boss silhouette is a stylized cat face — two triangular ears, large circular eyes, whisker lines — built from vector shapes\n\n**Attack Vocabulary:**\n1. **Paw Swipes** — Large semi-transparent rectangular bars sweep across the screen horizontally or vertically, representing a massive cat paw slamming down. Paired with claw-mark line bursts.\n2. **Scratch Waves** — Tight diagonal line clusters (3–5 parallel slashes) that travel across the screen at alternating angles, mimicking claw rake patterns.\n3. **Spikeball Bursts** — Star-polygon hazards (6–8 points) that orbit from the boss face and spiral outward toward the player zone.\n4. **Hairball Spiral** — During the mid-level build, a spiral of circular projectiles spins outward from center, evoking a chaotic furball.\n5. **Tail Whip** — A long thin rotating line that sweeps the arena like a clock hand, forcing the player to jump its arc.\n6. **Cosmic Litter Box** — Climax attack: a 3×3 grid of danger zones tiles the screen, leaving only small safe corridors.\n\n**Structure (32s / 115 BPM):**\n- **0–8s (Intro / buildup):** Sparse spikeballs and single paw swipes on half-notes. Boss face assembles on screen.\n- **8–16s (First drop):** Quarter-note scratch waves and paw combos. Tail whip rotation begins.\n- **16–24s (Bridge / intensity ramp):** Hairball spiral + simultaneous diagonal scratch clusters. 3–5 objects per beat at peaks.\n- **24–32s (Final drop / climax):** Full Cosmic Litter Box tiling, rapid spikeball bursts, maximum simultaneous hazards, ending on a dramatic paw slam exactly at the final beat.",
+  "explanation": "A space-cat boss fight set against a deep cosmic backdrop. The boss, \"Cosmo the Furious,\" is a composite geometric cat shape rendered in hot pink/magenta — a rounded square body, triangular ears, slit-pupil eyes, and sweeping curved tail arcs. The player glows in cool aquamarine against the near-black starfield. The level opens with a slow buildup of drifting star polygons and a planet ring set-piece, then escalates into frenzied paw-swipe arcs, claw-scratch line bursts, and spinning spikeball clusters on the heavy beats. The chorus/drop sections flood the screen with simultaneous paw slams (3–5 objects per beat), while calmer inter-sections use sparse half-note star drifts to let the player breathe. All hazards are procedural vector geometry: circles for spikeballs and planets, polygons for stars and claws, arcs/rotated rectangles for scratches and paw swipes.",
   "timeline": [
     {
       "timestamp": 0,
       "type": "spawn_obstacle",
       "x": 512,
-      "y": 100,
-      "size": 60,
-      "behavior": "static"
+      "y": 384,
+      "objectDef": {
+        "x": 512,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 8,
+        "shape": {
+          "kind": "circle",
+          "radius": 70,
+          "fillColor": "#1a0a2e",
+          "strokeColor": "#a855f7",
+          "strokeWidth": 4,
+          "glowColor": "#a855f7",
+          "glowRadius": 20
+        },
+        "behaviors": [
+          {
+            "kind": "pulse",
+            "minScale": 0.95,
+            "maxScale": 1.05,
+            "period": 1.0435
+          }
+        ],
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -30,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -10,
+                  0
+                ],
+                [
+                  -6,
+                  -18
+                ],
+                [
+                  0,
+                  -28
+                ],
+                [
+                  6,
+                  -18
+                ],
+                [
+                  10,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6b6b",
+              "strokeColor": "#ff9999",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": -38,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -8,
+                  0
+                ],
+                [
+                  -4,
+                  -16
+                ],
+                [
+                  0,
+                  -24
+                ],
+                [
+                  4,
+                  -16
+                ],
+                [
+                  8,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6b6b",
+              "strokeColor": "#ff9999",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 22,
+            "offsetY": -38,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -8,
+                  0
+                ],
+                [
+                  -4,
+                  -16
+                ],
+                [
+                  0,
+                  -24
+                ],
+                [
+                  4,
+                  -16
+                ],
+                [
+                  8,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6b6b",
+              "strokeColor": "#ff9999",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -24,
+            "offsetY": 8,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#ffe4e1"
+            }
+          },
+          {
+            "offsetX": 24,
+            "offsetY": 8,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#ffe4e1"
+            }
+          },
+          {
+            "offsetX": -10,
+            "offsetY": 20,
+            "shape": {
+              "kind": "circle",
+              "radius": 5,
+              "fillColor": "#ff9999"
+            }
+          },
+          {
+            "offsetX": 10,
+            "offsetY": 20,
+            "shape": {
+              "kind": "circle",
+              "radius": 5,
+              "fillColor": "#ff9999"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 18,
+            "shape": {
+              "kind": "circle",
+              "radius": 5,
+              "fillColor": "#ff9999"
+            }
+          }
+        ]
+      }
     },
     {
       "timestamp": 0.5217,
-      "type": "projectile_throw",
+      "type": "spawn_obstacle",
       "x": 150,
-      "y": 200,
-      "size": 40,
-      "rotation": 45,
-      "behavior": "homing"
+      "y": 150,
+      "objectDef": {
+        "x": 150,
+        "y": 150,
+        "spawnTime": 0.5217,
+        "shape": {
+          "kind": "circle",
+          "radius": 18,
+          "fillColor": "#ffe066",
+          "strokeColor": "#fff7a0",
+          "strokeWidth": 2,
+          "glowColor": "#fffacd",
+          "glowRadius": 10
+        },
+        "behaviors": [
+          {
+            "kind": "orbit",
+            "centerX": 512,
+            "centerY": 384,
+            "radius": 300,
+            "angularSpeed": 0.6
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 7.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 0.5217,
+      "type": "spawn_obstacle",
+      "x": 870,
+      "y": 620,
+      "objectDef": {
+        "x": 870,
+        "y": 620,
+        "spawnTime": 0.5217,
+        "shape": {
+          "kind": "circle",
+          "radius": 10,
+          "fillColor": "#ffe066",
+          "strokeColor": "#fff7a0",
+          "strokeWidth": 1,
+          "glowColor": "#fffacd",
+          "glowRadius": 6
+        },
+        "behaviors": [
+          {
+            "kind": "orbit",
+            "centerX": 512,
+            "centerY": 384,
+            "radius": 280,
+            "angularSpeed": -0.4
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 7.5
+          }
+        ]
+      }
     },
     {
       "timestamp": 1.0435,
-      "type": "projectile_throw",
-      "x": 874,
-      "y": 200,
-      "size": 40,
-      "rotation": 315,
-      "behavior": "homing"
+      "type": "spawn_obstacle",
+      "x": 100,
+      "y": 384,
+      "objectDef": {
+        "x": 100,
+        "y": 384,
+        "spawnTime": 1.0435,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              -30,
+              0
+            ],
+            [
+              -10,
+              -8
+            ],
+            [
+              0,
+              -28
+            ],
+            [
+              10,
+              -8
+            ],
+            [
+              30,
+              0
+            ],
+            [
+              10,
+              8
+            ],
+            [
+              0,
+              28
+            ],
+            [
+              -10,
+              8
+            ]
+          ],
+          "fillColor": "#ff4444",
+          "strokeColor": "#ff8888",
+          "strokeWidth": 3,
+          "glowColor": "#ff0000",
+          "glowRadius": 15
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 2.5
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": 180,
+            "velocityY": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
       "timestamp": 1.5652,
       "type": "spawn_obstacle",
-      "x": 256,
-      "y": 400,
-      "size": 50,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 2.087,
-      "type": "projectile_throw",
-      "x": 512,
-      "y": 80,
-      "size": 55,
-      "rotation": 270,
-      "behavior": "homing"
+      "x": 924,
+      "y": 200,
+      "objectDef": {
+        "x": 924,
+        "y": 200,
+        "spawnTime": 1.5652,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              -30,
+              0
+            ],
+            [
+              -10,
+              -8
+            ],
+            [
+              0,
+              -28
+            ],
+            [
+              10,
+              -8
+            ],
+            [
+              30,
+              0
+            ],
+            [
+              10,
+              8
+            ],
+            [
+              0,
+              28
+            ],
+            [
+              -10,
+              8
+            ]
+          ],
+          "fillColor": "#ff4444",
+          "strokeColor": "#ff8888",
+          "strokeWidth": 3,
+          "glowColor": "#ff0000",
+          "glowRadius": 15
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -2.5
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": -180,
+            "velocityY": 80
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
       "timestamp": 2.087,
       "type": "screen_shake",
       "x": 512,
-      "y": 384,
-      "size": 30,
-      "duration": 0.3
+      "y": 384
+    },
+    {
+      "timestamp": 2.087,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 0,
+      "objectDef": {
+        "x": 512,
+        "y": 0,
+        "spawnTime": 2.087,
+        "shape": {
+          "kind": "rect",
+          "width": 22,
+          "height": 80,
+          "fillColor": "#cc88ff",
+          "strokeColor": "#ee99ff",
+          "strokeWidth": 3,
+          "glowColor": "#cc44ff",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -18,
+            "offsetY": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  12
+                ],
+                [
+                  -4,
+                  10
+                ],
+                [
+                  0,
+                  18
+                ],
+                [
+                  4,
+                  10
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -9,
+            "offsetY": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  12
+                ],
+                [
+                  -4,
+                  10
+                ],
+                [
+                  0,
+                  18
+                ],
+                [
+                  4,
+                  10
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  12
+                ],
+                [
+                  -4,
+                  10
+                ],
+                [
+                  0,
+                  18
+                ],
+                [
+                  4,
+                  10
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 9,
+            "offsetY": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  12
+                ],
+                [
+                  -4,
+                  10
+                ],
+                [
+                  0,
+                  18
+                ],
+                [
+                  4,
+                  10
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 18,
+            "offsetY": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  12
+                ],
+                [
+                  -4,
+                  10
+                ],
+                [
+                  0,
+                  18
+                ],
+                [
+                  4,
+                  10
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": 320
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
     },
     {
       "timestamp": 2.6087,
-      "type": "spawn_obstacle",
-      "x": 768,
-      "y": 400,
-      "size": 50,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 3.1304,
       "type": "projectile_throw",
-      "x": 200,
-      "y": 150,
-      "size": 35,
-      "rotation": 60,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 3.3913,
-      "type": "projectile_throw",
-      "x": 824,
-      "y": 150,
-      "size": 35,
-      "rotation": 120,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 4.1739,
-      "type": "spawn_obstacle",
       "x": 512,
-      "y": 300,
-      "size": 70,
-      "behavior": "spinning"
+      "y": 100,
+      "size": 14,
+      "rotation": 0
+    },
+    {
+      "timestamp": 2.8696,
+      "type": "projectile_throw",
+      "x": 300,
+      "y": 100,
+      "size": 14,
+      "rotation": 15
+    },
+    {
+      "timestamp": 2.8696,
+      "type": "projectile_throw",
+      "x": 724,
+      "y": 100,
+      "size": 14,
+      "rotation": -15
+    },
+    {
+      "timestamp": 3.6522,
+      "type": "spawn_obstacle",
+      "x": 200,
+      "y": 768,
+      "objectDef": {
+        "x": 200,
+        "y": 768,
+        "spawnTime": 3.6522,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -32
+            ],
+            [
+              7,
+              -10
+            ],
+            [
+              30,
+              -10
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              20,
+              28
+            ],
+            [
+              0,
+              14
+            ],
+            [
+              -20,
+              28
+            ],
+            [
+              -12,
+              4
+            ],
+            [
+              -30,
+              -10
+            ],
+            [
+              -7,
+              -10
+            ]
+          ],
+          "fillColor": "#5533aa",
+          "strokeColor": "#aa77ff",
+          "strokeWidth": 3,
+          "glowColor": "#7744cc",
+          "glowRadius": 18
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 1.8
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": 120,
+            "velocityY": -200
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
     },
     {
       "timestamp": 4.1739,
       "type": "screen_shake",
       "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 4.1739,
+      "type": "spawn_obstacle",
+      "x": 924,
       "y": 384,
-      "size": 40,
-      "duration": 0.4
+      "objectDef": {
+        "x": 924,
+        "y": 384,
+        "spawnTime": 4.1739,
+        "shape": {
+          "kind": "rect",
+          "width": 22,
+          "height": 80,
+          "fillColor": "#cc88ff",
+          "strokeColor": "#ee99ff",
+          "strokeWidth": 3,
+          "glowColor": "#cc44ff",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -45,
+            "offsetY": -18,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -6
+                ],
+                [
+                  -12,
+                  -10
+                ],
+                [
+                  -10,
+                  -4
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  4
+                ],
+                [
+                  -12,
+                  10
+                ],
+                [
+                  0,
+                  6
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -45,
+            "offsetY": -9,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -6
+                ],
+                [
+                  -12,
+                  -10
+                ],
+                [
+                  -10,
+                  -4
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  4
+                ],
+                [
+                  -12,
+                  10
+                ],
+                [
+                  0,
+                  6
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -45,
+            "offsetY": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -6
+                ],
+                [
+                  -12,
+                  -10
+                ],
+                [
+                  -10,
+                  -4
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  4
+                ],
+                [
+                  -12,
+                  10
+                ],
+                [
+                  0,
+                  6
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -45,
+            "offsetY": 9,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -6
+                ],
+                [
+                  -12,
+                  -10
+                ],
+                [
+                  -10,
+                  -4
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  4
+                ],
+                [
+                  -12,
+                  10
+                ],
+                [
+                  0,
+                  6
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -45,
+            "offsetY": 18,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -6
+                ],
+                [
+                  -12,
+                  -10
+                ],
+                [
+                  -10,
+                  -4
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  4
+                ],
+                [
+                  -12,
+                  10
+                ],
+                [
+                  0,
+                  6
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": -320,
+            "velocityY": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3
+          }
+        ]
+      }
     },
     {
       "timestamp": 4.6957,
       "type": "projectile_throw",
-      "x": 100,
+      "x": 512,
       "y": 384,
-      "size": 45,
-      "rotation": 0,
-      "behavior": "homing"
+      "size": 10,
+      "rotation": 0
     },
     {
       "timestamp": 4.9565,
       "type": "projectile_throw",
-      "x": 924,
+      "x": 512,
       "y": 384,
-      "size": 45,
-      "rotation": 180,
-      "behavior": "homing"
+      "size": 10,
+      "rotation": 45
+    },
+    {
+      "timestamp": 5.2174,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 384,
+      "size": 10,
+      "rotation": 90
+    },
+    {
+      "timestamp": 5.4783,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 384,
+      "size": 10,
+      "rotation": 135
     },
     {
       "timestamp": 5.7391,
       "type": "spawn_obstacle",
-      "x": 300,
-      "y": 200,
-      "size": 40,
-      "behavior": "bouncing"
+      "x": 820,
+      "y": 150,
+      "objectDef": {
+        "x": 820,
+        "y": 150,
+        "spawnTime": 5.7391,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -32
+            ],
+            [
+              7,
+              -10
+            ],
+            [
+              30,
+              -10
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              20,
+              28
+            ],
+            [
+              0,
+              14
+            ],
+            [
+              -20,
+              28
+            ],
+            [
+              -12,
+              4
+            ],
+            [
+              -30,
+              -10
+            ],
+            [
+              -7,
+              -10
+            ]
+          ],
+          "fillColor": "#5533aa",
+          "strokeColor": "#aa77ff",
+          "strokeWidth": 3,
+          "glowColor": "#7744cc",
+          "glowRadius": 18
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -2.2
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 130
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 5.9999,
+      "timestamp": 6.2609,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 6.2609,
       "type": "spawn_obstacle",
-      "x": 724,
-      "y": 200,
-      "size": 40,
-      "behavior": "bouncing"
+      "x": 100,
+      "y": 100,
+      "objectDef": {
+        "x": 100,
+        "y": 100,
+        "spawnTime": 6.2609,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              -30,
+              0
+            ],
+            [
+              -10,
+              -8
+            ],
+            [
+              0,
+              -28
+            ],
+            [
+              10,
+              -8
+            ],
+            [
+              30,
+              0
+            ],
+            [
+              10,
+              8
+            ],
+            [
+              0,
+              28
+            ],
+            [
+              -10,
+              8
+            ]
+          ],
+          "fillColor": "#ff4444",
+          "strokeColor": "#ff8888",
+          "strokeWidth": 3,
+          "glowColor": "#ff0000",
+          "glowRadius": 15
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 3
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": 200,
+            "velocityY": 150
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
       "timestamp": 6.5217,
-      "type": "projectile_throw",
-      "x": 512,
-      "y": 80,
-      "size": 50,
-      "rotation": 270,
-      "behavior": "homing"
+      "type": "spawn_obstacle",
+      "x": 924,
+      "y": 668,
+      "objectDef": {
+        "x": 924,
+        "y": 668,
+        "spawnTime": 6.5217,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              -30,
+              0
+            ],
+            [
+              -10,
+              -8
+            ],
+            [
+              0,
+              -28
+            ],
+            [
+              10,
+              -8
+            ],
+            [
+              30,
+              0
+            ],
+            [
+              10,
+              8
+            ],
+            [
+              0,
+              28
+            ],
+            [
+              -10,
+              8
+            ]
+          ],
+          "fillColor": "#ff4444",
+          "strokeColor": "#ff8888",
+          "strokeWidth": 3,
+          "glowColor": "#ff0000",
+          "glowRadius": 15
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -3
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": -200,
+            "velocityY": -150
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 7.0435,
-      "type": "pulse",
+      "timestamp": 7.3043,
+      "type": "spawn_obstacle",
       "x": 512,
-      "y": 384,
-      "size": 80,
-      "duration": 0.5
-    },
-    {
-      "timestamp": 7.0435,
-      "type": "screen_shake",
-      "x": 512,
-      "y": 384,
-      "size": 50,
-      "duration": 0.5
-    },
-    {
-      "timestamp": 7.5652,
-      "type": "projectile_throw",
-      "x": 150,
-      "y": 300,
-      "size": 38,
-      "rotation": 30,
-      "behavior": "spinning"
+      "y": 768,
+      "objectDef": {
+        "x": 512,
+        "y": 768,
+        "spawnTime": 7.3043,
+        "shape": {
+          "kind": "rect",
+          "width": 22,
+          "height": 80,
+          "fillColor": "#cc88ff",
+          "strokeColor": "#ee99ff",
+          "strokeWidth": 3,
+          "glowColor": "#cc44ff",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -18,
+            "offsetY": -45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  -12
+                ],
+                [
+                  -4,
+                  -10
+                ],
+                [
+                  0,
+                  -18
+                ],
+                [
+                  4,
+                  -10
+                ],
+                [
+                  10,
+                  -12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": -9,
+            "offsetY": -45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  -12
+                ],
+                [
+                  -4,
+                  -10
+                ],
+                [
+                  0,
+                  -18
+                ],
+                [
+                  4,
+                  -10
+                ],
+                [
+                  10,
+                  -12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": -45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  -12
+                ],
+                [
+                  -4,
+                  -10
+                ],
+                [
+                  0,
+                  -18
+                ],
+                [
+                  4,
+                  -10
+                ],
+                [
+                  10,
+                  -12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 9,
+            "offsetY": -45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  -12
+                ],
+                [
+                  -4,
+                  -10
+                ],
+                [
+                  0,
+                  -18
+                ],
+                [
+                  4,
+                  -10
+                ],
+                [
+                  10,
+                  -12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 18,
+            "offsetY": -45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  -10,
+                  -12
+                ],
+                [
+                  -4,
+                  -10
+                ],
+                [
+                  0,
+                  -18
+                ],
+                [
+                  4,
+                  -10
+                ],
+                [
+                  10,
+                  -12
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9ff3",
+              "strokeColor": "#ffccff",
+              "strokeWidth": 2
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": -320
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
     },
     {
       "timestamp": 7.8261,
       "type": "projectile_throw",
-      "x": 874,
+      "x": 200,
       "y": 300,
-      "size": 38,
-      "rotation": 150,
-      "behavior": "spinning"
+      "size": 12,
+      "rotation": 30
     },
     {
-      "timestamp": 8.6087,
-      "type": "spawn_obstacle",
-      "x": 400,
-      "y": 150,
-      "size": 55,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 8.8696,
-      "type": "spawn_obstacle",
-      "x": 624,
-      "y": 150,
-      "size": 55,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 9.3913,
-      "type": "projectile_throw",
-      "x": 512,
-      "y": 80,
-      "size": 60,
-      "rotation": 270,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 9.6522,
-      "type": "projectile_throw",
-      "x": 200,
-      "y": 100,
-      "size": 42,
-      "rotation": 45,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 9.913,
-      "type": "projectile_throw",
-      "x": 824,
-      "y": 100,
-      "size": 42,
-      "rotation": 135,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 10.4348,
-      "type": "pulse",
-      "x": 512,
-      "y": 384,
-      "size": 90,
-      "duration": 0.6
-    },
-    {
-      "timestamp": 10.4348,
-      "type": "screen_shake",
-      "x": 512,
-      "y": 384,
-      "size": 60,
-      "duration": 0.5
-    },
-    {
-      "timestamp": 10.9565,
+      "timestamp": 8.032,
       "type": "spawn_obstacle",
       "x": 200,
-      "y": 500,
-      "size": 48,
-      "behavior": "bouncing"
+      "y": 150,
+      "objectDef": {
+        "x": 200,
+        "y": 150,
+        "spawnTime": 0,
+        "despawnTime": 6,
+        "shape": {
+          "kind": "circle",
+          "radius": 6,
+          "fillColor": "#fffbe8",
+          "glowColor": "#fffbe8",
+          "glowRadius": 10
+        },
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": 0,
+            "vy": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 6
+          }
+        ]
+      }
     },
     {
-      "timestamp": 11.2174,
-      "type": "spawn_obstacle",
+      "timestamp": 8.087,
+      "type": "projectile_throw",
       "x": 824,
       "y": 500,
-      "size": 48,
-      "behavior": "bouncing"
+      "size": 12,
+      "rotation": -30
     },
     {
-      "timestamp": 11.4782,
+      "timestamp": 8.293,
       "type": "spawn_obstacle",
       "x": 512,
-      "y": 600,
-      "size": 48,
-      "behavior": "bouncing"
+      "y": 384,
+      "objectDef": {
+        "x": 512,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 7,
+        "scale": 1.2,
+        "shape": {
+          "kind": "polygon",
+          "sides": 8,
+          "radius": 38,
+          "fillColor": "#c0392b",
+          "strokeColor": "#ff6b6b",
+          "strokeWidth": 3,
+          "glowColor": "#ff4444",
+          "glowRadius": 18
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 3.5
+          },
+          {
+            "kind": "pulse",
+            "minScale": 0.9,
+            "maxScale": 1.3,
+            "period": 0.6
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 90
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 7
+          }
+        ]
+      }
     },
     {
-      "timestamp": 12.2609,
-      "type": "projectile_throw",
+      "timestamp": 8.554,
+      "type": "spawn_obstacle",
+      "x": 900,
+      "y": 200,
+      "objectDef": {
+        "x": 900,
+        "y": 200,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -30
+            ],
+            [
+              7,
+              -10
+            ],
+            [
+              28,
+              -10
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              18,
+              25
+            ],
+            [
+              0,
+              13
+            ],
+            [
+              -18,
+              25
+            ],
+            [
+              -12,
+              4
+            ],
+            [
+              -28,
+              -10
+            ],
+            [
+              -7,
+              -10
+            ]
+          ],
+          "fillColor": "#f1c40f",
+          "glowColor": "#ffe066",
+          "glowRadius": 14,
+          "strokeColor": "#fff",
+          "strokeWidth": 1
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 1.5
+          },
+          {
+            "kind": "linearMove",
+            "vx": -60,
+            "vy": 80
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 9.076,
+      "type": "spawn_obstacle",
       "x": 100,
-      "y": 200,
-      "size": 50,
-      "rotation": 45,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 12.2609,
-      "type": "projectile_throw",
-      "x": 924,
-      "y": 200,
-      "size": 50,
-      "rotation": 135,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 12.7826,
-      "type": "projectile_throw",
-      "x": 512,
-      "y": 80,
-      "size": 65,
-      "rotation": 270,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 13.3043,
-      "type": "spawn_obstacle",
-      "x": 350,
-      "y": 350,
-      "size": 55,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 13.5652,
-      "type": "spawn_obstacle",
-      "x": 674,
-      "y": 350,
-      "size": 55,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 14.087,
-      "type": "pulse",
-      "x": 512,
       "y": 384,
-      "size": 100,
-      "duration": 0.7
+      "objectDef": {
+        "x": 100,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "rect",
+          "width": 180,
+          "height": 22,
+          "fillColor": "#e67e22",
+          "strokeColor": "#ff9944",
+          "strokeWidth": 2,
+          "glowColor": "#ff7700",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -70,
+            "offsetY": -18,
+            "localRotation": -0.4,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  -22
+                ],
+                [
+                  18,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9944",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": -20,
+            "offsetY": -18,
+            "localRotation": -0.1,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  -22
+                ],
+                [
+                  18,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9944",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 30,
+            "offsetY": -18,
+            "localRotation": 0.1,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  -22
+                ],
+                [
+                  18,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9944",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 80,
+            "offsetY": -18,
+            "localRotation": 0.4,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  -22
+                ],
+                [
+                  18,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9944",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": 220,
+            "vy": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 14.087,
+      "timestamp": 9.337,
       "type": "screen_shake",
       "x": 512,
-      "y": 384,
-      "size": 70,
-      "duration": 0.6
+      "y": 384
     },
     {
-      "timestamp": 14.6087,
-      "type": "projectile_throw",
-      "x": 150,
-      "y": 150,
-      "size": 44,
-      "rotation": 45,
-      "behavior": "spinning"
+      "timestamp": 9.598,
+      "type": "spawn_obstacle",
+      "x": 750,
+      "y": 600,
+      "objectDef": {
+        "x": 750,
+        "y": 600,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "circle",
+          "radius": 28,
+          "fillColor": "#8e44ad",
+          "strokeColor": "#d7bde2",
+          "strokeWidth": 3,
+          "glowColor": "#c39bd3",
+          "glowRadius": 16
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "sides": 8,
+              "radius": 20,
+              "fillColor": "#6c3483",
+              "strokeColor": "#d7bde2",
+              "strokeWidth": 2
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 4
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 110
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 14.8696,
-      "type": "projectile_throw",
-      "x": 874,
-      "y": 150,
-      "size": 44,
-      "rotation": 315,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 15.1304,
-      "type": "projectile_throw",
+      "timestamp": 10.12,
+      "type": "spawn_obstacle",
       "x": 512,
-      "y": 80,
-      "size": 55,
-      "rotation": 270,
-      "behavior": "homing"
+      "y": 50,
+      "objectDef": {
+        "x": 512,
+        "y": 50,
+        "spawnTime": 0,
+        "despawnTime": 6,
+        "shape": {
+          "kind": "circle",
+          "radius": 55,
+          "fillColor": "#2980b9",
+          "strokeColor": "#85c1e9",
+          "strokeWidth": 4,
+          "glowColor": "#5dade2",
+          "glowRadius": 22
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "shape": {
+              "kind": "circle",
+              "radius": 38,
+              "fillColor": "#1a5276",
+              "strokeColor": "#5dade2",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "offsetX": 14,
+            "offsetY": 8,
+            "localScale": 1,
+            "shape": {
+              "kind": "circle",
+              "radius": 12,
+              "fillColor": "#7fb3d3",
+              "strokeColor": "#aed6f1",
+              "strokeWidth": 1
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": 0,
+            "vy": 130
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 6
+          }
+        ]
+      }
     },
     {
-      "timestamp": 15.6522,
+      "timestamp": 10.642,
       "type": "spawn_obstacle",
-      "x": 256,
-      "y": 500,
-      "size": 52,
-      "behavior": "bouncing"
+      "x": 150,
+      "y": 250,
+      "objectDef": {
+        "x": 150,
+        "y": 250,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "rect",
+          "width": 12,
+          "height": 70,
+          "fillColor": "#e74c3c",
+          "glowColor": "#ff4444",
+          "glowRadius": 10
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -45,
+            "localRotation": 0,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -18,
+                  -20
+                ],
+                [
+                  18,
+                  -20
+                ],
+                [
+                  12,
+                  0
+                ],
+                [
+                  -12,
+                  0
+                ]
+              ],
+              "fillColor": "#e74c3c",
+              "strokeColor": "#ff8080",
+              "strokeWidth": 2,
+              "glowColor": "#ff4444",
+              "glowRadius": 8
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": 280,
+            "vy": 60
+          },
+          {
+            "kind": "rotate",
+            "angularSpeed": 5
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
     },
     {
-      "timestamp": 15.913,
+      "timestamp": 10.903,
       "type": "spawn_obstacle",
-      "x": 768,
-      "y": 500,
-      "size": 52,
-      "behavior": "bouncing"
+      "x": 870,
+      "y": 250,
+      "objectDef": {
+        "x": 870,
+        "y": 250,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "rect",
+          "width": 12,
+          "height": 70,
+          "fillColor": "#e74c3c",
+          "glowColor": "#ff4444",
+          "glowRadius": 10
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -45,
+            "localRotation": 0,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -18,
+                  -20
+                ],
+                [
+                  18,
+                  -20
+                ],
+                [
+                  12,
+                  0
+                ],
+                [
+                  -12,
+                  0
+                ]
+              ],
+              "fillColor": "#e74c3c",
+              "strokeColor": "#ff8080",
+              "strokeWidth": 2,
+              "glowColor": "#ff4444",
+              "glowRadius": 8
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": -280,
+            "vy": 60
+          },
+          {
+            "kind": "rotate",
+            "angularSpeed": -5
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 11.425,
+      "type": "pulse",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 12.208,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 384,
+      "objectDef": {
+        "x": 512,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "circle",
+          "radius": 42,
+          "fillColor": "#1e1e2e",
+          "strokeColor": "#ff6bff",
+          "strokeWidth": 3,
+          "glowColor": "#cc44cc",
+          "glowRadius": 20
+        },
+        "children": [
+          {
+            "offsetX": -14,
+            "offsetY": -10,
+            "localScale": 1,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#ff2222",
+              "glowColor": "#ff0000",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": 14,
+            "offsetY": -10,
+            "localScale": 1,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#ff2222",
+              "glowColor": "#ff0000",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": -30,
+            "localRotation": -0.4,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -18
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6bff",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 14,
+            "offsetY": -30,
+            "localRotation": 0.4,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -18
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6bff",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 10,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -12,
+                  0
+                ],
+                [
+                  -6,
+                  8
+                ],
+                [
+                  0,
+                  4
+                ],
+                [
+                  6,
+                  8
+                ],
+                [
+                  12,
+                  0
+                ]
+              ],
+              "fillColor": "#ff9999",
+              "strokeColor": "#fff",
+              "strokeWidth": 1
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "pulse",
+            "minScale": 0.85,
+            "maxScale": 1.15,
+            "period": 0.45
+          },
+          {
+            "kind": "orbit",
+            "centerX": 512,
+            "centerY": 384,
+            "radius": 0,
+            "angularSpeed": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 13.512,
+      "type": "spawn_obstacle",
+      "x": 300,
+      "y": 650,
+      "objectDef": {
+        "x": 300,
+        "y": 650,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -32
+            ],
+            [
+              7,
+              -10
+            ],
+            [
+              30,
+              -10
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              20,
+              26
+            ],
+            [
+              0,
+              14
+            ],
+            [
+              -20,
+              26
+            ],
+            [
+              -13,
+              4
+            ],
+            [
+              -30,
+              -10
+            ],
+            [
+              -7,
+              -10
+            ]
+          ],
+          "fillColor": "#f39c12",
+          "strokeColor": "#ffe08a",
+          "strokeWidth": 2,
+          "glowColor": "#ffcc00",
+          "glowRadius": 16
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 2.5
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 130
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 14.556,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 720,
+      "objectDef": {
+        "x": 512,
+        "y": 720,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "rect",
+          "width": 200,
+          "height": 18,
+          "fillColor": "#e74c3c",
+          "strokeColor": "#ff8888",
+          "strokeWidth": 2,
+          "glowColor": "#ff2222",
+          "glowRadius": 14
+        },
+        "children": [
+          {
+            "offsetX": -80,
+            "offsetY": -14,
+            "localRotation": 0.2,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -28
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6666",
+              "strokeColor": "#ffaaaa",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": -30,
+            "offsetY": -16,
+            "localRotation": 0.05,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -30
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6666",
+              "strokeColor": "#ffaaaa",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 20,
+            "offsetY": -16,
+            "localRotation": -0.05,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -30
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6666",
+              "strokeColor": "#ffaaaa",
+              "strokeWidth": 1
+            }
+          },
+          {
+            "offsetX": 70,
+            "offsetY": -14,
+            "localRotation": -0.2,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  8,
+                  -28
+                ],
+                [
+                  16,
+                  0
+                ]
+              ],
+              "fillColor": "#ff6666",
+              "strokeColor": "#ffaaaa",
+              "strokeWidth": 1
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "vx": 0,
+            "vy": -260
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 15.339,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 15.6,
+      "type": "spawn_obstacle",
+      "x": 760,
+      "y": 100,
+      "objectDef": {
+        "x": 760,
+        "y": 100,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "circle",
+          "radius": 30,
+          "fillColor": "#c0392b",
+          "strokeColor": "#ff6b6b",
+          "strokeWidth": 3,
+          "glowColor": "#ff4444",
+          "glowRadius": 16
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "shape": {
+              "kind": "polygon",
+              "sides": 8,
+              "radius": 22,
+              "fillColor": "#922b21",
+              "strokeColor": "#ff8888",
+              "strokeWidth": 2
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 5
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 150
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
     },
     {
       "timestamp": 16.063,
-      "type": "spawn_obstacle",
-      "x": 800,
-      "y": 200,
-      "size": 60,
-      "rotation": 0,
-      "duration": 2.087,
-      "behavior": "homing"
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 18
     },
     {
       "timestamp": 16.324,
       "type": "projectile_throw",
-      "x": 900,
-      "y": 384,
-      "size": 28,
-      "rotation": 45,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 16.845,
-      "type": "projectile_throw",
-      "x": 850,
-      "y": 150,
-      "size": 24,
-      "rotation": 0,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 17.106,
-      "type": "spawn_obstacle",
-      "x": 950,
-      "y": 600,
-      "size": 55,
-      "rotation": 30,
-      "duration": 1.0435,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 17.366,
-      "type": "projectile_throw",
-      "x": 820,
-      "y": 300,
-      "size": 22,
-      "rotation": 90,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 17.888,
-      "type": "projectile_throw",
-      "x": 900,
-      "y": 500,
-      "size": 26,
-      "rotation": 135,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 18.148,
-      "type": "screen_shake",
-      "x": 512,
-      "y": 384,
-      "size": 40,
-      "rotation": 0,
-      "duration": 0.2609
-    },
-    {
-      "timestamp": 18.148,
-      "type": "spawn_obstacle",
-      "x": 750,
-      "y": 700,
-      "size": 70,
-      "rotation": 0,
-      "duration": 2.087,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 18.409,
-      "type": "projectile_throw",
-      "x": 870,
-      "y": 250,
-      "size": 20,
-      "rotation": 180,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 18.67,
-      "type": "projectile_throw",
-      "x": 930,
-      "y": 450,
-      "size": 22,
-      "rotation": 225,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 19.191,
-      "type": "spawn_obstacle",
-      "x": 512,
-      "y": 100,
-      "size": 50,
-      "rotation": 45,
-      "duration": 1.5652,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 19.452,
-      "type": "projectile_throw",
-      "x": 780,
-      "y": 600,
-      "size": 25,
-      "rotation": 270,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 19.713,
-      "type": "projectile_throw",
-      "x": 920,
+      "x": 80,
       "y": 200,
-      "size": 20,
-      "rotation": 315,
-      "behavior": "bouncing"
+      "size": 38,
+      "behavior": "homing",
+      "objectDef": {
+        "x": 80,
+        "y": 200,
+        "spawnTime": 16.324,
+        "despawnTime": 21,
+        "shape": {
+          "kind": "polygon",
+          "sides": 8,
+          "radius": 22,
+          "fillColor": "#c0c0ff",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 2,
+          "glowColor": "#8888ff",
+          "glowRadius": 14
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 3.5
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 120
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4.5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 20.234,
-      "type": "spawn_obstacle",
-      "x": 860,
-      "y": 400,
-      "size": 65,
-      "rotation": 0,
-      "duration": 2.087,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 20.495,
+      "timestamp": 16.585,
       "type": "projectile_throw",
-      "x": 800,
-      "y": 680,
-      "size": 22,
-      "rotation": 0,
-      "behavior": "homing"
+      "x": 944,
+      "y": 200,
+      "size": 38,
+      "behavior": "homing",
+      "objectDef": {
+        "x": 944,
+        "y": 200,
+        "spawnTime": 16.585,
+        "despawnTime": 21,
+        "shape": {
+          "kind": "polygon",
+          "sides": 8,
+          "radius": 22,
+          "fillColor": "#c0c0ff",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 2,
+          "glowColor": "#8888ff",
+          "glowRadius": 14
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -3.5
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 120
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4.5
+          }
+        ]
+      }
     },
     {
-      "timestamp": 21.017,
-      "type": "screen_shake",
+      "timestamp": 17.107,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 80,
+      "size": 60,
+      "objectDef": {
+        "x": 512,
+        "y": 80,
+        "spawnTime": 17.107,
+        "despawnTime": 22.5,
+        "rotation": 0,
+        "scale": 1,
+        "shape": {
+          "kind": "circle",
+          "radius": 1,
+          "fillColor": "transparent"
+        },
+        "children": [
+          {
+            "offsetX": -60,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -32
+                ],
+                [
+                  8,
+                  -14
+                ],
+                [
+                  28,
+                  -14
+                ],
+                [
+                  12,
+                  -2
+                ],
+                [
+                  18,
+                  18
+                ],
+                [
+                  0,
+                  6
+                ],
+                [
+                  -18,
+                  18
+                ],
+                [
+                  -12,
+                  -2
+                ],
+                [
+                  -28,
+                  -14
+                ],
+                [
+                  -8,
+                  -14
+                ]
+              ],
+              "fillColor": "#ffe066",
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2,
+              "glowColor": "#ffdd00",
+              "glowRadius": 12
+            }
+          },
+          {
+            "offsetX": 60,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -32
+                ],
+                [
+                  8,
+                  -14
+                ],
+                [
+                  28,
+                  -14
+                ],
+                [
+                  12,
+                  -2
+                ],
+                [
+                  18,
+                  18
+                ],
+                [
+                  0,
+                  6
+                ],
+                [
+                  -18,
+                  18
+                ],
+                [
+                  -12,
+                  -2
+                ],
+                [
+                  -28,
+                  -14
+                ],
+                [
+                  -8,
+                  -14
+                ]
+              ],
+              "fillColor": "#ffe066",
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2,
+              "glowColor": "#ffdd00",
+              "glowRadius": 12
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": 180
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 17.629,
+      "type": "projectile_throw",
+      "x": 200,
+      "y": 768,
+      "size": 14,
+      "behavior": "bouncing",
+      "objectDef": {
+        "x": 200,
+        "y": 768,
+        "spawnTime": 17.629,
+        "shape": {
+          "kind": "circle",
+          "radius": 10,
+          "fillColor": "#ff6688",
+          "strokeColor": "#ffaacc",
+          "strokeWidth": 2,
+          "glowColor": "#ff3366",
+          "glowRadius": 8
+        },
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 140,
+            "velocityY": -200
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 17.629,
+      "type": "projectile_throw",
+      "x": 824,
+      "y": 768,
+      "size": 14,
+      "behavior": "bouncing",
+      "objectDef": {
+        "x": 824,
+        "y": 768,
+        "spawnTime": 17.629,
+        "shape": {
+          "kind": "circle",
+          "radius": 10,
+          "fillColor": "#ff6688",
+          "strokeColor": "#ffaacc",
+          "strokeWidth": 2,
+          "glowColor": "#ff3366",
+          "glowRadius": 8
+        },
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": -140,
+            "velocityY": -200
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 18.151,
+      "type": "spawn_obstacle",
       "x": 512,
       "y": 384,
-      "size": 50,
-      "rotation": 0,
-      "duration": 0.2609
+      "size": 80,
+      "objectDef": {
+        "x": 512,
+        "y": 384,
+        "spawnTime": 18.151,
+        "despawnTime": 24,
+        "rotation": 0,
+        "scale": 1,
+        "shape": {
+          "kind": "circle",
+          "radius": 1,
+          "fillColor": "transparent"
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 28,
+              "fillColor": "#220044",
+              "strokeColor": "#aa44ff",
+              "strokeWidth": 3,
+              "glowColor": "#8800ff",
+              "glowRadius": 20
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -38
+                ],
+                [
+                  6,
+                  -14
+                ],
+                [
+                  32,
+                  -14
+                ],
+                [
+                  12,
+                  4
+                ],
+                [
+                  20,
+                  30
+                ],
+                [
+                  0,
+                  16
+                ],
+                [
+                  -20,
+                  30
+                ],
+                [
+                  -12,
+                  4
+                ],
+                [
+                  -32,
+                  -14
+                ],
+                [
+                  -6,
+                  -14
+                ],
+                [
+                  0,
+                  -38
+                ]
+              ],
+              "fillColor": "transparent",
+              "strokeColor": "#ff44ff",
+              "strokeWidth": 2,
+              "glowColor": "#ff00ff",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 38,
+            "offsetY": 0,
+            "localScale": 0.55,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -38
+                ],
+                [
+                  6,
+                  -14
+                ],
+                [
+                  32,
+                  -14
+                ],
+                [
+                  12,
+                  4
+                ],
+                [
+                  20,
+                  30
+                ],
+                [
+                  0,
+                  16
+                ],
+                [
+                  -20,
+                  30
+                ],
+                [
+                  -12,
+                  4
+                ],
+                [
+                  -32,
+                  -14
+                ],
+                [
+                  -6,
+                  -14
+                ]
+              ],
+              "fillColor": "#aa44ff",
+              "strokeColor": "#ffffff",
+              "strokeWidth": 1,
+              "glowColor": "#cc88ff",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": -38,
+            "offsetY": 0,
+            "localScale": 0.55,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -38
+                ],
+                [
+                  6,
+                  -14
+                ],
+                [
+                  32,
+                  -14
+                ],
+                [
+                  12,
+                  4
+                ],
+                [
+                  20,
+                  30
+                ],
+                [
+                  0,
+                  16
+                ],
+                [
+                  -20,
+                  30
+                ],
+                [
+                  -12,
+                  4
+                ],
+                [
+                  -32,
+                  -14
+                ],
+                [
+                  -6,
+                  -14
+                ]
+              ],
+              "fillColor": "#aa44ff",
+              "strokeColor": "#ffffff",
+              "strokeWidth": 1,
+              "glowColor": "#cc88ff",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 38,
+            "localScale": 0.55,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -38
+                ],
+                [
+                  6,
+                  -14
+                ],
+                [
+                  32,
+                  -14
+                ],
+                [
+                  12,
+                  4
+                ],
+                [
+                  20,
+                  30
+                ],
+                [
+                  0,
+                  16
+                ],
+                [
+                  -20,
+                  30
+                ],
+                [
+                  -12,
+                  4
+                ],
+                [
+                  -32,
+                  -14
+                ],
+                [
+                  -6,
+                  -14
+                ]
+              ],
+              "fillColor": "#aa44ff",
+              "strokeColor": "#ffffff",
+              "strokeWidth": 1,
+              "glowColor": "#cc88ff",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": -38,
+            "localScale": 0.55,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  0,
+                  -38
+                ],
+                [
+                  6,
+                  -14
+                ],
+                [
+                  32,
+                  -14
+                ],
+                [
+                  12,
+                  4
+                ],
+                [
+                  20,
+                  30
+                ],
+                [
+                  0,
+                  16
+                ],
+                [
+                  -20,
+                  30
+                ],
+                [
+                  -12,
+                  4
+                ],
+                [
+                  -32,
+                  -14
+                ],
+                [
+                  -6,
+                  -14
+                ]
+              ],
+              "fillColor": "#aa44ff",
+              "strokeColor": "#ffffff",
+              "strokeWidth": 1,
+              "glowColor": "#cc88ff",
+              "glowRadius": 8
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 1.2
+          },
+          {
+            "kind": "pulse",
+            "minScale": 0.9,
+            "maxScale": 1.15,
+            "period": 0.8
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 6
+          }
+        ]
+      }
     },
     {
-      "timestamp": 21.017,
-      "type": "spawn_obstacle",
-      "x": 950,
+      "timestamp": 19.194,
+      "type": "projectile_throw",
+      "x": 100,
+      "y": 384,
+      "size": 20,
+      "behavior": "spinning",
+      "objectDef": {
+        "x": 100,
+        "y": 384,
+        "spawnTime": 19.194,
+        "shape": {
+          "kind": "circle",
+          "radius": 1,
+          "fillColor": "transparent"
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -4,
+                  -28
+                ],
+                [
+                  4,
+                  -28
+                ],
+                [
+                  6,
+                  -8
+                ],
+                [
+                  18,
+                  -4
+                ],
+                [
+                  18,
+                  4
+                ],
+                [
+                  6,
+                  8
+                ],
+                [
+                  4,
+                  28
+                ],
+                [
+                  -4,
+                  28
+                ],
+                [
+                  -6,
+                  8
+                ],
+                [
+                  -18,
+                  4
+                ],
+                [
+                  -18,
+                  -4
+                ],
+                [
+                  -6,
+                  -8
+                ]
+              ],
+              "fillColor": "#ff8844",
+              "strokeColor": "#ffcc88",
+              "strokeWidth": 2,
+              "glowColor": "#ff5500",
+              "glowRadius": 12
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 5
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": 260,
+            "velocityY": 0
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 19.716,
+      "type": "projectile_throw",
+      "x": 924,
       "y": 300,
-      "size": 75,
-      "rotation": 0,
-      "duration": 1.0435,
-      "behavior": "homing"
+      "size": 16,
+      "behavior": "homing",
+      "objectDef": {
+        "x": 924,
+        "y": 300,
+        "spawnTime": 19.716,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -18
+            ],
+            [
+              4,
+              -6
+            ],
+            [
+              18,
+              -6
+            ],
+            [
+              7,
+              2
+            ],
+            [
+              11,
+              16
+            ],
+            [
+              0,
+              8
+            ],
+            [
+              -11,
+              16
+            ],
+            [
+              -7,
+              2
+            ],
+            [
+              -18,
+              -6
+            ],
+            [
+              -4,
+              -6
+            ]
+          ],
+          "fillColor": "#ffdd44",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 1,
+          "glowColor": "#ffaa00",
+          "glowRadius": 8
+        },
+        "behaviors": [
+          {
+            "kind": "homing",
+            "homingSpeed": 150
+          },
+          {
+            "kind": "rotate",
+            "angularSpeed": 4
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
     },
     {
-      "timestamp": 21.278,
-      "type": "projectile_throw",
-      "x": 700,
-      "y": 150,
-      "size": 28,
-      "rotation": 60,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 21.538,
-      "type": "projectile_throw",
-      "x": 880,
-      "y": 550,
-      "size": 24,
-      "rotation": 120,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 22.06,
-      "type": "spawn_obstacle",
-      "x": 750,
-      "y": 384,
-      "size": 60,
-      "rotation": 45,
-      "duration": 2.087,
-      "behavior": "bouncing"
-    },
-    {
-      "timestamp": 22.321,
-      "type": "projectile_throw",
-      "x": 960,
-      "y": 100,
-      "size": 20,
-      "rotation": 180,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 22.842,
-      "type": "projectile_throw",
-      "x": 830,
-      "y": 650,
-      "size": 26,
-      "rotation": 240,
-      "behavior": "spinning"
-    },
-    {
-      "timestamp": 23.364,
-      "type": "spawn_obstacle",
-      "x": 900,
-      "y": 350,
-      "size": 55,
-      "rotation": 0,
-      "duration": 1.5652,
-      "behavior": "homing"
-    },
-    {
-      "timestamp": 23.625,
+      "timestamp": 20.499,
       "type": "screen_shake",
       "x": 512,
       "y": 384,
-      "size": 60,
-      "rotation": 0,
-      "duration": 0.5217
+      "size": 22
+    },
+    {
+      "timestamp": 20.76,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 0,
+      "size": 70,
+      "objectDef": {
+        "x": 512,
+        "y": 0,
+        "spawnTime": 20.76,
+        "despawnTime": 24.095,
+        "rotation": 0,
+        "scale": 1,
+        "shape": {
+          "kind": "circle",
+          "radius": 1,
+          "fillColor": "transparent"
+        },
+        "children": [
+          {
+            "offsetX": -30,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": -0.3,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -10,
+                  0
+                ],
+                [
+                  -6,
+                  -50
+                ],
+                [
+                  0,
+                  -60
+                ],
+                [
+                  6,
+                  -50
+                ],
+                [
+                  10,
+                  0
+                ],
+                [
+                  8,
+                  10
+                ],
+                [
+                  0,
+                  14
+                ],
+                [
+                  -8,
+                  10
+                ]
+              ],
+              "fillColor": "#ffaa88",
+              "strokeColor": "#ff6644",
+              "strokeWidth": 2,
+              "glowColor": "#ff4422",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 30,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0.3,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -10,
+                  0
+                ],
+                [
+                  -6,
+                  -50
+                ],
+                [
+                  0,
+                  -60
+                ],
+                [
+                  6,
+                  -50
+                ],
+                [
+                  10,
+                  0
+                ],
+                [
+                  8,
+                  10
+                ],
+                [
+                  0,
+                  14
+                ],
+                [
+                  -8,
+                  10
+                ]
+              ],
+              "fillColor": "#ffaa88",
+              "strokeColor": "#ff6644",
+              "strokeWidth": 2,
+              "glowColor": "#ff4422",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 20,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 36,
+              "fillColor": "#cc8866",
+              "strokeColor": "#ff6644",
+              "strokeWidth": 3,
+              "glowColor": "#ff4422",
+              "glowRadius": 14
+            }
+          },
+          {
+            "offsetX": -14,
+            "offsetY": 8,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#220000",
+              "strokeColor": "#ff2200",
+              "strokeWidth": 1,
+              "glowColor": "#ff0000",
+              "glowRadius": 6
+            }
+          },
+          {
+            "offsetX": 14,
+            "offsetY": 8,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#220000",
+              "strokeColor": "#ff2200",
+              "strokeWidth": 1,
+              "glowColor": "#ff0000",
+              "glowRadius": 6
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 26,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -12,
+                  -4
+                ],
+                [
+                  -6,
+                  4
+                ],
+                [
+                  0,
+                  0
+                ],
+                [
+                  6,
+                  4
+                ],
+                [
+                  12,
+                  -4
+                ]
+              ],
+              "fillColor": "#ff8866",
+              "strokeColor": "#ff4422",
+              "strokeWidth": 1
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": 220
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 23.313,
+      "type": "projectile_throw",
+      "x": 256,
+      "y": 100,
+      "size": 16,
+      "behavior": "bouncing",
+      "objectDef": {
+        "x": 256,
+        "y": 100,
+        "spawnTime": 23.313,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -16
+            ],
+            [
+              5,
+              -5
+            ],
+            [
+              17,
+              -5
+            ],
+            [
+              7,
+              2
+            ],
+            [
+              11,
+              14
+            ],
+            [
+              0,
+              7
+            ],
+            [
+              -11,
+              14
+            ],
+            [
+              -7,
+              2
+            ],
+            [
+              -17,
+              -5
+            ],
+            [
+              -5,
+              -5
+            ]
+          ],
+          "fillColor": "#88ddff",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 2,
+          "glowColor": "#44aaff",
+          "glowRadius": 10
+        },
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 180,
+            "velocityY": 160
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "rotate",
+            "angularSpeed": 3
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 23.574,
+      "type": "projectile_throw",
+      "x": 768,
+      "y": 100,
+      "size": 16,
+      "behavior": "bouncing",
+      "objectDef": {
+        "x": 768,
+        "y": 100,
+        "spawnTime": 23.574,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -16
+            ],
+            [
+              5,
+              -5
+            ],
+            [
+              17,
+              -5
+            ],
+            [
+              7,
+              2
+            ],
+            [
+              11,
+              14
+            ],
+            [
+              0,
+              7
+            ],
+            [
+              -11,
+              14
+            ],
+            [
+              -7,
+              2
+            ],
+            [
+              -17,
+              -5
+            ],
+            [
+              -5,
+              -5
+            ]
+          ],
+          "fillColor": "#88ddff",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 2,
+          "glowColor": "#44aaff",
+          "glowRadius": 10
+        },
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": -180,
+            "velocityY": 160
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "rotate",
+            "angularSpeed": -3
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 24.095,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 100,
+      "objectDef": {
+        "x": 512,
+        "y": 100,
+        "spawnTime": 0,
+        "despawnTime": 6,
+        "shape": {
+          "kind": "circle",
+          "radius": 1,
+          "fillColor": "#ffffff",
+          "alpha": 0
+        },
+        "children": [
+          {
+            "offsetX": -60,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  -30
+                ],
+                [
+                  0,
+                  -50
+                ],
+                [
+                  10,
+                  -30
+                ],
+                [
+                  18,
+                  0
+                ],
+                [
+                  10,
+                  10
+                ],
+                [
+                  -10,
+                  10
+                ]
+              ],
+              "fillColor": "#ff6622",
+              "strokeColor": "#ff9944",
+              "strokeWidth": 2,
+              "glowColor": "#ff4400",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 60,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  18,
+                  0
+                ],
+                [
+                  10,
+                  -30
+                ],
+                [
+                  0,
+                  -50
+                ],
+                [
+                  -10,
+                  -30
+                ],
+                [
+                  -18,
+                  0
+                ],
+                [
+                  -10,
+                  10
+                ],
+                [
+                  10,
+                  10
+                ]
+              ],
+              "fillColor": "#ff6622",
+              "strokeColor": "#ff9944",
+              "strokeWidth": 2,
+              "glowColor": "#ff4400",
+              "glowRadius": 10
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": 180
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 24.356,
+      "type": "projectile_throw",
+      "x": 150,
+      "y": 200,
+      "size": 14,
+      "rotation": 0
+    },
+    {
+      "timestamp": 24.617,
+      "type": "projectile_throw",
+      "x": 874,
+      "y": 200,
+      "size": 14,
+      "rotation": 0
+    },
+    {
+      "timestamp": 24.878,
+      "type": "spawn_obstacle",
+      "x": 200,
+      "y": 384,
+      "objectDef": {
+        "x": 200,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "circle",
+          "radius": 28,
+          "fillColor": "#cc2255",
+          "strokeColor": "#ff44aa",
+          "strokeWidth": 3,
+          "glowColor": "#ff0066",
+          "glowRadius": 14
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -38,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 27,
+            "offsetY": -27,
+            "localScale": 1,
+            "localRotation": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 38,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 90,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 27,
+            "offsetY": 27,
+            "localScale": 1,
+            "localRotation": 135,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 38,
+            "localScale": 1,
+            "localRotation": 180,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -27,
+            "offsetY": 27,
+            "localScale": 1,
+            "localRotation": 225,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -38,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 270,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -27,
+            "offsetY": -27,
+            "localScale": 1,
+            "localRotation": 315,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 2.5
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": 220,
+            "velocityY": 0
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 25.139,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 50,
+      "size": 10,
+      "rotation": 0
+    },
+    {
+      "timestamp": 25.4,
+      "type": "spawn_obstacle",
+      "x": 824,
+      "y": 384,
+      "objectDef": {
+        "x": 824,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "circle",
+          "radius": 28,
+          "fillColor": "#cc2255",
+          "strokeColor": "#ff44aa",
+          "strokeWidth": 3,
+          "glowColor": "#ff0066",
+          "glowRadius": 14
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -38,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 27,
+            "offsetY": -27,
+            "localScale": 1,
+            "localRotation": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 38,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 90,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 27,
+            "offsetY": 27,
+            "localScale": 1,
+            "localRotation": 135,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 38,
+            "localScale": 1,
+            "localRotation": 180,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -27,
+            "offsetY": 27,
+            "localScale": 1,
+            "localRotation": 225,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -38,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 270,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          },
+          {
+            "offsetX": -27,
+            "offsetY": -27,
+            "localScale": 1,
+            "localRotation": 315,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -14
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff44aa"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -2.5
+          },
+          {
+            "kind": "linearMove",
+            "velocityX": -220,
+            "velocityY": 0
+          },
+          {
+            "kind": "bounce"
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 25.922,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 26.183,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 384,
+      "objectDef": {
+        "x": 512,
+        "y": 384,
+        "spawnTime": 0,
+        "despawnTime": 6,
+        "shape": {
+          "kind": "polygon",
+          "points": [
+            [
+              0,
+              -55
+            ],
+            [
+              12,
+              -20
+            ],
+            [
+              48,
+              -20
+            ],
+            [
+              20,
+              8
+            ],
+            [
+              30,
+              44
+            ],
+            [
+              0,
+              24
+            ],
+            [
+              -30,
+              44
+            ],
+            [
+              -20,
+              8
+            ],
+            [
+              -48,
+              -20
+            ],
+            [
+              -12,
+              -20
+            ]
+          ],
+          "fillColor": "#ff8800",
+          "strokeColor": "#ffcc44",
+          "strokeWidth": 3,
+          "glowColor": "#ffaa00",
+          "glowRadius": 20
+        },
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 1.8
+          },
+          {
+            "kind": "pulse",
+            "minScale": 0.9,
+            "maxScale": 1.2,
+            "period": 0.5
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 26.705,
+      "type": "projectile_throw",
+      "x": 100,
+      "y": 600,
+      "size": 12,
+      "rotation": 0
+    },
+    {
+      "timestamp": 26.966,
+      "type": "projectile_throw",
+      "x": 924,
+      "y": 600,
+      "size": 12,
+      "rotation": 0
+    },
+    {
+      "timestamp": 27.488,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 50,
+      "objectDef": {
+        "x": 512,
+        "y": 50,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "rect",
+          "width": 420,
+          "height": 18,
+          "fillColor": "#ff3355",
+          "strokeColor": "#ff88aa",
+          "strokeWidth": 2,
+          "glowColor": "#ff0033",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -180,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -22
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff88aa"
+            }
+          },
+          {
+            "offsetX": -90,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -22
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff88aa"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -22
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff88aa"
+            }
+          },
+          {
+            "offsetX": 90,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -22
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff88aa"
+            }
+          },
+          {
+            "offsetX": 180,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -6,
+                  0
+                ],
+                [
+                  0,
+                  -22
+                ],
+                [
+                  6,
+                  0
+                ]
+              ],
+              "fillColor": "#ff88aa"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": 200
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 28.271,
+      "type": "projectile_throw",
+      "x": 300,
+      "y": 768,
+      "size": 11,
+      "rotation": 0
+    },
+    {
+      "timestamp": 28.793,
+      "type": "spawn_obstacle",
+      "x": 150,
+      "y": 150,
+      "objectDef": {
+        "x": 150,
+        "y": 150,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "circle",
+          "radius": 22,
+          "fillColor": "#9933ff",
+          "strokeColor": "#cc88ff",
+          "strokeWidth": 2,
+          "glowColor": "#aa00ff",
+          "glowRadius": 16
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -32,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 22,
+            "offsetY": -22,
+            "localScale": 1,
+            "localRotation": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 32,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 90,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 22,
+            "offsetY": 22,
+            "localScale": 1,
+            "localRotation": 135,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 32,
+            "localScale": 1,
+            "localRotation": 180,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": 22,
+            "localScale": 1,
+            "localRotation": 225,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -32,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 270,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": -22,
+            "localScale": 1,
+            "localRotation": 315,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": 3
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 90
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 29.315,
+      "type": "projectile_throw",
+      "x": 724,
+      "y": 768,
+      "size": 11,
+      "rotation": 0
+    },
+    {
+      "timestamp": 29.837,
+      "type": "spawn_obstacle",
+      "x": 874,
+      "y": 150,
+      "objectDef": {
+        "x": 874,
+        "y": 150,
+        "spawnTime": 0,
+        "despawnTime": 5,
+        "shape": {
+          "kind": "circle",
+          "radius": 22,
+          "fillColor": "#9933ff",
+          "strokeColor": "#cc88ff",
+          "strokeWidth": 2,
+          "glowColor": "#aa00ff",
+          "glowRadius": 16
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": -32,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 22,
+            "offsetY": -22,
+            "localScale": 1,
+            "localRotation": 45,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 32,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 90,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 22,
+            "offsetY": 22,
+            "localScale": 1,
+            "localRotation": 135,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": 32,
+            "localScale": 1,
+            "localRotation": 180,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": 22,
+            "localScale": 1,
+            "localRotation": 225,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -32,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 270,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          },
+          {
+            "offsetX": -22,
+            "offsetY": -22,
+            "localScale": 1,
+            "localRotation": 315,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -5,
+                  0
+                ],
+                [
+                  0,
+                  -12
+                ],
+                [
+                  5,
+                  0
+                ]
+              ],
+              "fillColor": "#cc88ff"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "rotate",
+            "angularSpeed": -3
+          },
+          {
+            "kind": "homing",
+            "homingSpeed": 90
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 30.359,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "timestamp": 30.62,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 768,
+      "objectDef": {
+        "x": 512,
+        "y": 768,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "rect",
+          "width": 28,
+          "height": 80,
+          "fillColor": "#ff4422",
+          "strokeColor": "#ffaa66",
+          "strokeWidth": 2,
+          "glowColor": "#ff2200",
+          "glowRadius": 12
+        },
+        "children": [
+          {
+            "offsetX": -18,
+            "offsetY": -50,
+            "localScale": 1,
+            "localRotation": -20,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  -30
+                ],
+                [
+                  4,
+                  0
+                ]
+              ],
+              "fillColor": "#ffaa66"
+            }
+          },
+          {
+            "offsetX": -8,
+            "offsetY": -55,
+            "localScale": 1,
+            "localRotation": -8,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  -30
+                ],
+                [
+                  4,
+                  0
+                ]
+              ],
+              "fillColor": "#ffaa66"
+            }
+          },
+          {
+            "offsetX": 8,
+            "offsetY": -55,
+            "localScale": 1,
+            "localRotation": 8,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  -30
+                ],
+                [
+                  4,
+                  0
+                ]
+              ],
+              "fillColor": "#ffaa66"
+            }
+          },
+          {
+            "offsetX": 18,
+            "offsetY": -50,
+            "localScale": 1,
+            "localRotation": 20,
+            "shape": {
+              "kind": "polygon",
+              "points": [
+                [
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  -30
+                ],
+                [
+                  4,
+                  0
+                ]
+              ],
+              "fillColor": "#ffaa66"
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "linearMove",
+            "velocityX": 0,
+            "velocityY": -340
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 3.5
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 31.142,
+      "type": "projectile_throw",
+      "x": 256,
+      "y": 300,
+      "size": 10,
+      "rotation": 0
+    },
+    {
+      "timestamp": 31.403,
+      "type": "projectile_throw",
+      "x": 768,
+      "y": 300,
+      "size": 10,
+      "rotation": 0
+    },
+    {
+      "timestamp": 31.664,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 250,
+      "objectDef": {
+        "x": 512,
+        "y": 250,
+        "spawnTime": 0,
+        "despawnTime": 4,
+        "shape": {
+          "kind": "circle",
+          "radius": 18,
+          "fillColor": "#0055ff",
+          "strokeColor": "#66aaff",
+          "strokeWidth": 2,
+          "glowColor": "#0033cc",
+          "glowRadius": 18
+        },
+        "children": [
+          {
+            "offsetX": 0,
+            "offsetY": 0,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#aaddff",
+              "glowColor": "#ffffff",
+              "glowRadius": 8
+            }
+          },
+          {
+            "offsetX": -30,
+            "offsetY": 15,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#0055ff",
+              "strokeColor": "#66aaff",
+              "strokeWidth": 1.5,
+              "glowColor": "#0033cc",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 30,
+            "offsetY": 15,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#0055ff",
+              "strokeColor": "#66aaff",
+              "strokeWidth": 1.5,
+              "glowColor": "#0033cc",
+              "glowRadius": 10
+            }
+          },
+          {
+            "offsetX": 0,
+            "offsetY": -30,
+            "localScale": 1,
+            "localRotation": 0,
+            "shape": {
+              "kind": "circle",
+              "radius": 8,
+              "fillColor": "#0055ff",
+              "strokeColor": "#66aaff",
+              "strokeWidth": 1.5,
+              "glowColor": "#0033cc",
+              "glowRadius": 10
+            }
+          }
+        ],
+        "behaviors": [
+          {
+            "kind": "orbit",
+            "centerX": 512,
+            "centerY": 384,
+            "radius": 160,
+            "angularSpeed": 2.2
+          },
+          {
+            "kind": "pulse",
+            "minScale": 0.85,
+            "maxScale": 1.15,
+            "period": 0.6
+          },
+          {
+            "kind": "dieAfter",
+            "lifetime": 4
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": 32.126,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 600,
+      "size": 13,
+      "rotation": 0
     }
   ]
 }
