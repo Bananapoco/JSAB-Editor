@@ -2,11 +2,40 @@ import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 import { LevelData, LevelEvent } from '../types';
 
-export class Game extends Scene
-{
-    camera: Phaser.Cameras.Scene2D.Camera;
-    player: Phaser.GameObjects.Rectangle & { body: Phaser.Physics.Arcade.Body };
-    keys: {
+import { Vector2 } from '../engine/Vector2';
+import { CompositeObject } from '../engine/CompositeObject';
+import { CircleShape } from '../engine/shapes/CircleShape';
+import { RectShape } from '../engine/shapes/RectShape';
+import { CircleCollider, collidersOverlap } from '../engine/colliders/Collider';
+import { ObjectFactory } from '../engine/ObjectFactory';
+import { DieAfterBehavior } from '../engine/behaviors/DieAfterBehavior';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const WORLD_W = 1024;
+const WORLD_H = 768;
+const PLAYER_HALF = 10;
+const PLAYER_SPEED = 600;       // px/s normal
+const PLAYER_DASH_SPEED = 1200; // px/s during dash
+const DASH_DURATION_MS = 150;
+const DASH_COOLDOWN_MS = 500;
+const TELEGRAPH_SEC = 0.5;      // seconds of warning before hazard becomes active
+const FIXED_STEP_MS = 1000 / 60;
+const MAX_DELTA_MS = 100;
+
+// ---------------------------------------------------------------------------
+// Game Scene
+// ---------------------------------------------------------------------------
+
+export class Game extends Scene {
+    // --- Canvas rendering ---
+    private ctx!: CanvasRenderingContext2D;
+
+    // --- Phaser UI (kept as Phaser objects for simplicity) ---
+    private progressBar!: Phaser.GameObjects.Rectangle;
+    private keys!: {
         W: Phaser.Input.Keyboard.Key;
         A: Phaser.Input.Keyboard.Key;
         S: Phaser.Input.Keyboard.Key;
@@ -14,72 +43,86 @@ export class Game extends Scene
         SPACE: Phaser.Input.Keyboard.Key;
     };
 
+    // --- Game state ---
     private levelData: LevelData | null = null;
     private music: Phaser.Sound.BaseSound | null = null;
-    private enemyGroup: Phaser.Physics.Arcade.Group;
-    private timelineIndex = 0;
     private isPlaying = false;
+    private timelineIndex = 0;
+
+    // --- Objects ---
+    private playerObj!: CompositeObject;
+    private hazards: CompositeObject[] = [];
+    private telegraphs: CompositeObject[] = [];
+
+    // --- Player movement (fixed-step accumulator) ---
+    private accMs = 0;
+    private inputDir = new Vector2();
+
+    // --- Dash ---
     private isDashing = false;
-    private dashCooldown = 0;
-    private lastDashTime = 0;
-    private progressBar: Phaser.GameObjects.Rectangle;
+    private lastDashMs = -Infinity;
 
-    private _tempVec: Phaser.Math.Vector2 = new Phaser.Math.Vector2();
-    private _accumulatorMs = 0;
-    private _fixedStepMs = 1000 / 60; 
-    private _maxDeltaMs = 100; 
+    // --- Hit flash ---
+    private playerAlpha = 1;
+    private hitFlashMs = 0;
+    private invulMs = 0;         // remaining invulnerability time in ms
 
-    constructor ()
-    {
-        super('Game');
-    }
+    // --- Screen shake ---
+    private shakeMs = 0;
+    private shakeIntensity = 0;
 
-    create ()
-    {
-        this.camera = this.cameras.main;
-        this.camera.setBackgroundColor(0x000000);
+    constructor() { super('Game'); }
 
+    // -----------------------------------------------------------------------
+    // create
+    // -----------------------------------------------------------------------
+
+    create() {
+        // Grab the raw 2D context from Phaser's canvas
+        this.ctx = (this.sys.game.canvas as HTMLCanvasElement).getContext('2d')!;
+
+        // Phaser UI elements (drawn by Phaser, appear under our custom layer)
         const { width, height } = this.scale;
 
-        this.enemyGroup = this.physics.add.group();
-
-        // --- Back to Menu Button ---
-        const backBtn = this.add.text(20, 20, '◀ MENU', {
-            fontFamily: 'Arial Black', fontSize: '24px', color: '#ffffff'
+        this.add.text(20, 20, '◀ MENU', {
+            fontFamily: 'Arial Black', fontSize: '24px', color: '#ffffff',
         }).setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-            if (this.music) this.music.stop();
-            this.scene.start('MainMenu');
-        });
+          .on('pointerdown', () => {
+              if (this.music) this.music.stop();
+              this.scene.start('MainMenu');
+          })
+          .setDepth(10);
 
-        this.progressBar = this.add.rectangle(0, height, 0, 10, 0x00ffff).setOrigin(0, 1);
+        this.progressBar = this.add.rectangle(0, height, 0, 6, 0x00ffff).setOrigin(0, 1).setDepth(10);
 
-        // Player: Small cyan square, center of screen
-        this.player = this.add.rectangle(width / 2, height / 2, 20, 20, 0x00ffff) as any;
-        this.physics.add.existing(this.player);
-        this.player.body.setCollideWorldBounds(true);
-        
-        // Knockback logic
-        this.physics.add.overlap(this.player, this.enemyGroup, (player, enemy) => {
-            this.handlePlayerHit(enemy as Phaser.GameObjects.GameObject);
-        });
-
+        // Keyboard input
         if (this.input.keyboard) {
             this.keys = this.input.keyboard.addKeys({
                 W: Phaser.Input.Keyboard.KeyCodes.W,
                 A: Phaser.Input.Keyboard.KeyCodes.A,
                 S: Phaser.Input.Keyboard.KeyCodes.S,
                 D: Phaser.Input.Keyboard.KeyCodes.D,
-                SPACE: Phaser.Input.Keyboard.KeyCodes.SPACE
+                SPACE: Phaser.Input.Keyboard.KeyCodes.SPACE,
             }) as any;
         }
 
-        // Listen for level data
-        EventBus.on('load-level', (data: { levelData: LevelData, audioUrl: string, imageMappings: Record<string, string> }) => {
+        // Build the player object (small cyan rect with a circle hitbox)
+        this.playerObj = new CompositeObject(new Vector2(width / 2, height / 2), 0, 1);
+        this.playerObj.addShape(new RectShape(20, 20, {
+            fillColor: '#00ffff',
+            glowColor: '#00ffff',
+            glowRadius: 14,
+        }));
+        this.playerObj.collider = new CircleCollider(8); // tight hitbox
+
+        // Hook our custom rendering AFTER Phaser's own render pass
+        this.sys.game.events.on('postrender', this.customRender, this);
+
+        // Level loading
+        EventBus.on('load-level', (data: { levelData: LevelData; audioUrl: string }) => {
             this.startLevel(data);
         });
 
-        // Check for pending level data from Editor
         if ((window as any).pendingLevelData) {
             this.startLevel((window as any).pendingLevelData);
             (window as any).pendingLevelData = null;
@@ -88,206 +131,373 @@ export class Game extends Scene
         EventBus.emit('current-scene-ready', this);
     }
 
-    private startLevel(data: { levelData: LevelData, audioUrl: string, imageMappings: Record<string, string> }) {
+    // -----------------------------------------------------------------------
+    // Level loading
+    // -----------------------------------------------------------------------
+
+    private startLevel(data: { levelData: LevelData; audioUrl: string }) {
         this.levelData = data.levelData;
+        // Ensure timeline is always a sorted array
+        if (!Array.isArray(this.levelData.timeline)) {
+            this.levelData.timeline = [];
+        }
+        this.levelData.timeline.sort((a, b) => a.timestamp - b.timestamp);
+
+        console.log('[Game] startLevel:', this.levelData.timeline.length, 'events, first 3:', this.levelData.timeline.slice(0, 3));
+
         this.timelineIndex = 0;
         this.isPlaying = false;
-        
-        // Reset scene
-        this.enemyGroup.clear(true, true);
-        if (this.music) this.music.stop();
+        this.hazards = [];
+        this.telegraphs = [];
 
-        // Set theme colors
-        if (this.levelData.theme.backgroundColor) {
-            this.camera.setBackgroundColor(this.levelData.theme.backgroundColor);
+        // Stop and destroy old music
+        if (this.music) {
+            this.music.stop();
+            this.music.destroy();
+            this.music = null;
         }
 
-        // Load dynamic assets
-        this.load.audio('level-music', data.audioUrl);
-        Object.entries(data.imageMappings).forEach(([id, url]) => {
-            this.load.image(id, url);
-        });
+        const bg = this.levelData.theme?.backgroundColor || '#000000';
+        this.cameras.main.setBackgroundColor(bg);
 
+        // Update player color from theme
+        this.playerObj.setColor(
+            this.levelData.theme?.playerColor || '#00ffff',
+            this.levelData.theme?.playerColor || '#00ffff',
+        );
+
+        // Remove cached audio so Phaser loads the new blob URL instead of reusing stale cache
+        if (this.cache.audio.exists('level-music')) {
+            this.cache.audio.remove('level-music');
+        }
+        // Also remove from sound manager if it has a reference
+        if (this.sound.get('level-music')) {
+            this.sound.removeByKey('level-music');
+        }
+
+        this.load.audio('level-music', data.audioUrl);
         this.load.once('complete', () => {
+            console.log('[Game] Audio loaded, starting playback');
             this.music = this.sound.add('level-music');
             this.music.play();
             this.isPlaying = true;
-            console.log('Level started:', this.levelData?.metadata.bossName);
         });
-
+        this.load.once('loaderror', (file: any) => {
+            console.error('[Game] Audio failed to load:', file);
+            // Start the timeline anyway so objects still spawn even without audio
+            this.isPlaying = true;
+            this.music = null;
+        });
         this.load.start();
     }
 
-    private handlePlayerHit(enemy: Phaser.GameObjects.GameObject) {
-        if (this.isDashing) return; // Invulnerability frames during dash
+    // -----------------------------------------------------------------------
+    // update (Phaser game loop)
+    // -----------------------------------------------------------------------
 
-        // Knockback: Move player away from enemy
-        const enemyObj = enemy as any;
-        const angle = Phaser.Math.Angle.Between(enemyObj.x, enemyObj.y, this.player.x, this.player.y);
-        const force = 400;
-        
-        // Simple immediate knockback for now
-        this.player.x += Math.cos(angle) * 50;
-        this.player.y += Math.sin(angle) * 50;
-        
-        // Visual feedback
-        this.camera.shake(100, 0.01);
-        this.player.setAlpha(0.5);
-        this.time.delayedCall(200, () => this.player.setAlpha(1));
-    }
+    update(_time: number, delta: number) {
+        if (!this.keys) return;
 
-    private updateProgressBar() {
-        if (!this.music || !this.levelData) return;
-        const progress = (this.music as any).seek / this.levelData.metadata.duration;
-        this.progressBar.width = this.scale.width * Phaser.Math.Clamp(progress, 0, 1);
-    }
+        const dt = Math.min(delta, MAX_DELTA_MS) / 1000; // seconds
 
-    update (time: number, delta: number)
-    {
-        if (!this.keys || !this.player) return;
+        this.updateInput(dt);
+        this.updateDash(_time);
+        this.updateHitFlash(dt);
 
-        this.updateProgressBar();
-
-        // --- Dash Logic ---
-        if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) && time > this.lastDashTime + 500) {
-            this.isDashing = true;
-            this.lastDashTime = time;
-            
-            // Visual for dash
-            this.player.setScale(1.5, 0.5);
-            this.time.delayedCall(150, () => {
-                this.isDashing = false;
-                this.player.setScale(1);
-            });
+        if (this.isPlaying && this.levelData) {
+            const currentSec = this.music ? (this.music as any).seek as number : 0;
+            this.processTimeline(currentSec);
+            this.tickObjects(dt, currentSec);
+            this.checkCollisions();
+            this.pruneInactive();
+            this.updateProgressBar(currentSec);
         }
 
-        // --- Player Movement (Existing) ---
-        const speed = this.isDashing ? 1200 : 600;
-        this.player.body.setVelocity(0);
-        let inputX = 0;
-        let inputY = 0;
-
-        if (this.keys.A.isDown) inputX = -1;
-        else if (this.keys.D.isDown) inputX = 1;
-
-        if (this.keys.W.isDown) inputY = -1;
-        else if (this.keys.S.isDown) inputY = 1;
-
-        const clampedDelta = Math.min(delta, this._maxDeltaMs);
-        this._accumulatorMs += clampedDelta;
-
-        const hasInput = inputX !== 0 || inputY !== 0;
-        if (hasInput) this._tempVec.set(inputX, inputY).normalize();
-
-        const maxStepsPerFrame = 5;
-        let steps = 0;
-
-        while (this._accumulatorMs >= this._fixedStepMs && steps < maxStepsPerFrame)
-        {
-            if (hasInput)
-            {
-                const moveDistance = speed * (this._fixedStepMs / 1000);
-                this.player.x += this._tempVec.x * moveDistance;
-                this.player.y += this._tempVec.y * moveDistance;
+        if (this.shakeMs > 0) {
+            this.shakeMs -= delta;
+            if (this.shakeMs <= 0) {
+                this.cameras.main.resetFX();
+                this.shakeMs = 0;
             }
+        }
+    }
 
-            const halfSize = this.player.width / 2;
-            const { width, height } = this.scale;
-            if (this.player.x < halfSize) this.player.x = halfSize;
-            else if (this.player.x > width - halfSize) this.player.x = width - halfSize;
-            if (this.player.y < halfSize) this.player.y = halfSize;
-            else if (this.player.y > height - halfSize) this.player.y = height - halfSize;
+    // -----------------------------------------------------------------------
+    // Movement (fixed-step)
+    // -----------------------------------------------------------------------
 
-            this._accumulatorMs -= this._fixedStepMs;
+    private updateInput(dt: number) {
+        const speed = this.isDashing ? PLAYER_DASH_SPEED : PLAYER_SPEED;
+        const w = this.keys.W.isDown;
+        const a = this.keys.A.isDown;
+        const s = this.keys.S.isDown;
+        const d = this.keys.D.isDown;
+        const hasInput = w || a || s || d;
+
+        if (hasInput) {
+            this.inputDir.setXY(
+                (d ? 1 : 0) - (a ? 1 : 0),
+                (s ? 1 : 0) - (w ? 1 : 0),
+            );
+            const len = this.inputDir.length();
+            if (len > 0) { this.inputDir.x /= len; this.inputDir.y /= len; }
+        }
+
+        this.accMs += dt * 1000;
+        let steps = 0;
+        while (this.accMs >= FIXED_STEP_MS && steps < 5) {
+            if (hasInput) {
+                const dist = speed * (FIXED_STEP_MS / 1000);
+                const p = this.playerObj.position;
+                this.playerObj.position = new Vector2(
+                    Math.max(PLAYER_HALF, Math.min(WORLD_W - PLAYER_HALF, p.x + this.inputDir.x * dist)),
+                    Math.max(PLAYER_HALF, Math.min(WORLD_H - PLAYER_HALF, p.y + this.inputDir.y * dist)),
+                );
+            }
+            this.accMs -= FIXED_STEP_MS;
             steps++;
         }
+    }
 
-        // --- Attack System & Music Sync ---
-        if (this.isPlaying && this.music && this.levelData) {
-            const currentTime = (this.music as any).seek; // Master Clock
+    // -----------------------------------------------------------------------
+    // Dash
+    // -----------------------------------------------------------------------
 
-            // Spawn events from timeline
-            while (
-                this.timelineIndex < this.levelData.timeline.length && 
-                this.levelData.timeline[this.timelineIndex].timestamp <= currentTime
-            ) {
-                this.spawnEvent(this.levelData.timeline[this.timelineIndex]);
-                this.timelineIndex++;
-            }
-
-            // Cleanup off-screen enemies
-            this.enemyGroup.getChildren().forEach((enemy: any) => {
-                if (enemy.x < -100 || enemy.x > 1124 || enemy.y < -100 || enemy.y > 868) {
-                    enemy.destroy();
-                }
-            });
+    private updateDash(timeMs: number) {
+        if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) &&
+            timeMs > this.lastDashMs + DASH_COOLDOWN_MS) {
+            this.isDashing = true;
+            this.invulMs = 200;
+            this.lastDashMs = timeMs;
+            this.time.delayedCall(DASH_DURATION_MS, () => { this.isDashing = false; });
         }
     }
 
-    private spawnEvent(event: LevelEvent) {
-        const enemyColor = Phaser.Display.Color.HexStringToColor(this.levelData?.theme.enemyColor || '#FF0099').color;
+    // -----------------------------------------------------------------------
+    // Hit flash
+    // -----------------------------------------------------------------------
 
-        // Telegraphing: 500ms before the actual attack
-        const warning = event.assetId 
-            ? this.add.image(event.x, event.y, event.assetId).setDisplaySize(event.size || 40, event.size || 40).setAlpha(0.2).setTint(enemyColor)
-            : this.add.rectangle(event.x, event.y, event.size || 20, event.size || 20, enemyColor, 0.2);
+    private updateHitFlash(dt: number) {
+        if (this.invulMs > 0) this.invulMs -= dt * 1000;
+        if (this.hitFlashMs > 0) {
+            this.hitFlashMs -= dt * 1000;
+            this.playerAlpha = 0.4;
+        } else {
+            this.playerAlpha = 1;
+        }
+    }
 
-        this.time.delayedCall(500, () => {
-            warning.destroy();
-            
-            if (event.type === 'projectile_throw') {
-            const projectile = this.add.rectangle(event.x, event.y, event.size || 20, event.size || 20, enemyColor);
-            if (event.assetId) {
-                // Use custom asset if provided
-                const img = this.add.image(event.x, event.y, event.assetId).setDisplaySize(event.size || 40, event.size || 40).setTint(enemyColor);
-                projectile.setAlpha(0); // Hide the helper rect
-                this.enemyGroup.add(img);
-                
-                // Add movement logic based on behavior
-                this.applyBehavior(img, event);
+    // -----------------------------------------------------------------------
+    // Timeline processing
+    // -----------------------------------------------------------------------
+
+    private _lastLogSec = -1;
+
+    private processTimeline(currentSec: number) {
+        const timeline = this.levelData?.timeline;
+        if (!timeline) return;
+
+        // Log once per second so we can verify the timeline is advancing
+        const sec = Math.floor(currentSec);
+        if (sec !== this._lastLogSec) {
+            this._lastLogSec = sec;
+            console.log(`[Game] t=${currentSec.toFixed(2)}s  idx=${this.timelineIndex}/${timeline.length}  hazards=${this.hazards.length}  telegraphs=${this.telegraphs.length}`);
+        }
+
+        while (
+            this.timelineIndex < timeline.length &&
+            timeline[this.timelineIndex].timestamp <= currentSec + TELEGRAPH_SEC
+        ) {
+            const event = timeline[this.timelineIndex];
+            if (event.timestamp > currentSec) {
+                this.spawnTelegraph(event, event.timestamp - currentSec);
             } else {
-                this.enemyGroup.add(projectile);
-                this.applyBehavior(projectile, event);
+                this.spawnHazard(event);
             }
-        } else if (event.type === 'spawn_obstacle') {
-            const obstacle = event.assetId 
-                ? this.add.image(event.x, event.y, event.assetId).setDisplaySize(event.size || 60, event.size || 60).setTint(enemyColor)
-                : this.add.rectangle(event.x, event.y, event.size || 40, event.size || 40, enemyColor);
-            
-            this.enemyGroup.add(obstacle as any);
-            this.applyBehavior(obstacle as any, event);
-        } else if (event.type === 'screen_shake') {
-            this.camera.shake(event.duration || 200, 0.02);
+            this.timelineIndex++;
         }
-    });
-}
+    }
 
-    private applyBehavior(obj: any, event: LevelEvent) {
-        if (!event.behavior || event.behavior === 'static') return;
+    private spawnTelegraph(event: LevelEvent, delayRemaining: number) {
+        const obj = this.buildEventObject(event, 0.2);
+        if (!obj) return;
+        this.telegraphs.push(obj);
 
-        if (event.behavior === 'homing') {
-            this.tweens.add({
-                targets: obj,
-                x: this.player.x,
-                y: this.player.y,
-                duration: 1000,
-                ease: 'Power1'
+        // After the delay expires, promote to actual hazard
+        this.time.delayedCall(delayRemaining * 1000, () => {
+            const idx = this.telegraphs.indexOf(obj);
+            if (idx !== -1) this.telegraphs.splice(idx, 1);
+            obj.setAlpha(1);
+            obj.isTelegraph = false;
+            this.hazards.push(obj);
+        });
+    }
+
+    private spawnHazard(event: LevelEvent) {
+        if (event.type === 'screen_shake') {
+            this.cameras.main.shake(event.duration ? event.duration * 1000 : 200, 0.02);
+            return;
+        }
+        const obj = this.buildEventObject(event, 1);
+        if (obj) this.hazards.push(obj);
+    }
+
+    /**
+     * Construct a CompositeObject from a LevelEvent, applying `alpha` for
+     * telegraph / active distinction.
+     */
+    private buildEventObject(event: LevelEvent, alpha: number): CompositeObject | null {
+        const color = this.levelData!.theme.enemyColor || '#FF0099';
+        let obj: CompositeObject;
+
+        const hasVisibleDef = event.objectDef &&
+            (event.objectDef.shape || (event.objectDef.children && event.objectDef.children.length > 0));
+
+        if (hasVisibleDef) {
+            // Full procedural definition from JSON — has at least one visible shape
+            obj = ObjectFactory.fromDef({
+                ...event.objectDef!,
+                spawnTime: event.timestamp,
             });
-        } else if (event.behavior === 'spinning') {
-            this.tweens.add({
-                targets: obj,
-                angle: 360,
-                duration: 2000,
-                repeat: -1
-            });
-        } else if (event.behavior === 'bouncing') {
-            const body = obj.body as Phaser.Physics.Arcade.Body;
-            if (body) {
-                body.setVelocity(Phaser.Math.Between(-200, 200), Phaser.Math.Between(-200, 200));
-                body.setBounce(1, 1);
-                body.setCollideWorldBounds(true);
+        } else {
+            // Legacy simple event or objectDef without shapes → build from helper
+            const size = event.size ?? (event.objectDef?.scale ? event.objectDef.scale * 30 : 30);
+            const dur = event.duration ?? 6;
+            obj = ObjectFactory.fromLegacyEvent(
+                event.type,
+                event.objectDef?.x ?? event.x,
+                event.objectDef?.y ?? event.y,
+                size,
+                event.rotation ?? 0,
+                dur,
+                event.behavior ?? 'static',
+                color,
+            );
+
+            // Carry over any behaviors from objectDef that the legacy path wouldn't generate
+            if (event.objectDef?.behaviors) {
+                for (const bDef of event.objectDef.behaviors) {
+                    obj.addBehavior(ObjectFactory.buildBehavior(bDef));
+                }
+            }
+        }
+
+        obj.setAlpha(alpha);
+        obj.isTelegraph = alpha < 1;
+        return obj;
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-frame object ticking
+    // -----------------------------------------------------------------------
+
+    private tickObjects(dt: number, currentSec: number) {
+        const playerPos = this.playerObj.position;
+        for (const h of this.hazards) h.tick(dt, currentSec, playerPos);
+        for (const t of this.telegraphs) t.tick(dt, currentSec);
+    }
+
+    // -----------------------------------------------------------------------
+    // Collision detection
+    // -----------------------------------------------------------------------
+
+    private checkCollisions() {
+        if (this.invulMs > 0) return;
+        const pPos = this.playerObj.position;
+        const pCol = this.playerObj.collider!;
+
+        for (const h of this.hazards) {
+            if (!h.active || !h.collider) continue;
+            if (collidersOverlap(pCol, pPos, h.collider, h.position)) {
+                this.handleHit(h);
+                return; // one hit per frame
             }
         }
     }
-}
 
+    private handleHit(hazard: CompositeObject) {
+        // Knockback
+        const angle = Math.atan2(
+            this.playerObj.position.y - hazard.position.y,
+            this.playerObj.position.x - hazard.position.x,
+        );
+        const p = this.playerObj.position;
+        this.playerObj.position = new Vector2(
+            Math.max(PLAYER_HALF, Math.min(WORLD_W - PLAYER_HALF, p.x + Math.cos(angle) * 50)),
+            Math.max(PLAYER_HALF, Math.min(WORLD_H - PLAYER_HALF, p.y + Math.sin(angle) * 50)),
+        );
+
+        this.invulMs = 200;
+        this.hitFlashMs = 200;
+        this.cameras.main.shake(100, 0.008);
+    }
+
+    // -----------------------------------------------------------------------
+    // Cleanup inactive / off-screen objects
+    // -----------------------------------------------------------------------
+
+    private pruneInactive() {
+        this.hazards = this.hazards.filter(h => {
+            if (!h.active) return false;
+            const { x, y } = h.position;
+            return x > -150 && x < WORLD_W + 150 && y > -150 && y < WORLD_H + 150;
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Progress bar
+    // -----------------------------------------------------------------------
+
+    private updateProgressBar(currentSec: number) {
+        if (!this.levelData) return;
+        const progress = currentSec / this.levelData.metadata.duration;
+        this.progressBar.width = this.scale.width * Math.min(1, Math.max(0, progress));
+    }
+
+    // -----------------------------------------------------------------------
+    // Custom canvas rendering (fires after Phaser's own render pass)
+    // -----------------------------------------------------------------------
+
+    private customRender() {
+        const ctx = this.ctx;
+        if (!ctx) return;
+
+        // Reset canvas state — Phaser may leave transforms/clips applied
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+
+        // Draw telegraphs first (under hazards)
+        for (const t of this.telegraphs) {
+            if (t.active) t.draw(ctx);
+        }
+
+        // Draw hazards
+        for (const h of this.hazards) {
+            if (h.active) h.draw(ctx);
+        }
+
+        // Draw player (with hit-flash alpha)
+        ctx.save();
+        ctx.globalAlpha = this.playerAlpha;
+        // Dash squash: widen X, squeeze Y
+        if (this.isDashing) {
+            const p = this.playerObj.position;
+            ctx.translate(p.x, p.y);
+            ctx.scale(1.5, 0.5);
+            ctx.translate(-p.x, -p.y);
+        }
+        this.playerObj.draw(ctx);
+        ctx.restore();
+    }
+
+    // -----------------------------------------------------------------------
+    // Cleanup on scene shutdown
+    // -----------------------------------------------------------------------
+
+    shutdown() {
+        this.sys.game.events.off('postrender', this.customRender, this);
+        EventBus.removeAllListeners('load-level');
+        if (this.music) this.music.stop();
+    }
+}

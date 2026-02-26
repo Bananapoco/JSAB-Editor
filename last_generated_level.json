@@ -1,0 +1,594 @@
+{
+  "metadata": {
+    "bossName": "Meowter Space",
+    "duration": 32.126104166666664,
+    "bpm": 115
+  },
+  "theme": {
+    "enemyColor": "#C85FFF",
+    "backgroundColor": "#05030F",
+    "playerColor": "#00FFDD"
+  },
+  "explanation": "**Meowter Space** is a high-energy bullet-hell boss level featuring a massive cosmic cat boss — \"Astrokat\" — who is furious at the player for trespassing in her galaxy. The arena is a deep space void filled with twinkling stars and a slow-rotating ringed planet in the background.\n\n**Visual Identity:**\n- Deep space black/navy background (`#05030F`) with scattered procedural star dots\n- Boss and all hazards rendered in cosmic purple (`#C85FFF`) — the cat's fur, paws, claws, and spikeballs all glow in neon violet\n- Player ship rendered in cyan-teal (`#00FFDD`) so it pops against the dark field\n- The boss silhouette is a stylized cat face — two triangular ears, large circular eyes, whisker lines — built from vector shapes\n\n**Attack Vocabulary:**\n1. **Paw Swipes** — Large semi-transparent rectangular bars sweep across the screen horizontally or vertically, representing a massive cat paw slamming down. Paired with claw-mark line bursts.\n2. **Scratch Waves** — Tight diagonal line clusters (3–5 parallel slashes) that travel across the screen at alternating angles, mimicking claw rake patterns.\n3. **Spikeball Bursts** — Star-polygon hazards (6–8 points) that orbit from the boss face and spiral outward toward the player zone.\n4. **Hairball Spiral** — During the mid-level build, a spiral of circular projectiles spins outward from center, evoking a chaotic furball.\n5. **Tail Whip** — A long thin rotating line that sweeps the arena like a clock hand, forcing the player to jump its arc.\n6. **Cosmic Litter Box** — Climax attack: a 3×3 grid of danger zones tiles the screen, leaving only small safe corridors.\n\n**Structure (32s / 115 BPM):**\n- **0–8s (Intro / buildup):** Sparse spikeballs and single paw swipes on half-notes. Boss face assembles on screen.\n- **8–16s (First drop):** Quarter-note scratch waves and paw combos. Tail whip rotation begins.\n- **16–24s (Bridge / intensity ramp):** Hairball spiral + simultaneous diagonal scratch clusters. 3–5 objects per beat at peaks.\n- **24–32s (Final drop / climax):** Full Cosmic Litter Box tiling, rapid spikeball bursts, maximum simultaneous hazards, ending on a dramatic paw slam exactly at the final beat.",
+  "timeline": [
+    {
+      "timestamp": 0,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 100,
+      "size": 60,
+      "behavior": "static"
+    },
+    {
+      "timestamp": 0.5217,
+      "type": "projectile_throw",
+      "x": 150,
+      "y": 200,
+      "size": 40,
+      "rotation": 45,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 1.0435,
+      "type": "projectile_throw",
+      "x": 874,
+      "y": 200,
+      "size": 40,
+      "rotation": 315,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 1.5652,
+      "type": "spawn_obstacle",
+      "x": 256,
+      "y": 400,
+      "size": 50,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 2.087,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 80,
+      "size": 55,
+      "rotation": 270,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 2.087,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 30,
+      "duration": 0.3
+    },
+    {
+      "timestamp": 2.6087,
+      "type": "spawn_obstacle",
+      "x": 768,
+      "y": 400,
+      "size": 50,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 3.1304,
+      "type": "projectile_throw",
+      "x": 200,
+      "y": 150,
+      "size": 35,
+      "rotation": 60,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 3.3913,
+      "type": "projectile_throw",
+      "x": 824,
+      "y": 150,
+      "size": 35,
+      "rotation": 120,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 4.1739,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 300,
+      "size": 70,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 4.1739,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 40,
+      "duration": 0.4
+    },
+    {
+      "timestamp": 4.6957,
+      "type": "projectile_throw",
+      "x": 100,
+      "y": 384,
+      "size": 45,
+      "rotation": 0,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 4.9565,
+      "type": "projectile_throw",
+      "x": 924,
+      "y": 384,
+      "size": 45,
+      "rotation": 180,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 5.7391,
+      "type": "spawn_obstacle",
+      "x": 300,
+      "y": 200,
+      "size": 40,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 5.9999,
+      "type": "spawn_obstacle",
+      "x": 724,
+      "y": 200,
+      "size": 40,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 6.5217,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 80,
+      "size": 50,
+      "rotation": 270,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 7.0435,
+      "type": "pulse",
+      "x": 512,
+      "y": 384,
+      "size": 80,
+      "duration": 0.5
+    },
+    {
+      "timestamp": 7.0435,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 50,
+      "duration": 0.5
+    },
+    {
+      "timestamp": 7.5652,
+      "type": "projectile_throw",
+      "x": 150,
+      "y": 300,
+      "size": 38,
+      "rotation": 30,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 7.8261,
+      "type": "projectile_throw",
+      "x": 874,
+      "y": 300,
+      "size": 38,
+      "rotation": 150,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 8.6087,
+      "type": "spawn_obstacle",
+      "x": 400,
+      "y": 150,
+      "size": 55,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 8.8696,
+      "type": "spawn_obstacle",
+      "x": 624,
+      "y": 150,
+      "size": 55,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 9.3913,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 80,
+      "size": 60,
+      "rotation": 270,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 9.6522,
+      "type": "projectile_throw",
+      "x": 200,
+      "y": 100,
+      "size": 42,
+      "rotation": 45,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 9.913,
+      "type": "projectile_throw",
+      "x": 824,
+      "y": 100,
+      "size": 42,
+      "rotation": 135,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 10.4348,
+      "type": "pulse",
+      "x": 512,
+      "y": 384,
+      "size": 90,
+      "duration": 0.6
+    },
+    {
+      "timestamp": 10.4348,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 60,
+      "duration": 0.5
+    },
+    {
+      "timestamp": 10.9565,
+      "type": "spawn_obstacle",
+      "x": 200,
+      "y": 500,
+      "size": 48,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 11.2174,
+      "type": "spawn_obstacle",
+      "x": 824,
+      "y": 500,
+      "size": 48,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 11.4782,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 600,
+      "size": 48,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 12.2609,
+      "type": "projectile_throw",
+      "x": 100,
+      "y": 200,
+      "size": 50,
+      "rotation": 45,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 12.2609,
+      "type": "projectile_throw",
+      "x": 924,
+      "y": 200,
+      "size": 50,
+      "rotation": 135,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 12.7826,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 80,
+      "size": 65,
+      "rotation": 270,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 13.3043,
+      "type": "spawn_obstacle",
+      "x": 350,
+      "y": 350,
+      "size": 55,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 13.5652,
+      "type": "spawn_obstacle",
+      "x": 674,
+      "y": 350,
+      "size": 55,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 14.087,
+      "type": "pulse",
+      "x": 512,
+      "y": 384,
+      "size": 100,
+      "duration": 0.7
+    },
+    {
+      "timestamp": 14.087,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 70,
+      "duration": 0.6
+    },
+    {
+      "timestamp": 14.6087,
+      "type": "projectile_throw",
+      "x": 150,
+      "y": 150,
+      "size": 44,
+      "rotation": 45,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 14.8696,
+      "type": "projectile_throw",
+      "x": 874,
+      "y": 150,
+      "size": 44,
+      "rotation": 315,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 15.1304,
+      "type": "projectile_throw",
+      "x": 512,
+      "y": 80,
+      "size": 55,
+      "rotation": 270,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 15.6522,
+      "type": "spawn_obstacle",
+      "x": 256,
+      "y": 500,
+      "size": 52,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 15.913,
+      "type": "spawn_obstacle",
+      "x": 768,
+      "y": 500,
+      "size": 52,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 16.063,
+      "type": "spawn_obstacle",
+      "x": 800,
+      "y": 200,
+      "size": 60,
+      "rotation": 0,
+      "duration": 2.087,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 16.324,
+      "type": "projectile_throw",
+      "x": 900,
+      "y": 384,
+      "size": 28,
+      "rotation": 45,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 16.845,
+      "type": "projectile_throw",
+      "x": 850,
+      "y": 150,
+      "size": 24,
+      "rotation": 0,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 17.106,
+      "type": "spawn_obstacle",
+      "x": 950,
+      "y": 600,
+      "size": 55,
+      "rotation": 30,
+      "duration": 1.0435,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 17.366,
+      "type": "projectile_throw",
+      "x": 820,
+      "y": 300,
+      "size": 22,
+      "rotation": 90,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 17.888,
+      "type": "projectile_throw",
+      "x": 900,
+      "y": 500,
+      "size": 26,
+      "rotation": 135,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 18.148,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 40,
+      "rotation": 0,
+      "duration": 0.2609
+    },
+    {
+      "timestamp": 18.148,
+      "type": "spawn_obstacle",
+      "x": 750,
+      "y": 700,
+      "size": 70,
+      "rotation": 0,
+      "duration": 2.087,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 18.409,
+      "type": "projectile_throw",
+      "x": 870,
+      "y": 250,
+      "size": 20,
+      "rotation": 180,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 18.67,
+      "type": "projectile_throw",
+      "x": 930,
+      "y": 450,
+      "size": 22,
+      "rotation": 225,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 19.191,
+      "type": "spawn_obstacle",
+      "x": 512,
+      "y": 100,
+      "size": 50,
+      "rotation": 45,
+      "duration": 1.5652,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 19.452,
+      "type": "projectile_throw",
+      "x": 780,
+      "y": 600,
+      "size": 25,
+      "rotation": 270,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 19.713,
+      "type": "projectile_throw",
+      "x": 920,
+      "y": 200,
+      "size": 20,
+      "rotation": 315,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 20.234,
+      "type": "spawn_obstacle",
+      "x": 860,
+      "y": 400,
+      "size": 65,
+      "rotation": 0,
+      "duration": 2.087,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 20.495,
+      "type": "projectile_throw",
+      "x": 800,
+      "y": 680,
+      "size": 22,
+      "rotation": 0,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 21.017,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 50,
+      "rotation": 0,
+      "duration": 0.2609
+    },
+    {
+      "timestamp": 21.017,
+      "type": "spawn_obstacle",
+      "x": 950,
+      "y": 300,
+      "size": 75,
+      "rotation": 0,
+      "duration": 1.0435,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 21.278,
+      "type": "projectile_throw",
+      "x": 700,
+      "y": 150,
+      "size": 28,
+      "rotation": 60,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 21.538,
+      "type": "projectile_throw",
+      "x": 880,
+      "y": 550,
+      "size": 24,
+      "rotation": 120,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 22.06,
+      "type": "spawn_obstacle",
+      "x": 750,
+      "y": 384,
+      "size": 60,
+      "rotation": 45,
+      "duration": 2.087,
+      "behavior": "bouncing"
+    },
+    {
+      "timestamp": 22.321,
+      "type": "projectile_throw",
+      "x": 960,
+      "y": 100,
+      "size": 20,
+      "rotation": 180,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 22.842,
+      "type": "projectile_throw",
+      "x": 830,
+      "y": 650,
+      "size": 26,
+      "rotation": 240,
+      "behavior": "spinning"
+    },
+    {
+      "timestamp": 23.364,
+      "type": "spawn_obstacle",
+      "x": 900,
+      "y": 350,
+      "size": 55,
+      "rotation": 0,
+      "duration": 1.5652,
+      "behavior": "homing"
+    },
+    {
+      "timestamp": 23.625,
+      "type": "screen_shake",
+      "x": 512,
+      "y": 384,
+      "size": 60,
+      "rotation": 0,
+      "duration": 0.5217
+    }
+  ]
+}

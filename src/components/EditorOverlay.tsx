@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { EventBus } from '../game/EventBus';
+import { BuildModeEditor } from './BuildModeEditor';
 
 const DropZone = ({ 
     label, 
@@ -104,11 +105,14 @@ const DropZone = ({
 
 export const EditorOverlay = () => {
     const [isVisible, setIsVisible] = useState(false);
+    const [mode, setMode] = useState<'ai' | 'build'>('ai');
     const [prompt, setPrompt] = useState('');
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [images, setImages] = useState<File[]>([]);
+    const [bpm, setBpm] = useState<number | ''>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [status, setStatus] = useState('');
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const showEditor = () => setIsVisible(true);
@@ -120,10 +124,11 @@ export const EditorOverlay = () => {
 
     const handleGenerate = async () => {
         if (!audioFile) {
-            alert('Please upload an MP3 first!');
+            setError('Please upload an MP3 file first.');
             return;
         }
 
+        setError('');
         setIsGenerating(true);
         setStatus('Scanning Audio Frequency...');
 
@@ -143,18 +148,22 @@ export const EditorOverlay = () => {
                 }))
             );
 
-            setStatus('Gemini AI: Designing Level Patterns...');
+            setStatus('Claude AI: Designing Level Patterns...');
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
                     images: base64Images,
-                    duration
+                    duration,
+                    bpm: bpm || undefined,
                 })
             });
 
-            if (!response.ok) throw new Error('Generation failed');
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                throw new Error(errBody.error || `Server error ${response.status}`);
+            }
 
             const levelData = await response.json();
             
@@ -183,15 +192,25 @@ export const EditorOverlay = () => {
 
             EventBus.emit('load-level', payload);
             setIsVisible(false);
-        } catch (error) {
-            console.error(error);
-            setStatus('Error generating level.');
+        } catch (err) {
+            console.error(err);
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            setError(`Generation failed: ${msg}`);
         } finally {
             setIsGenerating(false);
         }
     };
 
     if (!isVisible) return null;
+
+    if (mode === 'build') {
+        return (
+            <BuildModeEditor
+                onClose={() => setIsVisible(false)}
+                onSwitchToAI={() => setMode('ai')}
+            />
+        );
+    }
 
     return (
         <div style={{
@@ -238,10 +257,58 @@ export const EditorOverlay = () => {
                 </div>
             ) : (
                 <div style={{ width: '90%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.3s ease-out' }}>
+                    {/* Mode selector tabs */}
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button
+                            onClick={() => setMode('ai')}
+                            style={{
+                                padding: '8px 28px',
+                                background: 'linear-gradient(135deg, #00ffff22, #00ffff11)',
+                                border: '1px solid #00ffff',
+                                color: '#00ffff',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontFamily: 'Arial Black',
+                                letterSpacing: '2px',
+                                boxShadow: '0 0 12px rgba(0,255,255,0.15)',
+                            }}
+                        >
+                            ✨ AI MODE
+                        </button>
+                        <button
+                            onClick={() => setMode('build')}
+                            style={{
+                                padding: '8px 28px',
+                                background: 'transparent',
+                                border: '1px solid #333',
+                                color: '#555',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontFamily: 'Arial Black',
+                                letterSpacing: '2px',
+                                transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.borderColor = '#FF0099';
+                                e.currentTarget.style.color = '#FF0099';
+                                e.currentTarget.style.boxShadow = '0 0 12px rgba(255,0,153,0.15)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.borderColor = '#333';
+                                e.currentTarget.style.color = '#555';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
+                        >
+                            🛠 BUILD MODE
+                        </button>
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h1 style={{ 
-                            fontFamily: 'Arial Black', 
-                            fontSize: '36px', 
+                        <h1 style={{
+                            fontFamily: 'Arial Black',
+                            fontSize: '36px',
                             margin: 0,
                             background: 'linear-gradient(45deg, #fff, #aaa)',
                             WebkitBackgroundClip: 'text',
@@ -249,12 +316,12 @@ export const EditorOverlay = () => {
                         }}>
                             NEW PROJECT
                         </h1>
-                        <button 
+                        <button
                             onClick={() => setIsVisible(false)}
-                            style={{ 
-                                background: 'transparent', 
-                                border: '1px solid #333', 
-                                color: '#666', 
+                            style={{
+                                background: 'transparent',
+                                border: '1px solid #333',
+                                color: '#666',
                                 padding: '10px 20px',
                                 cursor: 'pointer',
                                 borderRadius: '20px',
@@ -303,9 +370,49 @@ export const EditorOverlay = () => {
                                 />
                             </div>
 
+                            <div style={{
+                                backgroundColor: '#111',
+                                padding: '14px 20px',
+                                borderRadius: '12px',
+                                border: '1px solid #222',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                            }}>
+                                <label style={{
+                                    color: '#888',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    letterSpacing: '1px',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    BPM
+                                </label>
+                                <input
+                                    type="number"
+                                    min={30}
+                                    max={300}
+                                    value={bpm}
+                                    onChange={(e) => setBpm(e.target.value === '' ? '' : Number(e.target.value))}
+                                    placeholder="e.g. 128"
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        outline: 'none',
+                                        color: '#fff',
+                                        fontSize: '16px',
+                                        fontFamily: 'monospace',
+                                    }}
+                                />
+                                <span style={{ color: '#555', fontSize: '11px' }}>
+                                    Attacks sync to this tempo
+                                </span>
+                            </div>
+
                             <div style={{ display: 'flex', gap: '15px' }}>
                                 <div style={{ flex: 1 }}>
-                                    <DropZone 
+                                    <DropZone
                                         label="Upload Audio (MP3)" 
                                         accept="audio/mp3" 
                                         color="#00ffff"
@@ -364,7 +471,7 @@ export const EditorOverlay = () => {
                                 </div>
                                 <h3 style={{ margin: '0 0 10px', color: '#fff' }}>AI Architect</h3>
                                 <p style={{ margin: 0, color: '#666', fontSize: '14px', lineHeight: '1.5' }}>
-                                    Gemini will analyze your audio waveform and visual assets to construct a beat-synced level timeline.
+                                    Claude Sonnet will analyze your audio and any reference images to compose a beat-synced procedural level timeline.
                                 </p>
                             </div>
                         </div>
@@ -392,7 +499,22 @@ export const EditorOverlay = () => {
                     >
                         INITIALIZE GENERATION
                     </button>
-                    
+
+                    {error && (
+                        <div style={{
+                            marginTop: '12px',
+                            padding: '12px 20px',
+                            backgroundColor: 'rgba(255,0,0,0.15)',
+                            border: '1px solid rgba(255,0,0,0.4)',
+                            borderRadius: '8px',
+                            color: '#ff6666',
+                            fontSize: '13px',
+                            textAlign: 'center'
+                        }}>
+                            {error}
+                        </div>
+                    )}
+
                     <style jsx>{`
                         @keyframes fadeIn {
                             from { opacity: 0; transform: translateY(20px); }
