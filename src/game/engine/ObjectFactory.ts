@@ -277,6 +277,9 @@ export class ObjectFactory {
             case 'bouncing':
                 behaviors.push({ kind: 'bounce', vx: 160, vy: 140, radius: size / 2 });
                 break;
+            case 'sweep':
+                behaviors.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+                break;
             case 'static':
             default:
                 break;

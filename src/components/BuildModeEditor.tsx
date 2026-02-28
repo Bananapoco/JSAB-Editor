@@ -4,16 +4,18 @@ import {
   MousePointer2, Square, Circle, Triangle, Diamond, Hexagon, Star,
   Zap, Target, Move, RotateCw, Maximize2, Play, Pause, Trash2,
   Upload, Sparkles, Rocket, X, ChevronLeft, Music, Palette, Settings,
-  Volume2, Clock, ArrowRight, Magnet, SkipBack, SkipForward
+  Volume2, Clock, ArrowRight, Magnet, SkipBack, SkipForward, Layers,
 } from 'lucide-react';
 import { LevelData, LevelEvent, LevelEventType } from '../game/types';
+import type { ShapeDef, ChildDef, BehaviorDef, ObjectDef } from '../game/engine/ObjectFactory';
 import { EventBus } from '../game/EventBus';
+import { ShapeComposerTab, CustomShapeDef, PieceType, drawPieceShape } from './ShapeComposerTab';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TYPESE
+// TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'pulse';
+type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'pulse' | 'boss_move';
 type BehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep';
 type ShapeType = 'square' | 'circle' | 'triangle' | 'diamond' | 'hexagon' | 'star';
 type SnapInterval = '1/4' | '1/2' | '1' | '2' | '4';
@@ -30,6 +32,8 @@ const SNAP_INTERVALS: { value: SnapInterval; label: string; divisor: number }[] 
 interface PlacedEvent extends LevelEvent {
   id: number;
   shape?: ShapeType;
+  /** When this event uses a custom composed shape */
+  customShapeDef?: CustomShapeDef;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -122,8 +126,35 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const [hoverPos, setHoverPos] = useState<{ gx: number; gy: number } | null>(null);
 
   // Panel state
-  const [activePanel, setActivePanel] = useState<'tools' | 'shapes' | 'settings'>('tools');
+  const [activePanel, setActivePanel] = useState<'tools' | 'shapes' | 'settings' | 'compose'>('tools');
 
+  // Custom shapes (persisted in localStorage)
+  const [customShapes, setCustomShapes] = useState<CustomShapeDef[]>(() => {
+    try { return JSON.parse(localStorage.getItem('jsab_custom_shapes') || '[]'); }
+    catch { return []; }
+  });
+
+  // Active custom shape for placement
+  const [activeCustomShapeId, setActiveCustomShapeId] = useState<string | null>(null);
+
+
+  // ─── Custom Shape Handlers ─────────────────────────────────────────────────
+  const handleSaveCustomShape = (shape: CustomShapeDef) => {
+    setCustomShapes(prev => {
+      const updated = [...prev, shape];
+      localStorage.setItem('jsab_custom_shapes', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleDeleteCustomShape = (id: string) => {
+    setCustomShapes(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      localStorage.setItem('jsab_custom_shapes', JSON.stringify(updated));
+      return updated;
+    });
+    if (activeCustomShapeId === id) setActiveCustomShapeId(null);
+  };
 
   const selectedEvent = events.find(e => e.id === selectedId) ?? null;
   const selectedIdRef = useRef(selectedId);
@@ -144,6 +175,20 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   snapIntervalRef.current = snapInterval;
   const isPlacementModeRef = useRef(isPlacementMode);
   isPlacementModeRef.current = isPlacementMode;
+  const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
+  const activeBehaviorRef = useRef(activeBehavior);
+  activeBehaviorRef.current = activeBehavior;
+  const activeShapeRef = useRef(activeShape);
+  activeShapeRef.current = activeShape;
+  const activeSizeRef = useRef(activeSize);
+  activeSizeRef.current = activeSize;
+  const activeDurationRef = useRef(activeDuration);
+  activeDurationRef.current = activeDuration;
+  const activeCustomShapeIdRef = useRef(activeCustomShapeId);
+  activeCustomShapeIdRef.current = activeCustomShapeId;
+  const customShapesRef = useRef(customShapes);
+  customShapesRef.current = customShapes;
 
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
@@ -257,8 +302,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
       ctx.translate(cx, cy);
       ctx.rotate(((event.rotation ?? 0) * Math.PI) / 180);
 
-      // Draw shape based on type
-      drawShape(ctx, shape, s, col, isSelected);
+      if (event.customShapeDef) {
+        // Draw composite custom shape
+        drawCompositeShape(ctx, event.customShapeDef, SCALE, isSelected, enemyColor);
+      } else {
+        drawShape(ctx, shape, s, col, isSelected);
+      }
 
       if (isSelected) {
         ctx.rotate(-((event.rotation ?? 0) * Math.PI) / 180);
@@ -266,7 +315,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
         ctx.fillStyle = '#FFF';
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${event.timestamp.toFixed(1)}s`, 0, -s / 2 - 8);
+        const labelR = event.customShapeDef
+          ? event.customShapeDef.colliderRadius * SCALE
+          : s / 2;
+        ctx.fillText(`${event.timestamp.toFixed(1)}s`, 0, -labelR - 8);
       }
 
       ctx.restore();
@@ -292,11 +344,20 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     if (hoverPos && isPlacementMode) {
       const s = activeSize * SCALE;
       const col = TOOLS[activeTool]?.color ?? enemyColor;
-      
+
       ctx.save();
       ctx.globalAlpha = 0.5;
       ctx.translate(hoverPos.gx * SCALE, hoverPos.gy * SCALE);
-      drawShape(ctx, activeShape, s, col, false);
+
+      const activeCSD = activeCustomShapeId
+        ? customShapes.find(cs => cs.id === activeCustomShapeId)
+        : null;
+
+      if (activeCSD) {
+        drawCompositeShape(ctx, activeCSD, SCALE, false, enemyColor);
+      } else {
+        drawShape(ctx, activeShape, s, col, false);
+      }
       ctx.restore();
     }
 
@@ -311,7 +372,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     ctx.fillRect(px - 10, py - 10, 20, 20);
     ctx.restore();
 
-  }, [events, selectedId, selectedIds, currentTime, hoverPos, selectionRect, activeTool, isPlacementMode, activeSize, activeShape, bgColor, enemyColor, playerColor]);
+  }, [events, selectedId, selectedIds, currentTime, hoverPos, selectionRect, activeTool, isPlacementMode, activeSize, activeShape, bgColor, enemyColor, playerColor, activeCustomShapeId, customShapes]);
 
   // ─── Audio Setup ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -449,12 +510,14 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const findEventAtCanvasPos = (cx: number, cy: number): number | null => {
     for (let i = events.length - 1; i >= 0; i--) {
       const ev = events[i];
-      const s = (ev.size ?? 40) * SCALE;
       const ex = ev.x * SCALE;
       const ey = ev.y * SCALE;
-      if (cx >= ex - s / 2 && cx <= ex + s / 2 && cy >= ey - s / 2 && cy <= ey + s / 2) {
-        return ev.id;
-      }
+      const r  = ev.customShapeDef
+        ? ev.customShapeDef.colliderRadius * SCALE
+        : (ev.size ?? 40) * SCALE / 2;
+      const dx = cx - ex;
+      const dy = cy - ey;
+      if (dx * dx + dy * dy <= r * r) return ev.id;
     }
     return null;
   };
@@ -469,17 +532,21 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     if (isPlacementMode) {
       // Place immediately on click while in placement mode.
       const id = nextIdRef.current++;
+      const activeCSD = activeCustomShapeIdRef.current
+        ? customShapesRef.current.find(cs => cs.id === activeCustomShapeIdRef.current)
+        : undefined;
       const newEvent: PlacedEvent = {
         id,
         timestamp: parseFloat(currentTime.toFixed(3)),
-        type: activeTool as LevelEventType,
+        type: activeToolRef.current as LevelEventType,
         x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
         y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
-        size: activeSize,
-        behavior: activeBehavior,
-        duration: activeDuration,
+        size: activeSizeRef.current,
+        behavior: activeBehaviorRef.current,
+        duration: activeDurationRef.current,
         rotation: 0,
-        shape: activeShape,
+        shape: activeShapeRef.current,
+        ...(activeCSD ? { customShapeDef: activeCSD } : {}),
       };
       setEvents(prev => [...prev, newEvent]);
       setSelectedId(id);
@@ -593,17 +660,21 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     }
 
     const id = nextIdRef.current++;
+    const activeCSD = activeCustomShapeIdRef.current
+      ? customShapesRef.current.find(cs => cs.id === activeCustomShapeIdRef.current)
+      : undefined;
     const newEvent: PlacedEvent = {
       id,
       timestamp: parseFloat(time.toFixed(3)),
-      type: activeTool as LevelEventType,
+      type: activeToolRef.current as LevelEventType,
       x: 512,
       y: 384,
-      size: activeSize,
-      behavior: activeBehavior,
-      duration: activeDuration,
+      size: activeSizeRef.current,
+      behavior: activeBehaviorRef.current,
+      duration: activeDurationRef.current,
       rotation: 0,
-      shape: activeShape,
+      shape: activeShapeRef.current,
+      ...(activeCSD ? { customShapeDef: activeCSD } : {}),
     };
     setEvents(prev => [...prev, newEvent]);
     setSelectedId(id);
@@ -634,7 +705,53 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     const levelData: LevelData = {
       metadata: { bossName, bpm, duration: audioDuration },
       theme: { enemyColor, backgroundColor: bgColor, playerColor },
-      timeline: events.map(({ id, shape, ...rest }) => rest).sort((a, b) => a.timestamp - b.timestamp),
+      timeline: events.map(({ id, shape, customShapeDef, ...rest }) => {
+        // Keep screen shake as a pure timeline effect.
+        if (rest.type === 'screen_shake') return rest;
+
+        const size = rest.size ?? 40;
+        const behaviors = buildBehaviorDefsForPlacedEvent(rest.type, rest.behavior, size, rest.duration);
+
+        if (customShapeDef) {
+          // Convert composer pieces into an ObjectDef with children.
+          const children: ChildDef[] = customShapeDef.pieces.map(p => ({
+            offsetX: p.x,
+            offsetY: p.y,
+            localRotation: p.rotation,
+            shape: pieceTypeToShapeDef(p.type, p.size, p.color || enemyColor),
+          }));
+
+          const objectDef: ObjectDef = {
+            x: rest.x,
+            y: rest.y,
+            rotation: rest.rotation,
+            children,
+            spawnTime: rest.timestamp,
+            colliderRadius: customShapeDef.colliderRadius,
+            behaviors,
+          };
+
+          return {
+            ...rest,
+            objectDef,
+          };
+        }
+
+        const fallbackShape: ShapeType = rest.type === 'projectile_throw' ? 'circle' : 'square';
+        const objectDef: ObjectDef = {
+          x: rest.x,
+          y: rest.y,
+          rotation: rest.rotation,
+          shape: shapeTypeToShapeDef(shape ?? fallbackShape, size, enemyColor),
+          spawnTime: rest.timestamp,
+          behaviors,
+        };
+
+        return {
+          ...rest,
+          objectDef,
+        };
+      }).sort((a, b) => a.timestamp - b.timestamp),
     };
 
     const audioUrl = URL.createObjectURL(audioFile);
@@ -714,16 +831,20 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
           {/* Panel tabs */}
           <div className="flex flex-col gap-1 mb-4">
             {[
-              { id: 'tools' as const, icon: Zap },
-              { id: 'shapes' as const, icon: Hexagon },
-              { id: 'settings' as const, icon: Settings },
-            ].map(({ id, icon: Icon }) => (
+              { id: 'tools' as const,   icon: Zap,    title: 'Tools'     },
+              { id: 'shapes' as const,  icon: Hexagon, title: 'Shapes'   },
+              { id: 'settings' as const,icon: Settings,title: 'Settings' },
+              { id: 'compose' as const, icon: Layers,  title: 'Shape Composer' },
+            ].map(({ id, icon: Icon, title }) => (
               <button
                 key={id}
                 onClick={() => setActivePanel(id)}
+                title={title}
                 className={`p-3 rounded-xl transition-all tool-btn ${
-                  activePanel === id 
-                    ? 'bg-[#FF0099] text-white shadow-lg shadow-[#FF009944]' 
+                  activePanel === id
+                    ? id === 'compose'
+                      ? 'bg-[#9966FF] text-white shadow-lg shadow-[#9966FF44]'
+                      : 'bg-[#FF0099] text-white shadow-lg shadow-[#FF009944]'
                     : 'bg-[#1a1a2e] text-[#666] hover:text-white hover:bg-[#252540]'
                 }`}
               >
@@ -743,6 +864,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
+                  activeToolRef.current = key as Tool;
                   setActiveTool(key as Tool);
                   setIsPlacementMode(true);
                   isPlacementModeRef.current = true;
@@ -766,9 +888,23 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
           })}
         </motion.div>
 
+        {/* ═══ COMPOSE MODE: full-area takeover ═══ */}
+        {activePanel === 'compose' && (
+          <AnimatePresence mode="wait">
+            <ShapeComposerTab
+              key="composer"
+              onClose={() => setActivePanel('shapes')}
+              onSave={handleSaveCustomShape}
+              onDelete={handleDeleteCustomShape}
+              existingShapes={customShapes}
+              defaultColor={enemyColor}
+            />
+          </AnimatePresence>
+        )}
+
         {/* ═══ LEFT PANEL ═══ */}
         <AnimatePresence mode="wait">
-          <motion.div
+          {activePanel !== 'compose' && <motion.div
             key={activePanel}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -814,7 +950,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                           key={type}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => setActiveBehavior(type)}
+                          onClick={() => {
+                            activeBehaviorRef.current = type;
+                            setActiveBehavior(type);
+                          }}
                           className={`p-2.5 rounded-lg transition-all ${
                             activeBehavior === type
                               ? 'bg-[#FF0099] text-white'
@@ -840,7 +979,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                     min="20"
                     max="200"
                     value={activeSize}
-                    onChange={e => setActiveSize(+e.target.value)}
+                    onChange={e => {
+                      activeSizeRef.current = +e.target.value;
+                      setActiveSize(+e.target.value);
+                    }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
                 </div>
@@ -857,7 +999,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                     max="10"
                     step="0.1"
                     value={activeDuration}
-                    onChange={e => setActiveDuration(+e.target.value)}
+                    onChange={e => {
+                      activeDurationRef.current = +e.target.value;
+                      setActiveDuration(+e.target.value);
+                    }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
                 </div>
@@ -866,7 +1011,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
 
             {activePanel === 'shapes' && (
               <div className="space-y-4">
-                <div className="text-[10px] uppercase tracking-widest text-[#444]">Pick Shape</div>
+                <div className="text-[10px] uppercase tracking-widest text-[#444]">Primitive Shapes</div>
                 <div className="shape-grid">
                   {SHAPES.map(({ type, icon: Icon }) => (
                     <motion.button
@@ -874,12 +1019,15 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                       whileHover={{ scale: 1.1, rotate: 5 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => {
+                        activeShapeRef.current = type;
                         setActiveShape(type);
+                        setActiveCustomShapeId(null);
+                        activeCustomShapeIdRef.current = null;
                         setIsPlacementMode(true);
                         isPlacementModeRef.current = true;
                       }}
                       className={`aspect-square p-4 rounded-xl transition-all ${
-                        activeShape === type
+                        activeShape === type && activeCustomShapeId === null
                           ? 'bg-gradient-to-br from-[#FF0099] to-[#FF6600] text-white shadow-lg shadow-[#FF009944]'
                           : 'bg-[#151520] text-[#666] hover:text-white hover:bg-[#252540] border border-[#252540]'
                       }`}
@@ -888,8 +1036,56 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                     </motion.button>
                   ))}
                 </div>
-                <p className="text-[10px] text-[#444] text-center mt-4">
-                  Pick a tool to enter placing mode
+
+                {/* Custom shapes */}
+                {customShapes.length > 0 && (
+                  <>
+                    <div className="w-full h-px bg-[#1a1a2e]" />
+                    <div className="text-[10px] uppercase tracking-widest text-[#9966FF] flex items-center gap-1">
+                      <Layers size={10} /> Custom Shapes
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {customShapes.map(cs => (
+                        <motion.button
+                          key={cs.id}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => {
+                            setActiveCustomShapeId(cs.id);
+                            activeCustomShapeIdRef.current = cs.id;
+                            setIsPlacementMode(true);
+                            isPlacementModeRef.current = true;
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-xl transition-all text-left ${
+                            activeCustomShapeId === cs.id
+                              ? 'bg-[#9966FF33] border border-[#9966FF] text-white'
+                              : 'bg-[#151520] border border-[#252540] text-[#888] hover:text-white hover:bg-[#252540]'
+                          }`}
+                        >
+                          {cs.thumbnail ? (
+                            <img src={cs.thumbnail} alt={cs.name}
+                              className="w-9 h-9 rounded-lg border border-[#333] shrink-0 object-cover"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-[#1a1a2e] flex items-center justify-center shrink-0">
+                              <Layers size={14} className="text-[#555]" />
+                            </div>
+                          )}
+                          <span className="text-xs font-medium truncate">{cs.name}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setActivePanel('compose')}
+                      className="w-full py-1.5 rounded-lg text-[10px] text-[#9966FF] border border-[#9966FF44] hover:bg-[#9966FF11] transition-all flex items-center justify-center gap-1"
+                    >
+                      <Layers size={10} /> Open Composer
+                    </button>
+                  </>
+                )}
+
+                <p className="text-[10px] text-[#444] text-center mt-2">
+                  Pick a shape then click the canvas to place
                 </p>
               </div>
             )}
@@ -968,11 +1164,11 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                 </div>
               </div>
             )}
-          </motion.div>
+          </motion.div>}
         </AnimatePresence>
 
         {/* ═══ CENTER: Canvas + Timeline ═══ */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {activePanel !== 'compose' && <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           
           {/* Canvas area */}
           <div className="flex-1 flex items-center justify-center bg-[#060609] p-4 relative overflow-hidden">
@@ -1301,9 +1497,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               ))}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* ═══ RIGHT PANEL: Selected Event ═══ */}
+        {activePanel !== 'compose' &&
         <motion.div
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -1429,7 +1626,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
           <p className="text-[10px] text-[#333] text-center mt-2">
             {events.length} event{events.length !== 1 ? 's' : ''} ready
           </p>
-        </motion.div>
+        </motion.div>}
       </div>
     </div>
   );
@@ -1508,4 +1705,138 @@ function shiftColor(hex: string, amount: number): string {
   const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
   const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+function shapeTypeToShapeDef(shape: ShapeType, size: number, color: string): ShapeDef {
+  const opts = { fillColor: color, strokeColor: color, glowColor: color, glowRadius: 12 };
+  switch (shape) {
+    case 'circle':
+      return { kind: 'circle', radius: size / 2, ...opts };
+    case 'triangle':
+      return { kind: 'polygon', sides: 3, radius: size / 2, ...opts };
+    case 'diamond':
+      return { kind: 'polygon', sides: 4, radius: size / 2, ...opts };
+    case 'hexagon':
+      return { kind: 'polygon', sides: 6, radius: size / 2, ...opts };
+    case 'star': {
+      const points: [number, number][] = [];
+      for (let i = 0; i < 10; i++) {
+        const a = (Math.PI / 5) * i - Math.PI / 2;
+        const rad = i % 2 === 0 ? size / 2 : size / 2 * 0.4;
+        points.push([rad * Math.cos(a), rad * Math.sin(a)]);
+      }
+      return { kind: 'polygon', points, ...opts };
+    }
+    case 'square':
+    default:
+      return { kind: 'rect', width: size, height: size, ...opts };
+  }
+}
+
+function buildBehaviorDefsForPlacedEvent(
+  eventType: LevelEventType,
+  behavior: LevelEvent['behavior'] | undefined,
+  size: number,
+  duration?: number,
+): BehaviorDef[] {
+  const defs: BehaviorDef[] = [];
+
+  if (duration && duration > 0) {
+    defs.push({ kind: 'dieAfter', lifetime: duration });
+  }
+
+  // Tool-specific defaults.
+  if (eventType === 'pulse') {
+    defs.push({ kind: 'pulse', minScale: 0.75, maxScale: 1.25, period: 0.7 });
+  }
+  if (eventType === 'boss_move') {
+    defs.push({ kind: 'bounce', vx: 220, vy: 0, radius: size / 2 });
+  }
+
+  // Only projectile/obstacle use the explicit behavior picker in the UI.
+  const explicitBehavior = (eventType === 'projectile_throw' || eventType === 'spawn_obstacle')
+    ? behavior
+    : undefined;
+
+  switch (explicitBehavior) {
+    case 'spinning':
+      defs.push({ kind: 'rotate', speed: Math.PI });
+      break;
+    case 'homing':
+      defs.push({ kind: 'homing', homingSpeed: 220 });
+      break;
+    case 'bouncing':
+      defs.push({ kind: 'bounce', vx: 160, vy: 140, radius: size / 2 });
+      break;
+    case 'sweep':
+      defs.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+      break;
+    case 'static':
+    default:
+      break;
+  }
+
+  return defs;
+}
+
+/** Draw a custom composite shape on the build canvas (origin = event centre) */
+function drawCompositeShape(
+  ctx: CanvasRenderingContext2D,
+  def: CustomShapeDef,
+  scale: number,
+  selected: boolean,
+  fallbackColor: string,
+) {
+  for (const piece of def.pieces) {
+    const col = piece.color || fallbackColor;
+    const r   = (piece.size / 2) * scale;
+    ctx.save();
+    ctx.translate(piece.x * scale, piece.y * scale);
+    ctx.rotate((piece.rotation * Math.PI) / 180);
+    ctx.fillStyle   = selected ? `${col}66` : `${col}44`;
+    ctx.strokeStyle = selected ? '#ffffff' : col;
+    ctx.lineWidth   = selected ? 2.5 : 1.5;
+    if (selected) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 6; }
+    drawPieceShape(ctx, piece.type as PieceType, r);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Show bounding circle when selected
+  if (selected && def.pieces.length > 0) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, def.colliderRadius * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+/** Convert a composer PieceType + size to a ShapeDef for ObjectFactory */
+function pieceTypeToShapeDef(type: PieceType, size: number, color: string): ShapeDef {
+  const opts = { fillColor: color, strokeColor: color, glowColor: color, glowRadius: 12 };
+  switch (type) {
+    case 'circle':   return { kind: 'circle',  radius: size / 2, ...opts };
+    case 'rect':     return { kind: 'rect',    width: size, height: size, ...opts };
+    case 'triangle': return { kind: 'polygon', sides: 3, radius: size / 2, ...opts };
+    case 'diamond':  return { kind: 'polygon', sides: 4, radius: size / 2, ...opts };
+    case 'hexagon':  return { kind: 'polygon', sides: 6, radius: size / 2, ...opts };
+    case 'star': {
+      // Build explicit star points
+      const points: [number, number][] = [];
+      for (let i = 0; i < 10; i++) {
+        const a   = (Math.PI / 5) * i - Math.PI / 2;
+        const rad = i % 2 === 0 ? size / 2 : size / 2 * 0.4;
+        points.push([rad * Math.cos(a), rad * Math.sin(a)]);
+      }
+      return { kind: 'polygon', points, ...opts };
+    }
+    default:         return { kind: 'rect', width: size, height: size, ...opts };
+  }
 }

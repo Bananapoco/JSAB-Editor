@@ -3,6 +3,12 @@ import { EventBus } from '../EventBus';
 
 export class MainMenu extends Scene
 {
+    private onLoadLevel = () => {
+        // Only react while this scene is actually active.
+        if (!this.scene.isActive('MainMenu')) return;
+        this.scene.start('Game');
+    };
+
     constructor ()
     {
         super('MainMenu');
@@ -46,8 +52,10 @@ export class MainMenu extends Scene
             EventBus.emit('open-community-hub');
         });
 
-        EventBus.on('load-level', () => {
-            this.scene.start('Game');
+        EventBus.on('load-level', this.onLoadLevel);
+
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            EventBus.removeListener('load-level', this.onLoadLevel);
         });
 
         // --- Bottom Bar / Settings ---

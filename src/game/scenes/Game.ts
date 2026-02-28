@@ -30,6 +30,10 @@ const MAX_DELTA_MS = 100;
 // ---------------------------------------------------------------------------
 
 export class Game extends Scene {
+    private onLoadLevel = (data: { levelData: LevelData; audioUrl: string }) => {
+        this.startLevel(data);
+    };
+
     // --- Canvas rendering ---
     private ctx!: CanvasRenderingContext2D;
 
@@ -121,9 +125,7 @@ export class Game extends Scene {
         this.sys.game.events.on('postrender', this.customRender, this);
 
         // Level loading
-        EventBus.on('load-level', (data: { levelData: LevelData; audioUrl: string }) => {
-            this.startLevel(data);
-        });
+        EventBus.on('load-level', this.onLoadLevel);
 
         if ((window as any).pendingLevelData) {
             this.startLevel((window as any).pendingLevelData);
@@ -530,7 +532,7 @@ export class Game extends Scene {
         this.sceneReady = false;
         this.pendingStartLevelData = null;
         this.sys.game.events.off('postrender', this.customRender, this);
-        EventBus.removeAllListeners('load-level');
+        EventBus.removeListener('load-level', this.onLoadLevel);
         if (this.music) this.music.stop();
     }
 }
