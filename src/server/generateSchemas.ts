@@ -1,0 +1,325 @@
+// Shared schema definitions for AI level generation tool calls.
+
+export const levelSchema = {
+    name: 'create_level',
+    description: 'Output a complete JSAB-style level definition with procedural vector shapes.',
+    input_schema: {
+        type: 'object' as const,
+        properties: {
+            metadata: {
+                type: 'object',
+                properties: {
+                    bossName: { type: 'string', description: 'Creative boss / level name' },
+                    bpm: { type: 'number', description: 'Beats per minute of the song' },
+                    duration: { type: 'number', description: 'Song duration in seconds' },
+                },
+                required: ['bossName', 'duration'],
+            },
+            theme: {
+                type: 'object',
+                properties: {
+                    enemyColor: { type: 'string', description: 'Hex color for hazards, e.g. #FF0099' },
+                    backgroundColor: { type: 'string', description: 'Hex background color, e.g. #0a0010' },
+                    playerColor: { type: 'string', description: 'Hex color for the player, e.g. #00ffff' },
+                },
+                required: ['enemyColor', 'backgroundColor', 'playerColor'],
+            },
+            timeline: {
+                type: 'array',
+                description: 'Ordered list of level events. At least 20 events spread across the duration.',
+                items: {
+                    type: 'object',
+                    properties: {
+                        timestamp: { type: 'number', description: 'Seconds from audio start when this event triggers' },
+                        type: {
+                            type: 'string',
+                            enum: ['projectile_throw', 'spawn_obstacle', 'screen_shake', 'pulse'],
+                        },
+                        x: { type: 'number', description: 'World X position (0–1024)' },
+                        y: { type: 'number', description: 'World Y position (0–768)' },
+                        size: { type: 'number', description: 'Approximate size in pixels' },
+                        rotation: { type: 'number', description: 'Initial rotation in degrees' },
+                        duration: { type: 'number', description: 'How many seconds this hazard lives' },
+                        behavior: {
+                            type: 'string',
+                            enum: ['homing', 'spinning', 'bouncing', 'static', 'sweep', 'bomb'],
+                        },
+                        objectDef: {
+                            type: 'object',
+                            description: 'Optional: full procedural object. Use this for complex or composite shapes.',
+                            properties: {
+                                x: { type: 'number' },
+                                y: { type: 'number' },
+                                rotation: { type: 'number' },
+                                scale: { type: 'number' },
+                                spawnTime: { type: 'number' },
+                                despawnTime: { type: 'number' },
+                                shape: {
+                                    type: 'object',
+                                    properties: {
+                                        kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                        radius: { type: 'number' },
+                                        width: { type: 'number' },
+                                        height: { type: 'number' },
+                                        sides: { type: 'number', description: 'For regular polygon (3+ sides)' },
+                                        points: {
+                                            type: 'array',
+                                            description: 'Optional custom polygon points for silhouette shapes (e.g. stars, ears).',
+                                            items: {
+                                                type: 'array',
+                                                items: { type: 'number' },
+                                                minItems: 2,
+                                                maxItems: 2,
+                                            },
+                                        },
+                                        fillColor: { type: 'string' },
+                                        strokeColor: { type: 'string' },
+                                        strokeWidth: { type: 'number' },
+                                        glowColor: { type: 'string' },
+                                        glowRadius: { type: 'number' },
+                                        alpha: { type: 'number' },
+                                    },
+                                    required: ['kind'],
+                                },
+                                children: {
+                                    type: 'array',
+                                    description: 'Sub-shapes composing a complex object (e.g. hammer = handle rect + head rect)',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            offsetX: { type: 'number' },
+                                            offsetY: { type: 'number' },
+                                            localRotation: { type: 'number' },
+                                            localScale: { type: 'number' },
+                                            shape: {
+                                                type: 'object',
+                                                properties: {
+                                                    kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                                    radius: { type: 'number' },
+                                                    width: { type: 'number' },
+                                                    height: { type: 'number' },
+                                                    sides: { type: 'number' },
+                                                    points: {
+                                                        type: 'array',
+                                                        items: {
+                                                            type: 'array',
+                                                            items: { type: 'number' },
+                                                            minItems: 2,
+                                                            maxItems: 2,
+                                                        },
+                                                    },
+                                                    fillColor: { type: 'string' },
+                                                    strokeColor: { type: 'string' },
+                                                    strokeWidth: { type: 'number' },
+                                                    glowColor: { type: 'string' },
+                                                    glowRadius: { type: 'number' },
+                                                },
+                                                required: ['kind'],
+                                            },
+                                        },
+                                    },
+                                },
+                                behaviors: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce', 'bomb'] },
+                                            speed: { type: 'number' },
+                                            minScale: { type: 'number' },
+                                            maxScale: { type: 'number' },
+                                            period: { type: 'number' },
+                                            centerX: { type: 'number' },
+                                            centerY: { type: 'number' },
+                                            radius: { type: 'number' },
+                                            angularSpeed: { type: 'number' },
+                                            velocityX: { type: 'number' },
+                                            velocityY: { type: 'number' },
+                                            homingSpeed: { type: 'number' },
+                                            lifetime: { type: 'number' },
+                                            vx: { type: 'number' },
+                                            vy: { type: 'number' },
+                                            growthDuration: { type: 'number' },
+                                            initialScale: { type: 'number' },
+                                            particleCount: { type: 'number' },
+                                            particleSpeed: { type: 'number' },
+                                        },
+                                        required: ['kind'],
+                                    },
+                                },
+                            },
+                            required: ['x', 'y', 'spawnTime'],
+                        },
+                    },
+                    required: ['timestamp', 'type', 'x', 'y'],
+                },
+            },
+            explanation: { type: 'string', description: 'Brief design rationale (1–3 sentences)' },
+        },
+        required: ['metadata', 'theme', 'timeline'],
+    },
+};
+
+export const levelHeaderSchema = {
+    name: 'create_level_header',
+    description: 'Output level metadata/theme/explanation only. No timeline.',
+    input_schema: {
+        type: 'object' as const,
+        properties: {
+            metadata: {
+                type: 'object',
+                properties: {
+                    bossName: { type: 'string' },
+                    bpm: { type: 'number' },
+                    duration: { type: 'number' },
+                },
+                required: ['bossName', 'duration'],
+            },
+            theme: {
+                type: 'object',
+                properties: {
+                    enemyColor: { type: 'string' },
+                    backgroundColor: { type: 'string' },
+                    playerColor: { type: 'string' },
+                },
+                required: ['enemyColor', 'backgroundColor', 'playerColor'],
+            },
+            explanation: { type: 'string' },
+        },
+        required: ['metadata', 'theme', 'explanation'],
+    },
+};
+
+export const timelineSegmentSchema = {
+    name: 'create_timeline_segment',
+    description: 'Output only timeline events for a given time range.',
+    input_schema: {
+        type: 'object' as const,
+        properties: {
+            timeline: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    properties: {
+                        timestamp: { type: 'number' },
+                        type: { type: 'string', enum: ['projectile_throw', 'spawn_obstacle', 'screen_shake', 'pulse'] },
+                        x: { type: 'number' },
+                        y: { type: 'number' },
+                        size: { type: 'number' },
+                        rotation: { type: 'number' },
+                        duration: { type: 'number' },
+                        behavior: { type: 'string', enum: ['homing', 'spinning', 'bouncing', 'static', 'sweep', 'bomb'] },
+                        objectDef: {
+                            type: 'object',
+                            description: 'Optional: full procedural object. Use this for complex or composite motif attacks.',
+                            properties: {
+                                x: { type: 'number' },
+                                y: { type: 'number' },
+                                rotation: { type: 'number' },
+                                scale: { type: 'number' },
+                                spawnTime: { type: 'number' },
+                                despawnTime: { type: 'number' },
+                                shape: {
+                                    type: 'object',
+                                    properties: {
+                                        kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                        radius: { type: 'number' },
+                                        width: { type: 'number' },
+                                        height: { type: 'number' },
+                                        sides: { type: 'number', description: 'For regular polygon (3+ sides)' },
+                                        points: {
+                                            type: 'array',
+                                            description: 'Optional custom polygon points for silhouettes (e.g. stars).',
+                                            items: {
+                                                type: 'array',
+                                                items: { type: 'number' },
+                                                minItems: 2,
+                                                maxItems: 2,
+                                            },
+                                        },
+                                        fillColor: { type: 'string' },
+                                        strokeColor: { type: 'string' },
+                                        strokeWidth: { type: 'number' },
+                                        glowColor: { type: 'string' },
+                                        glowRadius: { type: 'number' },
+                                        alpha: { type: 'number' },
+                                    },
+                                    required: ['kind'],
+                                },
+                                children: {
+                                    type: 'array',
+                                    description: 'Sub-shapes composing a complex object.',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            offsetX: { type: 'number' },
+                                            offsetY: { type: 'number' },
+                                            localRotation: { type: 'number' },
+                                            localScale: { type: 'number' },
+                                            shape: {
+                                                type: 'object',
+                                                properties: {
+                                                    kind: { type: 'string', enum: ['circle', 'rect', 'polygon'] },
+                                                    radius: { type: 'number' },
+                                                    width: { type: 'number' },
+                                                    height: { type: 'number' },
+                                                    sides: { type: 'number' },
+                                                    points: {
+                                                        type: 'array',
+                                                        items: {
+                                                            type: 'array',
+                                                            items: { type: 'number' },
+                                                            minItems: 2,
+                                                            maxItems: 2,
+                                                        },
+                                                    },
+                                                    fillColor: { type: 'string' },
+                                                    strokeColor: { type: 'string' },
+                                                    strokeWidth: { type: 'number' },
+                                                    glowColor: { type: 'string' },
+                                                    glowRadius: { type: 'number' },
+                                                },
+                                                required: ['kind'],
+                                            },
+                                        },
+                                    },
+                                },
+                                behaviors: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce', 'bomb'] },
+                                            speed: { type: 'number' },
+                                            minScale: { type: 'number' },
+                                            maxScale: { type: 'number' },
+                                            period: { type: 'number' },
+                                            centerX: { type: 'number' },
+                                            centerY: { type: 'number' },
+                                            radius: { type: 'number' },
+                                            angularSpeed: { type: 'number' },
+                                            velocityX: { type: 'number' },
+                                            velocityY: { type: 'number' },
+                                            homingSpeed: { type: 'number' },
+                                            lifetime: { type: 'number' },
+                                            vx: { type: 'number' },
+                                            vy: { type: 'number' },
+                                            growthDuration: { type: 'number' },
+                                            initialScale: { type: 'number' },
+                                            particleCount: { type: 'number' },
+                                            particleSpeed: { type: 'number' },
+                                        },
+                                        required: ['kind'],
+                                    },
+                                },
+                            },
+                            required: ['x', 'y', 'spawnTime'],
+                        },
+                    },
+                    required: ['timestamp', 'type', 'x', 'y'],
+                },
+            },
+        },
+        required: ['timeline'],
+    },
+};
