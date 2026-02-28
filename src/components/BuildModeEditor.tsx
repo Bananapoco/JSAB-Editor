@@ -41,6 +41,7 @@ const GAME_H = 768;
 const CANVAS_W = 640;
 const CANVAS_H = Math.round(CANVAS_W * GAME_H / GAME_W);
 const SCALE = CANVAS_W / GAME_W;
+const SELECTION_CLICK_DEADZONE_PX = 8;
 
 // Tool configurations with icons and colors
 const TOOLS: Record<string, { icon: React.FC<any>; color: string; label: string }> = {
@@ -88,6 +89,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
 
   // Tool state
   const [activeTool, setActiveTool] = useState<Tool>('projectile_throw');
+  const [isPlacementMode, setIsPlacementMode] = useState(true);
   const [activeShape, setActiveShape] = useState<ShapeType>('square');
   const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('homing');
   const [activeSize, setActiveSize] = useState(50);
@@ -140,6 +142,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   snapEnabledRef.current = snapEnabled;
   const snapIntervalRef = useRef(snapInterval);
   snapIntervalRef.current = snapInterval;
+  const isPlacementModeRef = useRef(isPlacementMode);
+  isPlacementModeRef.current = isPlacementMode;
 
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
@@ -174,6 +178,15 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
           setSelectedId(null);
           setSelectedIds([]);
         }
+      }
+
+      if (e.code === 'Escape') {
+        setIsPlacementMode(false);
+        isPlacementModeRef.current = false;
+        setIsDraggingObjects(false);
+        setIsDraggingSelection(false);
+        setSelectionRect(null);
+        dragStateRef.current = null;
       }
 
       if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
@@ -259,8 +272,24 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
       ctx.restore();
     });
 
-    // Hover preview
-    if (hoverPos) {
+    // Selection rectangle
+    if (selectionRect && !isPlacementMode) {
+      const x = Math.min(selectionRect.x1, selectionRect.x2) * SCALE;
+      const y = Math.min(selectionRect.y1, selectionRect.y2) * SCALE;
+      const w = Math.abs(selectionRect.x2 - selectionRect.x1) * SCALE;
+      const h = Math.abs(selectionRect.y2 - selectionRect.y1) * SCALE;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,255,255,0.14)';
+      ctx.strokeStyle = '#00FFFF';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+      ctx.restore();
+    }
+
+    // Hover preview (only while placing)
+    if (hoverPos && isPlacementMode) {
       const s = activeSize * SCALE;
       const col = TOOLS[activeTool]?.color ?? enemyColor;
       
@@ -282,7 +311,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     ctx.fillRect(px - 10, py - 10, 20, 20);
     ctx.restore();
 
-  }, [events, selectedId, selectedIds, currentTime, hoverPos, activeTool, activeSize, activeShape, bgColor, enemyColor, playerColor]);
+  }, [events, selectedId, selectedIds, currentTime, hoverPos, selectionRect, activeTool, isPlacementMode, activeSize, activeShape, bgColor, enemyColor, playerColor]);
 
   // ─── Audio Setup ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -435,6 +464,29 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     if (!pos) return;
 
     const hitId = findEventAtCanvasPos(pos.cx, pos.cy);
+
+    // While placing, disable box-select / drag-move interactions.
+    if (isPlacementMode) {
+      // Place immediately on click while in placement mode.
+      const id = nextIdRef.current++;
+      const newEvent: PlacedEvent = {
+        id,
+        timestamp: parseFloat(currentTime.toFixed(3)),
+        type: activeTool as LevelEventType,
+        x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
+        y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
+        size: activeSize,
+        behavior: activeBehavior,
+        duration: activeDuration,
+        rotation: 0,
+        shape: activeShape,
+      };
+      setEvents(prev => [...prev, newEvent]);
+      setSelectedId(id);
+      setSelectedIds([id]);
+      return;
+    }
+
     const hitInSelection = hitId !== null && selectedIds.includes(hitId);
 
     if (hitId !== null) {
@@ -485,9 +537,15 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getCanvasPos(e);
 
+    // Always clean up drag states regardless of mode
     if (isDraggingObjects) {
       setIsDraggingObjects(false);
       dragStateRef.current = null;
+    }
+
+    if (isPlacementModeRef.current) {
+      setIsDraggingSelection(false);
+      setSelectionRect(null);
       return;
     }
 
@@ -496,7 +554,9 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
       const xMax = Math.max(selectionRect.x1, selectionRect.x2);
       const yMin = Math.min(selectionRect.y1, selectionRect.y2);
       const yMax = Math.max(selectionRect.y1, selectionRect.y2);
-      const tiny = Math.abs(xMax - xMin) < 2 && Math.abs(yMax - yMin) < 2;
+      const dragWidthPx = Math.abs(xMax - xMin) * SCALE;
+      const dragHeightPx = Math.abs(yMax - yMin) * SCALE;
+      const tiny = dragWidthPx < SELECTION_CLICK_DEADZONE_PX && dragHeightPx < SELECTION_CLICK_DEADZONE_PX;
 
       if (tiny) {
         const hitId = findEventAtCanvasPos(pos.cx, pos.cy);
@@ -504,22 +564,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
           setSelectedId(hitId);
           setSelectedIds([hitId]);
         } else {
-          const id = nextIdRef.current++;
-          const newEvent: PlacedEvent = {
-            id,
-            timestamp: parseFloat(currentTime.toFixed(3)),
-            type: activeTool as LevelEventType,
-            x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
-            y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
-            size: activeSize,
-            behavior: activeBehavior,
-            duration: activeDuration,
-            rotation: 0,
-            shape: activeShape,
-          };
-          setEvents(prev => [...prev, newEvent]);
-          setSelectedId(id);
-          setSelectedIds([id]);
+          setSelectedId(null);
+          setSelectedIds([]);
         }
       } else {
         const ids = events
@@ -535,7 +581,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   };
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    
+    if (!isPlacementMode) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     let time = ratio * audioDuration;
@@ -689,13 +736,17 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
 
           {/* Tool buttons */}
           {Object.entries(TOOLS).map(([key, { icon: Icon, color }]) => {
-            const isActive = activeTool === key;
+            const isActive = isPlacementMode && activeTool === key;
             return (
               <motion.button
                 key={key}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTool(key as Tool)}
+                onClick={() => {
+                  setActiveTool(key as Tool);
+                  setIsPlacementMode(true);
+                  isPlacementModeRef.current = true;
+                }}
                 className={`p-3 rounded-xl transition-all tool-btn relative ${
                   isActive 
                     ? 'text-white' 
@@ -728,19 +779,29 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               <div className="space-y-6">
                 {/* Current tool info */}
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Active Tool</div>
+                  <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Mode</div>
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-[#151520] border border-[#252540]">
-                    {(() => {
-                      const tool = TOOLS[activeTool];
-                      const Icon = tool.icon;
-                      return (
-                        <>
-                          <Icon size={18} style={{ color: tool.color }} />
-                          <span className="text-sm font-medium">{tool.label}</span>
-                        </>
-                      );
-                    })()}
+                    {isPlacementMode ? (
+                      (() => {
+                        const tool = TOOLS[activeTool];
+                        const Icon = tool.icon;
+                        return (
+                          <>
+                            <Icon size={18} style={{ color: tool.color }} />
+                            <span className="text-sm font-medium">Placing: {tool.label}</span>
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <MousePointer2 size={18} style={{ color: '#9ca3af' }} />
+                        <span className="text-sm font-medium text-[#bbb]">Select / Move</span>
+                      </>
+                    )}
                   </div>
+                  {isPlacementMode && (
+                    <p className="text-[10px] text-[#666] mt-2">Press Esc to stop placing</p>
+                  )}
                 </div>
 
                 {/* Behavior (for projectile/obstacle) */}
@@ -814,6 +875,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                       whileTap={{ scale: 0.9 }}
                       onClick={() => {
                         setActiveShape(type);
+                        setIsPlacementMode(true);
+                        isPlacementModeRef.current = true;
                       }}
                       className={`aspect-square p-4 rounded-xl transition-all ${
                         activeShape === type
@@ -826,7 +889,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                   ))}
                 </div>
                 <p className="text-[10px] text-[#444] text-center mt-4">
-                  Click canvas to place!
+                  Pick a tool to enter placing mode
                 </p>
               </div>
             )}
@@ -931,7 +994,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
               className="rounded-xl border border-[#1a1a2e] shadow-2xl max-w-full max-h-full"
-              style={{ cursor: isDraggingObjects ? 'grabbing' : isDraggingSelection ? 'crosshair' : 'default' }}
+              style={{ cursor: isDraggingObjects ? 'grabbing' : isPlacementMode ? 'copy' : isDraggingSelection ? 'crosshair' : 'default' }}
             />
             
             {/* Coordinate display */}
@@ -941,17 +1004,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               </div>
             )}
 
-            {selectionRect && (
-              <div
-                className="absolute border border-[#00FFFF] bg-[#00FFFF22] pointer-events-none"
-                style={{
-                  left: `${Math.min(selectionRect.x1, selectionRect.x2) * SCALE}px`,
-                  top: `${Math.min(selectionRect.y1, selectionRect.y2) * SCALE}px`,
-                  width: `${Math.abs(selectionRect.x2 - selectionRect.x1) * SCALE}px`,
-                  height: `${Math.abs(selectionRect.y2 - selectionRect.y1) * SCALE}px`,
-                }}
-              />
-            )}
+
           </div>
 
           {/* Playback controls */}
@@ -1152,7 +1205,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               onClick={handleTimelineClick}
               className="absolute inset-0 bottom-6 z-[5]"
               style={{ 
-                cursor: isScrubbing ? 'grabbing' : 'copy',
+                cursor: isScrubbing ? 'grabbing' : (isPlacementMode ? 'copy' : 'default'),
                 pointerEvents: isScrubbing ? 'none' : 'auto'
               }}
             />
