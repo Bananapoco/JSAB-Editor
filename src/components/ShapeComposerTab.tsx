@@ -36,6 +36,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
   const [shapeName, setShapeName] = useState('My Shape');
   const [pieceColor, setPieceColor] = useState(defaultColor);
   const [saveMsg, setSaveMsg] = useState('');
+  const [canvasCursor, setCanvasCursor] = useState<string>('default');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const piecesRef = useRef<ComposerPiece[]>(pieces);
@@ -45,6 +46,13 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
 
   const dragRef = useRef<{ pieceId: number; lastX: number; lastY: number } | null>(null);
   const rotDragRef = useRef<{ pieceId: number; startAngle: number; startRot: number } | null>(null);
+  const resizeDragRef = useRef<{
+    pieceId: number;
+    corner: { sx: -1 | 1; sy: -1 | 1 };
+    startSize: number;
+    startScaleX: number;
+    startScaleY: number;
+  } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -86,6 +94,11 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     }
   }, [pieces, selectedId]);
 
+  useEffect(() => {
+    if (dragRef.current || rotDragRef.current || resizeDragRef.current) return;
+    setCanvasCursor(pendingType ? 'crosshair' : 'default');
+  }, [pendingType]);
+
   const getCanvasXY = (e: React.MouseEvent<HTMLCanvasElement> | MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -105,16 +118,66 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     const piece = piecesRef.current.find(p => p.id === selectedId);
     if (!piece) return false;
 
-    const handleDistance = piece.size / 2 + 8 + 18;
-    const hx = CX + piece.x;
-    const hy = CY + piece.y - handleDistance;
+    const scaleY = piece.scaleY ?? 1;
+    const handleDistance = (piece.size / 2 + 8) * Math.abs(scaleY) + 18;
+    const rot = (piece.rotation * Math.PI) / 180;
+    const hx = CX + piece.x + Math.sin(rot) * handleDistance;
+    const hy = CY + piece.y - Math.cos(rot) * handleDistance;
     return Math.sqrt((mx - hx) ** 2 + (my - hy) ** 2) <= 10;
   };
+
+  const getCornerHandleAt = (mx: number, my: number): { sx: -1 | 1; sy: -1 | 1 } | null => {
+    if (selectedId === null) return null;
+    const piece = piecesRef.current.find(p => p.id === selectedId);
+    if (!piece) return null;
+
+    const r = piece.size / 2;
+    const pad = 8;
+    const sxScale = piece.scaleX ?? 1;
+    const syScale = piece.scaleY ?? 1;
+    const rot = (piece.rotation * Math.PI) / 180;
+    const c = Math.cos(rot);
+    const s = Math.sin(rot);
+
+    for (const sx of [-1, 1] as const) {
+      for (const sy of [-1, 1] as const) {
+        const lx = sx * (r + pad) * sxScale;
+        const ly = sy * (r + pad) * syScale;
+        const hx = CX + piece.x + lx * c - ly * s;
+        const hy = CY + piece.y + lx * s + ly * c;
+        if (Math.hypot(mx - hx, my - hy) <= 10) {
+          return { sx, sy };
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const getResizeCursorForCorner = (corner: { sx: -1 | 1; sy: -1 | 1 }): string => (
+    corner.sx === corner.sy ? 'nwse-resize' : 'nesw-resize'
+  );
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasXY(e);
     if (!coords) return;
     const { mx, my } = coords;
+
+    const corner = getCornerHandleAt(mx, my);
+    if (corner && selectedId !== null) {
+      const piece = piecesRef.current.find(p => p.id === selectedId);
+      if (!piece) return;
+
+      resizeDragRef.current = {
+        pieceId: piece.id,
+        corner,
+        startSize: piece.size,
+        startScaleX: piece.scaleX ?? 1,
+        startScaleY: piece.scaleY ?? 1,
+      };
+      setCanvasCursor(getResizeCursorForCorner(corner));
+      return;
+    }
 
     if (isOnRotateHandle(mx, my) && selectedId !== null) {
       const piece = piecesRef.current.find(p => p.id === selectedId);
@@ -122,6 +185,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
 
       const angle = Math.atan2(my - (CY + piece.y), mx - (CX + piece.x)) * 180 / Math.PI;
       rotDragRef.current = { pieceId: piece.id, startAngle: angle, startRot: piece.rotation };
+      setCanvasCursor('grabbing');
       return;
     }
 
@@ -133,11 +197,14 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
         y: my - CY,
         size: 60,
         rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
         color: pieceColor,
       };
       setPieces(prev => [...prev, newPiece]);
       setSelectedId(newPiece.id);
       setPendingType(null);
+      setCanvasCursor('default');
       return;
     }
 
@@ -146,11 +213,40 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       if (hitTestPiece(piece, mx, my)) {
         setSelectedId(piece.id);
         dragRef.current = { pieceId: piece.id, lastX: mx, lastY: my };
+        setCanvasCursor('grabbing');
         return;
       }
     }
 
     setSelectedId(null);
+    setCanvasCursor(pendingType ? 'crosshair' : 'default');
+  };
+
+  const handleCanvasHoverMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (dragRef.current || rotDragRef.current || resizeDragRef.current) return;
+
+    const coords = getCanvasXY(e);
+    if (!coords) return;
+    const { mx, my } = coords;
+
+    const corner = getCornerHandleAt(mx, my);
+    if (corner) {
+      setCanvasCursor(getResizeCursorForCorner(corner));
+      return;
+    }
+
+    if (isOnRotateHandle(mx, my)) {
+      setCanvasCursor('grab');
+      return;
+    }
+
+    if (pendingType !== null) {
+      setCanvasCursor('crosshair');
+      return;
+    }
+
+    const hoveringPiece = [...piecesRef.current].reverse().some(piece => hitTestPiece(piece, mx, my));
+    setCanvasCursor(hoveringPiece ? 'grab' : 'default');
   };
 
   useEffect(() => {
@@ -159,10 +255,66 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       if (!coords) return;
       const { mx, my } = coords;
 
+      if (resizeDragRef.current) {
+        const { pieceId, corner, startScaleX, startScaleY } = resizeDragRef.current;
+        const piece = piecesRef.current.find(p => p.id === pieceId);
+        if (!piece) return;
+
+        setCanvasCursor(getResizeCursorForCorner(corner));
+
+        const dx = mx - (CX + piece.x);
+        const dy = my - (CY + piece.y);
+        const rot = (piece.rotation * Math.PI) / 180;
+        const c = Math.cos(-rot);
+        const s = Math.sin(-rot);
+        const localX = dx * c - dy * s;
+        const localY = dx * s + dy * c;
+        const pad = 8;
+
+        if (e.shiftKey) {
+          const targetHalfX = Math.max(7, Math.abs(localX) - pad);
+          const targetHalfY = Math.max(7, Math.abs(localY) - pad);
+          const startHalfX = Math.max(7, (piece.size / 2) * Math.abs(startScaleX));
+          const startHalfY = Math.max(7, (piece.size / 2) * Math.abs(startScaleY));
+          const factor = Math.max(targetHalfX / startHalfX, targetHalfY / startHalfY);
+          const nextScaleX = Math.max(0.2, Math.min(4, Math.abs(startScaleX) * factor));
+          const nextScaleY = Math.max(0.2, Math.min(4, Math.abs(startScaleY) * factor));
+
+          setPieces(prev => prev.map(p => (
+            p.id === pieceId ? { ...p, scaleX: nextScaleX, scaleY: nextScaleY } : p
+          )));
+        } else if (e.altKey) {
+          const baseR = Math.max(7, (piece.size / 2));
+          const targetHalfX = Math.max(7, Math.abs(localX) - pad);
+          const targetHalfY = Math.max(7, Math.abs(localY) - pad);
+          const nextScaleX = Math.max(0.2, Math.min(4, targetHalfX / baseR));
+          const nextScaleY = Math.max(0.2, Math.min(4, targetHalfY / baseR));
+
+          setPieces(prev => prev.map(p => (
+            p.id === pieceId ? { ...p, scaleX: nextScaleX, scaleY: nextScaleY } : p
+          )));
+        } else {
+          const scaleX = Math.max(0.2, Math.abs(piece.scaleX ?? 1));
+          const scaleY = Math.max(0.2, Math.abs(piece.scaleY ?? 1));
+          const normalizedHalfX = Math.abs(localX) / scaleX;
+          const normalizedHalfY = Math.abs(localY) / scaleY;
+          const targetHalf = Math.max(7, Math.max(normalizedHalfX, normalizedHalfY) - pad);
+          const nextSize = Math.max(14, Math.min(260, targetHalf * 2));
+
+          setPieces(prev => prev.map(p => (
+            p.id === pieceId ? { ...p, size: nextSize } : p
+          )));
+        }
+
+        return;
+      }
+
       if (rotDragRef.current) {
         const { pieceId, startAngle, startRot } = rotDragRef.current;
         const piece = piecesRef.current.find(p => p.id === pieceId);
         if (!piece) return;
+
+        setCanvasCursor('grabbing');
 
         const angle = Math.atan2(my - (CY + piece.y), mx - (CX + piece.x)) * 180 / Math.PI;
         const delta = angle - startAngle;
@@ -173,6 +325,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       }
 
       if (dragRef.current) {
+        setCanvasCursor('grabbing');
         const { pieceId, lastX, lastY } = dragRef.current;
         const dx = mx - lastX;
         const dy = my - lastY;
@@ -188,6 +341,8 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     const onUp = () => {
       dragRef.current = null;
       rotDragRef.current = null;
+      resizeDragRef.current = null;
+      setCanvasCursor('default');
     };
 
     window.addEventListener('mousemove', onMove);
@@ -288,12 +443,6 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     setShapeName('My Shape');
   };
 
-  const canvasCursor = pendingType
-    ? 'crosshair'
-    : dragRef.current
-      ? 'grabbing'
-      : 'default';
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -331,6 +480,8 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
           width={COMP_W}
           height={COMP_H}
           onMouseDown={handleMouseDown}
+          onMouseMove={handleCanvasHoverMove}
+          onMouseLeave={() => setCanvasCursor(pendingType ? 'crosshair' : 'default')}
           initial={{ scale: 0.94, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.05 }}
@@ -372,7 +523,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
         <p className="text-[10px] text-[#2a2a40] text-center leading-relaxed">
           Click a shape type on the left → click the canvas to place it
           <br />
-          Drag pieces to reposition · Use sliders to resize & rotate
+          Drag pieces to reposition · Corner drag = resize · Alt+drag = squish · Shift+drag = proportional
           <br />
           Press Delete to remove selected · Esc to deselect
         </p>

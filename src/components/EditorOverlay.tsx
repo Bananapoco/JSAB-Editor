@@ -3,6 +3,7 @@ import { EventBus } from '../game/EventBus';
 import { BuildModeEditor } from './BuildModeEditor';
 import { ModeSelectView } from './editor-overlay/ModeSelectView';
 import { AIGenerationView } from './editor-overlay/AIGenerationView';
+import { SavedBuildProject } from './build-mode/projectStorage';
 
 type OverlayMode = 'ai' | 'build' | 'select';
 
@@ -17,18 +18,37 @@ export const EditorOverlay = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [initialBuildProject, setInitialBuildProject] = useState<SavedBuildProject | null>(null);
 
   useEffect(() => {
     const showEditor = () => {
+      setInitialBuildProject(null);
       setIsVisible(true);
       setMode('select');
     };
 
+    const showBuildProject = (project: SavedBuildProject) => {
+      setInitialBuildProject(project);
+      setIsVisible(true);
+      setMode('build');
+    };
+
     EventBus.on('open-editor', showEditor);
+    EventBus.on('open-build-project', showBuildProject);
     return () => {
       EventBus.removeListener('open-editor', showEditor);
+      EventBus.removeListener('open-build-project', showBuildProject);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    EventBus.emit('ui-input-lock:add');
+    return () => {
+      EventBus.emit('ui-input-lock:remove');
+    };
+  }, [isVisible]);
 
   const handleGenerate = async () => {
     if (!audioFile) {
@@ -112,7 +132,10 @@ export const EditorOverlay = () => {
   if (mode === 'select') {
     return (
       <ModeSelectView
-        onSelectBuild={() => setMode('build')}
+        onSelectBuild={() => {
+          setInitialBuildProject(null);
+          setMode('build');
+        }}
         onSelectAI={() => setMode('ai')}
         onCancel={() => setIsVisible(false)}
       />
@@ -122,8 +145,15 @@ export const EditorOverlay = () => {
   if (mode === 'build') {
     return (
       <BuildModeEditor
-        onClose={() => setIsVisible(false)}
-        onSwitchToAI={() => setMode('ai')}
+        initialProject={initialBuildProject}
+        onClose={() => {
+          setIsVisible(false);
+          setInitialBuildProject(null);
+        }}
+        onSwitchToAI={() => {
+          setInitialBuildProject(null);
+          setMode('ai');
+        }}
       />
     );
   }

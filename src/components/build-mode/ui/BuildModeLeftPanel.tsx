@@ -19,6 +19,7 @@ interface BuildModeLeftPanelProps {
   activeTool: Tool;
   activeBehavior: BehaviorType;
   onBehaviorChange: (behavior: BehaviorType) => void;
+  onSelectTool: (tool: Tool) => void;
   bombGrowthDuration: number;
   bombParticleCount: number;
   bombParticleSpeed: number;
@@ -55,6 +56,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   activeTool,
   activeBehavior,
   onBehaviorChange,
+  onSelectTool,
   bombGrowthDuration,
   bombParticleCount,
   bombParticleSpeed,
@@ -95,6 +97,34 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
       >
         {activePanel === 'tools' && (
           <div className="space-y-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Tool</div>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.entries(TOOLS) as [Tool, (typeof TOOLS)[Tool]][]).map(([key, { icon: Icon, color, label }]) => {
+                  const isActive = isPlacementMode && activeTool === key;
+                  return (
+                    <motion.button
+                      key={key}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => onSelectTool(key)}
+                      className={`p-2 rounded-lg transition-all border text-left ${
+                        isActive
+                          ? 'text-white border-transparent'
+                          : 'bg-[#151520] border-[#252540] text-[#888] hover:text-white hover:bg-[#252540]'
+                      }`}
+                      style={isActive ? { backgroundColor: `${color}30`, borderColor: color } : undefined}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon size={14} style={{ color: isActive ? color : undefined }} />
+                        <span className="text-[10px] uppercase tracking-wide">{label}</span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div>
               <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Mode</div>
               <div className="flex items-center gap-2 p-3 rounded-xl bg-[#151520] border border-[#252540]">

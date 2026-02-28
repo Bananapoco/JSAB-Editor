@@ -25,6 +25,23 @@ export class Game extends Scene {
         this.startLevel(data);
     };
 
+    private cleanupDone = false;
+    private overlayInputLocks = 0;
+
+    private onUiInputLockAdd = () => {
+        this.overlayInputLocks++;
+        this.syncInputEnabled();
+    };
+
+    private onUiInputLockRemove = () => {
+        this.overlayInputLocks = Math.max(0, this.overlayInputLocks - 1);
+        this.syncInputEnabled();
+    };
+
+    private syncInputEnabled() {
+        this.input.enabled = this.overlayInputLocks === 0;
+    }
+
     // --- Canvas rendering ---
     private ctx!: CanvasRenderingContext2D;
 
@@ -117,6 +134,12 @@ export class Game extends Scene {
 
         // Level loading
         EventBus.on('load-level', this.onLoadLevel);
+        EventBus.on('ui-input-lock:add', this.onUiInputLockAdd);
+        EventBus.on('ui-input-lock:remove', this.onUiInputLockRemove);
+        this.syncInputEnabled();
+
+        this.cleanupDone = false;
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanupScene, this);
 
         if ((window as any).pendingLevelData) {
             this.startLevel((window as any).pendingLevelData);
@@ -486,11 +509,26 @@ export class Game extends Scene {
     // Cleanup on scene shutdown
     // -----------------------------------------------------------------------
 
-    shutdown() {
+    private cleanupScene() {
+        if (this.cleanupDone) return;
+        this.cleanupDone = true;
+
         this.sceneReady = false;
         this.pendingStartLevelData = null;
+        this.overlayInputLocks = 0;
+
         this.sys.game.events.off('postrender', this.customRender, this);
         EventBus.removeListener('load-level', this.onLoadLevel);
-        if (this.music) this.music.stop();
+        EventBus.removeListener('ui-input-lock:add', this.onUiInputLockAdd);
+        EventBus.removeListener('ui-input-lock:remove', this.onUiInputLockRemove);
+
+        if (this.music) {
+            this.music.stop();
+            this.music.destroy();
+            this.music = null;
+        }
+
+        this.input.enabled = true;
     }
 }
+

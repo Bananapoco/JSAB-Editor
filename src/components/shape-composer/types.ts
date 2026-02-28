@@ -7,6 +7,9 @@ export interface ComposerPiece {
   y: number;
   size: number;
   rotation: number;
+  /** Non-uniform visual scale (used for corner-drag distort/squish) */
+  scaleX?: number;
+  scaleY?: number;
   color: string;
   type: PieceType;
 }

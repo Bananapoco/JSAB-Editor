@@ -58,9 +58,12 @@ export function drawPieceOnComposer(
   selected: boolean,
 ) {
   const r = piece.size / 2;
+  const scaleX = piece.scaleX ?? 1;
+  const scaleY = piece.scaleY ?? 1;
   ctx.save();
   ctx.translate(CX + piece.x, CY + piece.y);
   ctx.rotate((piece.rotation * Math.PI) / 180);
+  ctx.scale(scaleX, scaleY);
 
   ctx.fillStyle = `${piece.color}55`;
   ctx.strokeStyle = selected ? '#ffffff' : piece.color;
@@ -77,21 +80,23 @@ export function drawPieceOnComposer(
 
   if (selected) {
     const pad = 8;
+    const rx = r + pad;
+    const ry = r + pad;
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 3]);
-    ctx.strokeRect(-r - pad, -r - pad, (r + pad) * 2, (r + pad) * 2);
+    ctx.strokeRect(-rx, -ry, rx * 2, ry * 2);
     ctx.setLineDash([]);
 
     const handleSize = 6;
-    for (const hx of [-r - pad, r + pad]) {
-      for (const hy of [-r - pad, r + pad]) {
+    for (const hx of [-rx, rx]) {
+      for (const hy of [-ry, ry]) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
       }
     }
 
-    const rotHandleY = -r - pad - 18;
+    const rotHandleY = -ry - 18;
     ctx.strokeStyle = '#00FFFF';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -110,13 +115,23 @@ export function drawPieceOnComposer(
 export function hitTestPiece(piece: ComposerPiece, mx: number, my: number): boolean {
   const dx = mx - (CX + piece.x);
   const dy = my - (CY + piece.y);
-  return Math.sqrt(dx * dx + dy * dy) <= piece.size / 2 + 6;
+  const rot = (piece.rotation * Math.PI) / 180;
+  const cos = Math.cos(-rot);
+  const sin = Math.sin(-rot);
+  const localX = dx * cos - dy * sin;
+  const localY = dx * sin + dy * cos;
+  const sx = Math.max(0.001, Math.abs(piece.scaleX ?? 1));
+  const sy = Math.max(0.001, Math.abs(piece.scaleY ?? 1));
+  const nx = localX / sx;
+  const ny = localY / sy;
+  return Math.sqrt(nx * nx + ny * ny) <= piece.size / 2 + 6;
 }
 
 export function computeColliderRadius(pieces: ComposerPiece[]): number {
   let maxRadius = 0;
   for (const p of pieces) {
-    const distance = Math.sqrt(p.x * p.x + p.y * p.y) + p.size / 2;
+    const scaleMax = Math.max(Math.abs(p.scaleX ?? 1), Math.abs(p.scaleY ?? 1));
+    const distance = Math.sqrt(p.x * p.x + p.y * p.y) + (p.size / 2) * scaleMax;
     if (distance > maxRadius) maxRadius = distance;
   }
   return Math.max(maxRadius, 10);
@@ -144,10 +159,12 @@ export function generateThumbnail(pieces: ComposerPiece[]): string {
 
   for (const p of pieces) {
     const r = p.size / 2;
-    minX = Math.min(minX, p.x - r);
-    maxX = Math.max(maxX, p.x + r);
-    minY = Math.min(minY, p.y - r);
-    maxY = Math.max(maxY, p.y + r);
+    const sx = Math.abs(p.scaleX ?? 1);
+    const sy = Math.abs(p.scaleY ?? 1);
+    minX = Math.min(minX, p.x - r * sx);
+    maxX = Math.max(maxX, p.x + r * sx);
+    minY = Math.min(minY, p.y - r * sy);
+    maxY = Math.max(maxY, p.y + r * sy);
   }
 
   const width = (maxX - minX) || 1;
@@ -161,6 +178,7 @@ export function generateThumbnail(pieces: ComposerPiece[]): string {
     tx.save();
     tx.translate(offsetX + p.x * scale, offsetY + p.y * scale);
     tx.rotate((p.rotation * Math.PI) / 180);
+    tx.scale(p.scaleX ?? 1, p.scaleY ?? 1);
     tx.fillStyle = `${p.color}88`;
     tx.strokeStyle = p.color;
     tx.lineWidth = 1.5;

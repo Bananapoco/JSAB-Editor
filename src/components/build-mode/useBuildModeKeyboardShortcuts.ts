@@ -22,6 +22,8 @@ interface UseBuildModeKeyboardShortcutsParams {
   audioDurationRef: MutableRefObject<number>;
   currentTimeRef: MutableRefObject<number>;
   setCurrentTime: Dispatch<SetStateAction<number>>;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 export function useBuildModeKeyboardShortcuts({
@@ -44,6 +46,8 @@ export function useBuildModeKeyboardShortcuts({
   audioDurationRef,
   currentTimeRef,
   setCurrentTime,
+  onUndo,
+  onRedo,
 }: UseBuildModeKeyboardShortcutsParams) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -52,6 +56,22 @@ export function useBuildModeKeyboardShortcuts({
       if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
 
       const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && e.code === 'KeyZ') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          onRedo();
+        } else {
+          onUndo();
+        }
+        return;
+      }
+
+      if (isMod && e.code === 'KeyY') {
+        e.preventDefault();
+        onRedo();
+        return;
+      }
 
       if (isMod && e.code === 'KeyC') {
         const ids = selectedIdsRef.current.length > 0
@@ -152,6 +172,8 @@ export function useBuildModeKeyboardShortcuts({
     isPlayingRef,
     nextIdRef,
     onEscape,
+    onUndo,
+    onRedo,
     pasteNudgeRef,
     selectedIdRef,
     selectedIdsRef,

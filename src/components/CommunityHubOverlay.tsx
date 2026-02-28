@@ -17,6 +17,15 @@ export const CommunityHubOverlay = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!isVisible) return;
+
+        EventBus.emit('ui-input-lock:add');
+        return () => {
+            EventBus.emit('ui-input-lock:remove');
+        };
+    }, [isVisible]);
+
     const fetchLevels = async () => {
         setIsLoading(true);
         // In a real app, this would be: await fetch('/api/levels')

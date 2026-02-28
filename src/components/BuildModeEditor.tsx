@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { EventBus } from '../game/EventBus';
 import { ShapeComposerTab } from './ShapeComposerTab';
@@ -6,7 +6,7 @@ import { BuildModeTopBar } from './build-mode/ui/BuildModeTopBar';
 import { BuildModeToolRail } from './build-mode/ui/BuildModeToolRail';
 import { BuildModeLeftPanel } from './build-mode/ui/BuildModeLeftPanel';
 import { BuildModeCenterPanel } from './build-mode/ui/BuildModeCenterPanel';
-import { BuildModeInspectorPanel } from './build-mode/ui/BuildModeInspectorPanel';
+
 import {
   ActivePanel,
   BehaviorType,
@@ -19,6 +19,7 @@ import {
 } from './build-mode/types';
 import { CustomShapeDef } from './shape-composer/types';
 import { createLevelPayload, savePayloadToCommunity } from './build-mode/levelPayload';
+import { SavedBuildProject, upsertBuildProject } from './build-mode/projectStorage';
 import { useBuildModeKeyboardShortcuts } from './build-mode/useBuildModeKeyboardShortcuts';
 import { useBuildModeCanvasRender } from './build-mode/useBuildModeCanvasRender';
 import { useBuildModeInteractions } from './build-mode/useBuildModeInteractions';
@@ -27,14 +28,21 @@ import { useBuildModePlacementInteractions } from './build-mode/useBuildModePlac
 interface Props {
   onClose: () => void;
   onSwitchToAI: () => void;
+  initialProject?: SavedBuildProject | null;
 }
 
-export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
-  const [events, setEvents] = useState<PlacedEvent[]>([]);
+export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initialProject }) => {
+  const initialSnapshot = initialProject?.snapshot;
+  const [events, setEvents] = useState<PlacedEvent[]>(() => initialSnapshot?.events ?? []);
   const eventsRef = useRef(events);
   eventsRef.current = events;
 
-  const nextIdRef = useRef(0);
+  const undoStackRef = useRef<PlacedEvent[][]>([]);
+  const redoStackRef = useRef<PlacedEvent[][]>([]);
+  const isRestoringHistoryRef = useRef(false);
+  const MAX_HISTORY_STEPS = 200;
+
+  const nextIdRef = useRef((initialSnapshot?.events.reduce((maxId, event) => Math.max(maxId, event.id), -1) ?? -1) + 1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const copiedEventsRef = useRef<Omit<PlacedEvent, 'id'>[] | null>(null);
@@ -51,14 +59,14 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const [bombParticleCount, setBombParticleCount] = useState(12);
   const [bombParticleSpeed, setBombParticleSpeed] = useState(300);
 
-  const [bossName, setBossName] = useState('My Level');
-  const [bpm, setBpm] = useState(120);
-  const [enemyColor, setEnemyColor] = useState('#FF0099');
-  const [bgColor, setBgColor] = useState('#0A0A1A');
-  const [playerColor, setPlayerColor] = useState('#00FFFF');
+  const [bossName, setBossName] = useState(initialSnapshot?.bossName ?? 'My Level');
+  const [bpm, setBpm] = useState(initialSnapshot?.bpm ?? 120);
+  const [enemyColor, setEnemyColor] = useState(initialSnapshot?.enemyColor ?? '#FF0099');
+  const [bgColor, setBgColor] = useState(initialSnapshot?.bgColor ?? '#0A0A1A');
+  const [playerColor, setPlayerColor] = useState(initialSnapshot?.playerColor ?? '#00FFFF');
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioDuration, setAudioDuration] = useState(60);
+  const [audioDuration, setAudioDuration] = useState(initialSnapshot?.audioDuration ?? 60);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -74,6 +82,9 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const [hoverPos, setHoverPos] = useState<HoverPos | null>(null);
 
   const [activePanel, setActivePanel] = useState<ActivePanel>('tools');
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialProject?.id ?? null);
+  const [saveStatusText, setSaveStatusText] = useState('');
+  const lastAutosaveSignatureRef = useRef<string>(initialSnapshot ? JSON.stringify(initialSnapshot) : '');
   const [customShapes, setCustomShapes] = useState<CustomShapeDef[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -129,10 +140,67 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const bombParticleSpeedRef = useRef(bombParticleSpeed);
   bombParticleSpeedRef.current = bombParticleSpeed;
 
-  const selectedEvent = useMemo(
-    () => events.find(event => event.id === selectedId) ?? null,
-    [events, selectedId],
-  );
+  const pushUndoSnapshot = useCallback((snapshot: PlacedEvent[]) => {
+    const cloned = JSON.parse(JSON.stringify(snapshot)) as PlacedEvent[];
+    undoStackRef.current.push(cloned);
+    if (undoStackRef.current.length > MAX_HISTORY_STEPS) {
+      undoStackRef.current.shift();
+    }
+  }, []);
+
+  const pushRedoSnapshot = useCallback((snapshot: PlacedEvent[]) => {
+    const cloned = JSON.parse(JSON.stringify(snapshot)) as PlacedEvent[];
+    redoStackRef.current.push(cloned);
+    if (redoStackRef.current.length > MAX_HISTORY_STEPS) {
+      redoStackRef.current.shift();
+    }
+  }, []);
+
+  const setEventsTracked = useCallback<React.Dispatch<React.SetStateAction<PlacedEvent[]>>>((updater) => {
+    setEvents(prev => {
+      const next = typeof updater === 'function'
+        ? (updater as (prevState: PlacedEvent[]) => PlacedEvent[])(prev)
+        : updater;
+
+      if (!isRestoringHistoryRef.current && next !== prev) {
+        pushUndoSnapshot(prev);
+        redoStackRef.current = [];
+      }
+
+      return next;
+    });
+  }, [pushUndoSnapshot]);
+
+  const applyHistorySnapshot = useCallback((snapshot: PlacedEvent[]) => {
+    isRestoringHistoryRef.current = true;
+    setEvents(snapshot);
+
+    const existingIds = new Set(snapshot.map(event => event.id));
+    const nextSelectedIds = selectedIdsRef.current.filter(id => existingIds.has(id));
+    setSelectedIds(nextSelectedIds);
+    setSelectedId(nextSelectedIds[0] ?? null);
+
+    queueMicrotask(() => {
+      isRestoringHistoryRef.current = false;
+    });
+  }, [setSelectedId, setSelectedIds]);
+
+  const undo = useCallback(() => {
+    const previous = undoStackRef.current.pop();
+    if (!previous) return;
+
+    pushRedoSnapshot(eventsRef.current);
+    applyHistorySnapshot(previous);
+  }, [applyHistorySnapshot, pushRedoSnapshot]);
+
+  const redo = useCallback(() => {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+
+    pushUndoSnapshot(eventsRef.current);
+    applyHistorySnapshot(next);
+  }, [applyHistorySnapshot, pushUndoSnapshot]);
+
 
   const handleSaveCustomShape = (shape: CustomShapeDef) => {
     setCustomShapes(prev => {
@@ -191,7 +259,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     isPlacementMode,
     isPlacementModeRef,
     events,
-    setEvents,
+    setEvents: setEventsTracked,
     selectedId,
     selectedIds,
     setSelectedId,
@@ -229,7 +297,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     copiedEventsRef,
     pasteNudgeRef,
     nextIdRef,
-    setEvents,
+    setEvents: setEventsTracked,
     setSelectedId,
     setSelectedIds,
     audioRef,
@@ -246,6 +314,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     audioDurationRef,
     currentTimeRef,
     setCurrentTime,
+    onUndo: undo,
+    onRedo: redo,
   });
 
   useBuildModeCanvasRender({
@@ -273,18 +343,71 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     };
   }, [cleanupAudioUrl]);
 
-  const deleteSelected = () => {
-    const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
-    if (ids.length === 0) return;
+  useEffect(() => {
+    if (!saveStatusText) return;
+    const timer = window.setTimeout(() => setSaveStatusText(''), 2200);
+    return () => window.clearTimeout(timer);
+  }, [saveStatusText]);
 
-    setEvents(prev => prev.filter(event => !ids.includes(event.id)));
-    setSelectedId(null);
-    setSelectedIds([]);
+  const buildProjectSnapshot = useCallback(() => ({
+    bossName,
+    bpm,
+    enemyColor,
+    bgColor,
+    playerColor,
+    audioDuration,
+    events,
+  }), [audioDuration, bgColor, bossName, bpm, enemyColor, events, playerColor]);
+
+  const persistProject = useCallback((mode: 'manual' | 'auto') => {
+    const snapshot = buildProjectSnapshot();
+    const hasMeaningfulWork = snapshot.events.length > 0 || snapshot.bossName.trim() !== 'My Level';
+    if (!hasMeaningfulWork) return null;
+
+    const savedProject = upsertBuildProject({
+      projectId: currentProjectId,
+      name: snapshot.bossName.trim() || 'Untitled Project',
+      snapshot,
+    });
+
+    setCurrentProjectId(savedProject.id);
+    lastAutosaveSignatureRef.current = JSON.stringify(snapshot);
+
+    if (mode === 'manual') {
+      setSaveStatusText(`Saved: ${savedProject.name}`);
+    } else {
+      setSaveStatusText(`Autosaved: ${savedProject.name}`);
+    }
+
+    return savedProject;
+  }, [buildProjectSnapshot, currentProjectId]);
+
+  const handleSaveProject = () => {
+    persistProject('manual');
   };
 
-  const updateSelected = (updates: Partial<PlacedEvent>) => {
-    setEvents(prev => prev.map(event => (event.id === selectedId ? { ...event, ...updates } : event)));
-  };
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const snapshot = {
+        bossName,
+        bpm,
+        enemyColor,
+        bgColor,
+        playerColor,
+        audioDuration,
+        events,
+      };
+      const signature = JSON.stringify(snapshot);
+      if (signature === lastAutosaveSignatureRef.current) return;
+
+      const hasMeaningfulWork = snapshot.events.length > 0 || snapshot.bossName.trim() !== 'My Level';
+      if (!hasMeaningfulWork) return;
+
+      persistProject('auto');
+    }, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [audioDuration, bgColor, bossName, bpm, enemyColor, events, persistProject, playerColor]);
 
   const handleLaunch = () => {
     if (!audioFile) {
@@ -319,6 +442,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
       <BuildModeTopBar
         onClose={onClose}
         onSwitchToAI={onSwitchToAI}
+        onSaveProject={handleSaveProject}
+        onLaunch={handleLaunch}
+        saveStatusText={saveStatusText}
+        onUndo={undo}
+        canUndo={undoStackRef.current.length > 0}
+        onRedo={redo}
+        canRedo={redoStackRef.current.length > 0}
         eventCount={events.length}
         audioDuration={audioDuration}
       />
@@ -327,14 +457,6 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
         <BuildModeToolRail
           activePanel={activePanel}
           onPanelChange={setActivePanel}
-          activeTool={activeTool}
-          isPlacementMode={isPlacementMode}
-          onSelectTool={tool => {
-            activeToolRef.current = tool;
-            setActiveTool(tool);
-            setIsPlacementMode(true);
-            isPlacementModeRef.current = true;
-          }}
         />
 
         {activePanel === 'compose' && (
@@ -360,6 +482,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               onBehaviorChange={behavior => {
                 activeBehaviorRef.current = behavior;
                 setActiveBehavior(behavior);
+              }}
+              onSelectTool={tool => {
+                activeToolRef.current = tool;
+                setActiveTool(tool);
+                setIsPlacementMode(true);
+                isPlacementModeRef.current = true;
               }}
               bombGrowthDuration={bombGrowthDuration}
               bombParticleCount={bombParticleCount}
@@ -464,13 +592,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
               }}
             />
 
-            <BuildModeInspectorPanel
-              selectedEvent={selectedEvent}
-              eventCount={events.length}
-              onDeleteSelected={deleteSelected}
-              onUpdateSelected={updateSelected}
-              onLaunch={handleLaunch}
-            />
+
           </>
         )}
       </div>

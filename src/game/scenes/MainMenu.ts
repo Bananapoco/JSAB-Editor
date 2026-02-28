@@ -9,6 +9,22 @@ export class MainMenu extends Scene
         this.scene.start('Game');
     };
 
+    private overlayInputLocks = 0;
+
+    private onUiInputLockAdd = () => {
+        this.overlayInputLocks++;
+        this.syncInputEnabled();
+    };
+
+    private onUiInputLockRemove = () => {
+        this.overlayInputLocks = Math.max(0, this.overlayInputLocks - 1);
+        this.syncInputEnabled();
+    };
+
+    private syncInputEnabled() {
+        this.input.enabled = this.overlayInputLocks === 0;
+    }
+
     constructor ()
     {
         super('MainMenu');
@@ -53,9 +69,16 @@ export class MainMenu extends Scene
         });
 
         EventBus.on('load-level', this.onLoadLevel);
+        EventBus.on('ui-input-lock:add', this.onUiInputLockAdd);
+        EventBus.on('ui-input-lock:remove', this.onUiInputLockRemove);
+        this.syncInputEnabled();
 
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             EventBus.removeListener('load-level', this.onLoadLevel);
+            EventBus.removeListener('ui-input-lock:add', this.onUiInputLockAdd);
+            EventBus.removeListener('ui-input-lock:remove', this.onUiInputLockRemove);
+            this.overlayInputLocks = 0;
+            this.input.enabled = true;
         });
 
         // --- Bottom Bar / Settings ---
@@ -67,7 +90,7 @@ export class MainMenu extends Scene
         
         // Interactive Profile
         profileBg.setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => console.log('Profile Clicked'));
+            .on('pointerdown', () => EventBus.emit('open-user-profile'));
 
 
         // Settings (Bottom Right)

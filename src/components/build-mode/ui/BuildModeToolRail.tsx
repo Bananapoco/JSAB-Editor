@@ -1,15 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Hexagon, Layers, Settings, Zap } from 'lucide-react';
-import { TOOLS } from '../constants';
-import { ActivePanel, Tool } from '../types';
+import { ActivePanel } from '../types';
 
 interface BuildModeToolRailProps {
   activePanel: ActivePanel;
   onPanelChange: (panel: ActivePanel) => void;
-  activeTool: Tool;
-  isPlacementMode: boolean;
-  onSelectTool: (tool: Tool) => void;
 }
 
 const panelTabs: { id: ActivePanel; icon: React.FC<any>; title: string }[] = [
@@ -22,9 +18,6 @@ const panelTabs: { id: ActivePanel; icon: React.FC<any>; title: string }[] = [
 export const BuildModeToolRail: React.FC<BuildModeToolRailProps> = ({
   activePanel,
   onPanelChange,
-  activeTool,
-  isPlacementMode,
-  onSelectTool,
 }) => {
   return (
     <motion.div
@@ -52,31 +45,7 @@ export const BuildModeToolRail: React.FC<BuildModeToolRailProps> = ({
         ))}
       </div>
 
-      <div className="w-10 h-px bg-[#1a1a2e]" />
 
-      {(Object.entries(TOOLS) as [Tool, (typeof TOOLS)[Tool]][]).map(([key, { icon: Icon, color }]) => {
-        const isActive = isPlacementMode && activeTool === key;
-        return (
-          <motion.button
-            key={key}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onSelectTool(key)}
-            className={`p-3 rounded-xl transition-all tool-btn relative ${
-              isActive ? 'text-white' : 'text-[#555] hover:text-white'
-            }`}
-            style={{
-              backgroundColor: isActive ? `${color}30` : '#1a1a2e',
-              boxShadow: isActive ? `0 0 20px ${color}40` : 'none',
-              borderWidth: 2,
-              borderStyle: 'solid',
-              borderColor: isActive ? color : 'transparent',
-            }}
-          >
-            <Icon size={20} style={{ color: isActive ? color : undefined }} />
-          </motion.button>
-        );
-      })}
     </motion.div>
   );
 };
