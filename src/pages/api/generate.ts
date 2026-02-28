@@ -52,7 +52,7 @@ const levelSchema = {
                         duration: { type: 'number', description: 'How many seconds this hazard lives' },
                         behavior: {
                             type: 'string',
-                            enum: ['homing', 'spinning', 'bouncing', 'static'],
+                            enum: ['homing', 'spinning', 'bouncing', 'static', 'sweep', 'bomb'],
                         },
                         objectDef: {
                             type: 'object',
@@ -134,7 +134,7 @@ const levelSchema = {
                                     items: {
                                         type: 'object',
                                         properties: {
-                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce'] },
+                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce', 'bomb'] },
                                             speed: { type: 'number' },
                                             minScale: { type: 'number' },
                                             maxScale: { type: 'number' },
@@ -149,6 +149,10 @@ const levelSchema = {
                                             lifetime: { type: 'number' },
                                             vx: { type: 'number' },
                                             vy: { type: 'number' },
+                                            growthDuration: { type: 'number' },
+                                            initialScale: { type: 'number' },
+                                            particleCount: { type: 'number' },
+                                            particleSpeed: { type: 'number' },
                                         },
                                         required: ['kind'],
                                     },
@@ -214,7 +218,7 @@ const timelineSegmentSchema = {
                         size: { type: 'number' },
                         rotation: { type: 'number' },
                         duration: { type: 'number' },
-                        behavior: { type: 'string', enum: ['homing', 'spinning', 'bouncing', 'static'] },
+                        behavior: { type: 'string', enum: ['homing', 'spinning', 'bouncing', 'static', 'sweep', 'bomb'] },
                         objectDef: {
                             type: 'object',
                             description: 'Optional: full procedural object. Use this for complex or composite motif attacks.',
@@ -295,7 +299,7 @@ const timelineSegmentSchema = {
                                     items: {
                                         type: 'object',
                                         properties: {
-                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce'] },
+                                            kind: { type: 'string', enum: ['rotate', 'pulse', 'orbit', 'linearMove', 'homing', 'dieAfter', 'bounce', 'bomb'] },
                                             speed: { type: 'number' },
                                             minScale: { type: 'number' },
                                             maxScale: { type: 'number' },
@@ -310,6 +314,10 @@ const timelineSegmentSchema = {
                                             lifetime: { type: 'number' },
                                             vx: { type: 'number' },
                                             vy: { type: 'number' },
+                                            growthDuration: { type: 'number' },
+                                            initialScale: { type: 'number' },
+                                            particleCount: { type: 'number' },
+                                            particleSpeed: { type: 'number' },
                                         },
                                         required: ['kind'],
                                     },
@@ -362,7 +370,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const userContent: Anthropic.MessageParam['content'] = [
             {
                 type: 'text',
-                text: `Create a bullet-hell JSAB-style level for this concept: "${prompt}"\n\nSong duration: ${duration} seconds. This is a BULLET HELL game — the screen should always have multiple active hazards. Generate around ${targetEvents} timeline events (minimum 48, maximum 260). Timestamps must be between 0 and ${duration}. Multiple events CAN share the same timestamp (simultaneous spawns). At peak intensity, spawn 3-5 objects on the same beat.${bpmInfo}\n\nIMPORTANT OUTPUT SIZE RULES:\n- Keep most events compact: use timestamp, type, x, y, size, rotation, duration, behavior.\n- objectDef is optional. Use objectDef for special set-piece attacks (at least ${minSetPieceEvents} events total across the full level).\n- If objectDef is used, include a visible shape or children.\n- Translate important nouns/themes into geometry. Example: cat boss = composite body/head/ears/paws/tail; stars = polygon points; planets = large circles + ring children.\n- ALL hazards are procedural vector shapes (no image assets).`,
+                text: `Create a bullet-hell JSAB-style level for this concept: "${prompt}"\n\nSong duration: ${duration} seconds. This is a BULLET HELL game — the screen should always have multiple active hazards. Generate around ${targetEvents} timeline events (minimum 48, maximum 260). Timestamps must be between 0 and ${duration}. Multiple events CAN share the same timestamp (simultaneous spawns). At peak intensity, spawn 3-5 objects on the same beat.${bpmInfo}\n\nIMPORTANT OUTPUT SIZE RULES:\n- Keep most events compact: use timestamp, type, x, y, size, rotation, duration, behavior.\n- objectDef is optional. Use objectDef for special set-piece attacks (at least ${minSetPieceEvents} events total across the full level).\n- If objectDef is used, include a visible shape or children.\n- Translate important nouns/themes into geometry. Example: cat boss = composite body/head/ears/paws/tail; stars = polygon points; planets = large circles + ring children.\n- ALL hazards are procedural vector shapes (no image assets).
+- Legacy behavior field options: homing, spinning, bouncing, static, sweep, bomb.`,
             },
         ];
 
@@ -423,7 +432,7 @@ Rules:
   * Breakdowns: 16th-note flurries mixed with pauses for emphasis
   * NEVER attack on every single beat nonstop — use silence and contrast for impact
 - For composite shapes (e.g. rotating hammer, gear, saw blade, spiral arm), define children with offsetX/offsetY.
-- Behaviors: rotate (continuous spin), pulse (scale breathing), orbit (circle a point), linearMove (constant velocity), homing (track player), bounce (ricochet off walls), dieAfter (lifetime in seconds).
+- Behaviors: rotate (continuous spin), pulse (scale breathing), orbit (circle a point), linearMove (constant velocity), homing (track player), bounce (ricochet off walls), bomb (grow then explode into particles), dieAfter (lifetime in seconds).
 - objectDef.behaviors can combine multiple behaviors (e.g. rotate + orbit for a spinning orbiting object).
 - ALWAYS include a dieAfter behavior with a reasonable lifetime (2-8 seconds) so objects don't accumulate forever.
 - Place hazards at varied positions — edges, center, diagonals — not just one spot.

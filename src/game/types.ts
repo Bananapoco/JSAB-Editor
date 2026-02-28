@@ -11,7 +11,7 @@ export type LevelEventType =
     | 'screen_shake'
     | 'pulse';
 
-export type LegacyBehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep';
+export type LegacyBehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep' | 'bomb';
 
 // ---------------------------------------------------------------------------
 // Extended timeline event

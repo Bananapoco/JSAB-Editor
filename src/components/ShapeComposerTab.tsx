@@ -254,6 +254,8 @@ export const ShapeComposerTab: React.FC<Props> = ({
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const piecesRef   = useRef(pieces);
   piecesRef.current = pieces;
+  const copiedPieceRef = useRef<ComposerPiece | null>(null);
+  const pasteNudgeRef = useRef(0);
 
   // Drag state
   const dragRef = useRef<{ pieceId: number; lastX: number; lastY: number } | null>(null);
@@ -415,7 +417,38 @@ export const ShapeComposerTab: React.FC<Props> = ({
   // ─── Keyboard shortcuts ───────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && e.code === 'KeyC' && selectedId !== null) {
+        const piece = piecesRef.current.find(p => p.id === selectedId);
+        if (!piece) return;
+        copiedPieceRef.current = JSON.parse(JSON.stringify(piece));
+        pasteNudgeRef.current = 0;
+        e.preventDefault();
+        return;
+      }
+
+      if (isMod && e.code === 'KeyV' && copiedPieceRef.current) {
+        pasteNudgeRef.current += 1;
+        const nudge = 14 * pasteNudgeRef.current;
+        const copied = copiedPieceRef.current;
+        const newPiece: ComposerPiece = {
+          ...JSON.parse(JSON.stringify(copied)),
+          id: _pieceIdCounter++,
+          x: copied.x + nudge,
+          y: copied.y + nudge,
+        };
+        setPieces(prev => [...prev, newPiece]);
+        setSelectedId(newPiece.id);
+        setPendingType(null);
+        e.preventDefault();
+        return;
+      }
+
       if ((e.code === 'Delete' || e.code === 'Backspace') && selectedId !== null) {
         setPieces(prev => prev.filter(p => p.id !== selectedId));
         setSelectedId(null);

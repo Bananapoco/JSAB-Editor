@@ -9,6 +9,7 @@ import { RectShape } from '../engine/shapes/RectShape';
 import { CircleCollider, collidersOverlap } from '../engine/colliders/Collider';
 import { ObjectFactory } from '../engine/ObjectFactory';
 import { DieAfterBehavior } from '../engine/behaviors/DieAfterBehavior';
+import { ExplosionData } from '../engine/behaviors/BombBehavior';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -471,10 +472,70 @@ export class Game extends Scene {
 
     private pruneInactive() {
         this.hazards = this.hazards.filter(h => {
-            if (!h.active) return false;
+            if (!h.active) {
+                // Check if this object has explosion data from a BombBehavior
+                const explosionData = (h as any).explosionData as ExplosionData | undefined;
+                if (explosionData) {
+                    this.spawnExplosionParticles(h, explosionData);
+                }
+                return false;
+            }
             const { x, y } = h.position;
             return x > -150 && x < WORLD_W + 150 && y > -150 && y < WORLD_H + 150;
         });
+    }
+
+    /**
+     * Spawn explosion particles when a bomb explodes.
+     * Creates smaller versions of the original object moving in all directions.
+     */
+    private spawnExplosionParticles(originalObject: CompositeObject, explosion: ExplosionData) {
+        const color = this.levelData?.theme.enemyColor || '#FF0099';
+        const particleSize = 15; // Small particles
+        const particleLifetime = 1.5; // Seconds before particles disappear
+        
+        for (let i = 0; i < explosion.particleCount; i++) {
+            // Calculate angle for this particle (evenly distributed in a circle)
+            const angle = (i / explosion.particleCount) * Math.PI * 2;
+            
+            // Calculate velocity components
+            const vx = Math.cos(angle) * explosion.particleSpeed;
+            const vy = Math.sin(angle) * explosion.particleSpeed;
+            
+            // Create particle as a small circle
+            const particle = new CompositeObject(
+                new Vector2(explosion.position.x, explosion.position.y),
+                0,
+                0.5 // Start small
+            );
+            
+            particle.addShape(new CircleShape(particleSize, {
+                fillColor: color,
+                glowColor: color,
+                glowRadius: 8,
+                alpha: 1,
+            }));
+            
+            // Add behaviors: linear movement + die after duration
+            particle.addBehavior(ObjectFactory.buildBehavior({
+                kind: 'linearMove',
+                velocityX: vx,
+                velocityY: vy,
+            }));
+            
+            particle.addBehavior(new DieAfterBehavior(particleLifetime));
+            
+            // Optional: add some rotation for visual interest
+            particle.addBehavior(ObjectFactory.buildBehavior({
+                kind: 'rotate',
+                speed: Math.PI * 2 * (Math.random() - 0.5), // Random spin
+            }));
+            
+            // No collider for particles (they don't damage the player)
+            particle.collider = undefined;
+            
+            this.hazards.push(particle);
+        }
     }
 
     // -----------------------------------------------------------------------

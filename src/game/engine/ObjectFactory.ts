@@ -12,6 +12,7 @@ import { LinearMoveBehavior } from './behaviors/LinearMoveBehavior';
 import { HomingBehavior } from './behaviors/HomingBehavior';
 import { DieAfterBehavior } from './behaviors/DieAfterBehavior';
 import { BounceBehavior } from './behaviors/BounceBehavior';
+import { BombBehavior } from './behaviors/BombBehavior';
 import { CircleCollider, AABBCollider } from './colliders/Collider';
 
 // ---------------------------------------------------------------------------
@@ -53,7 +54,8 @@ export type BehaviorKind =
     | 'homing'
     | 'dieAfter'
     | 'bounce'
-    | 'spinning'; // alias for rotate, kept for AI back-compat
+    | 'spinning' // alias for rotate, kept for AI back-compat
+    | 'bomb';
 
 export interface BehaviorDef {
     kind: BehaviorKind;
@@ -87,6 +89,14 @@ export interface BehaviorDef {
     vx?: number;
     /** bounce: Y velocity in px/s */
     vy?: number;
+    /** bomb: growth duration in seconds (default 2.0) */
+    growthDuration?: number;
+    /** bomb: initial scale (default 0.1) */
+    initialScale?: number;
+    /** bomb: number of particles on explosion (default 12) */
+    particleCount?: number;
+    /** bomb: particle speed in px/s (default 300) */
+    particleSpeed?: number;
 }
 
 export interface ObjectDef {
@@ -191,6 +201,14 @@ export class ObjectFactory {
                 return new DieAfterBehavior(def.lifetime ?? 5);
             case 'bounce':
                 return new BounceBehavior(def.vx ?? 150, def.vy ?? 150, 1024, 768, def.radius ?? 20);
+            case 'bomb':
+                return new BombBehavior(
+                    def.growthDuration ?? 2.0,
+                    def.initialScale ?? 0.1,
+                    def.maxScale ?? 1.5,
+                    def.particleCount ?? 12,
+                    def.particleSpeed ?? 300
+                );
         }
     }
 
@@ -265,7 +283,8 @@ export class ObjectFactory {
             : { kind: 'rect', width: size, height: size, fillColor: enemyColor, glowColor: enemyColor, glowRadius: 18 };
 
         const behaviors: BehaviorDef[] = [];
-        if (duration > 0) behaviors.push({ kind: 'dieAfter', lifetime: duration });
+        // Bomb handles its own lifecycle (grow + explode), so don't auto-attach dieAfter.
+        if (behavior !== 'bomb' && duration > 0) behaviors.push({ kind: 'dieAfter', lifetime: duration });
 
         switch (behavior) {
             case 'spinning':
@@ -279,6 +298,15 @@ export class ObjectFactory {
                 break;
             case 'sweep':
                 behaviors.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+                break;
+            case 'bomb':
+                behaviors.push({
+                    kind: 'bomb',
+                    growthDuration: duration > 0 ? duration : 2.0,
+                    initialScale: 0.1,
+                    particleCount: 12,
+                    particleSpeed: 300,
+                });
                 break;
             case 'static':
             default:

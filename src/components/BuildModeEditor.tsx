@@ -4,7 +4,7 @@ import {
   MousePointer2, Square, Circle, Triangle, Diamond, Hexagon, Star,
   Zap, Target, Move, RotateCw, Maximize2, Play, Pause, Trash2,
   Upload, Sparkles, Rocket, X, ChevronLeft, Music, Palette, Settings,
-  Volume2, Clock, ArrowRight, Magnet, SkipBack, SkipForward, Layers,
+  Volume2, Clock, ArrowRight, Magnet, SkipBack, SkipForward, Layers, Bomb,
 } from 'lucide-react';
 import { LevelData, LevelEvent, LevelEventType } from '../game/types';
 import type { ShapeDef, ChildDef, BehaviorDef, ObjectDef } from '../game/engine/ObjectFactory';
@@ -16,7 +16,7 @@ import { ShapeComposerTab, CustomShapeDef, PieceType, drawPieceShape } from './S
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'pulse' | 'boss_move';
-type BehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep';
+type BehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep' | 'bomb';
 type ShapeType = 'square' | 'circle' | 'triangle' | 'diamond' | 'hexagon' | 'star';
 type SnapInterval = '1/4' | '1/2' | '1' | '2' | '4';
 
@@ -34,6 +34,8 @@ interface PlacedEvent extends LevelEvent {
   shape?: ShapeType;
   /** When this event uses a custom composed shape */
   customShapeDef?: CustomShapeDef;
+  /** Bomb-specific settings */
+  bombSettings?: { growthDuration: number; particleCount: number; particleSpeed: number };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -73,6 +75,7 @@ const BEHAVIORS: { type: BehaviorType; icon: React.FC<any>; label: string }[] = 
   { type: 'bouncing', icon: ArrowRight, label: 'Bouncing' },
   { type: 'static', icon: Square, label: 'Static' },
   { type: 'sweep', icon: Move, label: 'Sweep' },
+  { type: 'bomb', icon: Bomb, label: 'Bomb' },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -87,9 +90,13 @@ interface Props {
 export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   // ─── State ─────────────────────────────────────────────────────────────────
   const [events, setEvents] = useState<PlacedEvent[]>([]);
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
   const nextIdRef = useRef(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const copiedEventsRef = useRef<Omit<PlacedEvent, 'id'>[] | null>(null);
+  const pasteNudgeRef = useRef(0);
 
   // Tool state
   const [activeTool, setActiveTool] = useState<Tool>('projectile_throw');
@@ -98,6 +105,11 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('homing');
   const [activeSize, setActiveSize] = useState(50);
   const [activeDuration, setActiveDuration] = useState(2);
+  
+  // Bomb-specific settings
+  const [bombGrowthDuration, setBombGrowthDuration] = useState(2.0);
+  const [bombParticleCount, setBombParticleCount] = useState(12);
+  const [bombParticleSpeed, setBombParticleSpeed] = useState(300);
 
   // Level metadata
   const [bossName, setBossName] = useState('My Level');
@@ -189,6 +201,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   activeCustomShapeIdRef.current = activeCustomShapeId;
   const customShapesRef = useRef(customShapes);
   customShapesRef.current = customShapes;
+  const bombGrowthDurationRef = useRef(bombGrowthDuration);
+  bombGrowthDurationRef.current = bombGrowthDuration;
+  const bombParticleCountRef = useRef(bombParticleCount);
+  bombParticleCountRef.current = bombParticleCount;
+  const bombParticleSpeedRef = useRef(bombParticleSpeed);
+  bombParticleSpeedRef.current = bombParticleSpeed;
 
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
@@ -198,8 +216,46 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
   // ─── Keyboard Shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (isMod && e.code === 'KeyC') {
+        const ids = selectedIdsRef.current.length > 0
+          ? selectedIdsRef.current
+          : (selectedIdRef.current !== null ? [selectedIdRef.current] : []);
+        if (ids.length === 0) return;
+
+        const selectedEvents = eventsRef.current.filter(ev => ids.includes(ev.id));
+        if (selectedEvents.length === 0) return;
+
+        copiedEventsRef.current = selectedEvents.map(({ id, ...rest }) => JSON.parse(JSON.stringify(rest)));
+        pasteNudgeRef.current = 0;
+        e.preventDefault();
+        return;
+      }
+
+      if (isMod && e.code === 'KeyV') {
+        if (!copiedEventsRef.current || copiedEventsRef.current.length === 0) return;
+
+        pasteNudgeRef.current += 1;
+        const nudge = 16 * pasteNudgeRef.current;
+        const clones = copiedEventsRef.current.map((ev) => ({
+          ...JSON.parse(JSON.stringify(ev)),
+          id: nextIdRef.current++,
+          x: Math.max(0, Math.min(GAME_W, ev.x + nudge)),
+          y: Math.max(0, Math.min(GAME_H, ev.y + nudge)),
+        }));
+
+        setEvents(prev => [...prev, ...clones]);
+        const newIds = clones.map(ev => ev.id);
+        setSelectedIds(newIds);
+        setSelectedId(newIds[0] ?? null);
+        e.preventDefault();
+        return;
+      }
       
       if (e.code === 'Space') {
         e.preventDefault();
@@ -547,6 +603,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
         rotation: 0,
         shape: activeShapeRef.current,
         ...(activeCSD ? { customShapeDef: activeCSD } : {}),
+        ...(activeBehaviorRef.current === 'bomb' ? {
+          bombSettings: {
+            growthDuration: bombGrowthDurationRef.current,
+            particleCount: bombParticleCountRef.current,
+            particleSpeed: bombParticleSpeedRef.current,
+          }
+        } : {}),
       };
       setEvents(prev => [...prev, newEvent]);
       setSelectedId(id);
@@ -675,6 +738,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
       rotation: 0,
       shape: activeShapeRef.current,
       ...(activeCSD ? { customShapeDef: activeCSD } : {}),
+      ...(activeBehaviorRef.current === 'bomb' ? {
+        bombSettings: {
+          growthDuration: bombGrowthDurationRef.current,
+          particleCount: bombParticleCountRef.current,
+          particleSpeed: bombParticleSpeedRef.current,
+        }
+      } : {}),
     };
     setEvents(prev => [...prev, newEvent]);
     setSelectedId(id);
@@ -705,12 +775,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
     const levelData: LevelData = {
       metadata: { bossName, bpm, duration: audioDuration },
       theme: { enemyColor, backgroundColor: bgColor, playerColor },
-      timeline: events.map(({ id, shape, customShapeDef, ...rest }) => {
+      timeline: events.map(({ id, shape, customShapeDef, bombSettings, ...rest }) => {
         // Keep screen shake as a pure timeline effect.
         if (rest.type === 'screen_shake') return rest;
 
         const size = rest.size ?? 40;
-        const behaviors = buildBehaviorDefsForPlacedEvent(rest.type, rest.behavior, size, rest.duration);
+        const behaviors = buildBehaviorDefsForPlacedEvent(rest.type, rest.behavior, size, rest.duration, bombSettings);
 
         if (customShapeDef) {
           // Convert composer pieces into an ObjectDef with children.
@@ -945,7 +1015,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Behavior</div>
                     <div className="grid grid-cols-3 gap-2">
-                      {BEHAVIORS.map(({ type, icon: Icon }) => (
+                      {BEHAVIORS.map(({ type, icon: Icon, label }) => (
                         <motion.button
                           key={type}
                           whileHover={{ scale: 1.05 }}
@@ -954,18 +1024,91 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI }) => {
                             activeBehaviorRef.current = type;
                             setActiveBehavior(type);
                           }}
-                          className={`p-2.5 rounded-lg transition-all ${
+                          className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
                             activeBehavior === type
                               ? 'bg-[#FF0099] text-white'
                               : 'bg-[#151520] text-[#666] hover:text-white hover:bg-[#252540]'
                           }`}
-                          title={type}
+                          title={label}
                         >
                           <Icon size={16} />
+                          <span className="text-[9px] leading-none uppercase tracking-wide">{label}</span>
                         </motion.button>
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* Bomb Animation Settings */}
+                {activeBehavior === 'bomb' && (activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
+                  <>
+                    <div className="w-full h-px bg-[#FF009933]" />
+                    <div className="text-[10px] uppercase tracking-widest text-[#FF0099] font-bold mb-2">💣 Bomb Settings</div>
+                    
+                    {/* Growth Speed */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-[#444]">Growth Speed</span>
+                        <span className="text-xs font-mono text-[#FF0099]">{bombGrowthDuration.toFixed(1)}s</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="5"
+                        step="0.1"
+                        value={bombGrowthDuration}
+                        onChange={e => {
+                          bombGrowthDurationRef.current = +e.target.value;
+                          setBombGrowthDuration(+e.target.value);
+                        }}
+                        className="w-full accent-[#FF0099] cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-[#555] mt-1">
+                        <span>Fast</span>
+                        <span>Slow</span>
+                      </div>
+                    </div>
+
+                    {/* Particle Count */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-[#444]">Particles</span>
+                        <span className="text-xs font-mono text-[#FF0099]">{bombParticleCount}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="4"
+                        max="32"
+                        step="1"
+                        value={bombParticleCount}
+                        onChange={e => {
+                          bombParticleCountRef.current = +e.target.value;
+                          setBombParticleCount(+e.target.value);
+                        }}
+                        className="w-full accent-[#FF0099] cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Particle Speed */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-[#444]">Explosion Speed</span>
+                        <span className="text-xs font-mono text-[#FF0099]">{bombParticleSpeed}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="100"
+                        max="600"
+                        step="10"
+                        value={bombParticleSpeed}
+                        onChange={e => {
+                          bombParticleSpeedRef.current = +e.target.value;
+                          setBombParticleSpeed(+e.target.value);
+                        }}
+                        className="w-full accent-[#FF0099] cursor-pointer"
+                      />
+                    </div>
+                  </>
                 )}
 
                 {/* Size slider */}
@@ -1738,10 +1881,12 @@ function buildBehaviorDefsForPlacedEvent(
   behavior: LevelEvent['behavior'] | undefined,
   size: number,
   duration?: number,
+  bombSettings?: { growthDuration: number; particleCount: number; particleSpeed: number },
 ): BehaviorDef[] {
   const defs: BehaviorDef[] = [];
 
-  if (duration && duration > 0) {
+  // Bomb behavior handles its own lifetime, so don't add dieAfter
+  if (behavior !== 'bomb' && duration && duration > 0) {
     defs.push({ kind: 'dieAfter', lifetime: duration });
   }
 
@@ -1770,6 +1915,16 @@ function buildBehaviorDefsForPlacedEvent(
       break;
     case 'sweep':
       defs.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+      break;
+    case 'bomb':
+      defs.push({
+        kind: 'bomb',
+        growthDuration: bombSettings?.growthDuration ?? 2.0,
+        initialScale: 0.1,
+        maxScale: 1.5,
+        particleCount: bombSettings?.particleCount ?? 12,
+        particleSpeed: bombSettings?.particleSpeed ?? 300,
+      });
       break;
     case 'static':
     default:
