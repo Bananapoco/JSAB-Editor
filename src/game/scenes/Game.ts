@@ -48,6 +48,8 @@ export class Game extends Scene {
     private music: Phaser.Sound.BaseSound | null = null;
     private isPlaying = false;
     private timelineIndex = 0;
+    private sceneReady = false;
+    private pendingStartLevelData: { levelData: LevelData; audioUrl: string } | null = null;
 
     // --- Objects ---
     private playerObj!: CompositeObject;
@@ -128,6 +130,15 @@ export class Game extends Scene {
             (window as any).pendingLevelData = null;
         }
 
+        this.sceneReady = true;
+
+        // If a level was requested before the scene finished creating, start it now.
+        if (this.pendingStartLevelData) {
+            const pending = this.pendingStartLevelData;
+            this.pendingStartLevelData = null;
+            this.startLevel(pending);
+        }
+
         EventBus.emit('current-scene-ready', this);
     }
 
@@ -136,6 +147,12 @@ export class Game extends Scene {
     // -----------------------------------------------------------------------
 
     private startLevel(data: { levelData: LevelData; audioUrl: string }) {
+        // In some flows load-level can arrive before create() has finished.
+        if (!this.sceneReady || !this.cameras?.main || !this.playerObj) {
+            this.pendingStartLevelData = data;
+            return;
+        }
+
         this.levelData = data.levelData;
         // Ensure timeline is always a sorted array
         if (!Array.isArray(this.levelData.timeline)) {
@@ -176,18 +193,32 @@ export class Game extends Scene {
         }
 
         this.load.audio('level-music', data.audioUrl);
-        this.load.once('complete', () => {
+
+        let audioLoaded = false;
+
+        // Fire only when this exact audio key has been added to cache.
+        this.load.once('filecomplete-audio-level-music', () => {
+            audioLoaded = true;
             console.log('[Game] Audio loaded, starting playback');
             this.music = this.sound.add('level-music');
             this.music.play();
             this.isPlaying = true;
         });
+
         this.load.once('loaderror', (file: any) => {
+            if (file?.key !== 'level-music') return;
             console.error('[Game] Audio failed to load:', file);
-            // Start the timeline anyway so objects still spawn even without audio
-            this.isPlaying = true;
             this.music = null;
+            this.isPlaying = false;
         });
+
+        // "complete" can still fire if a file failed; guard before using sound.add().
+        this.load.once('complete', () => {
+            if (!audioLoaded || !this.cache.audio.exists('level-music')) {
+                console.warn('[Game] Loader completed but level-music was not cached.');
+            }
+        });
+
         this.load.start();
     }
 
@@ -496,6 +527,8 @@ export class Game extends Scene {
     // -----------------------------------------------------------------------
 
     shutdown() {
+        this.sceneReady = false;
+        this.pendingStartLevelData = null;
         this.sys.game.events.off('postrender', this.customRender, this);
         EventBus.removeAllListeners('load-level');
         if (this.music) this.music.stop();
