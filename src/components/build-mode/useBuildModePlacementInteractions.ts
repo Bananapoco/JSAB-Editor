@@ -4,6 +4,7 @@ import React, {
   RefObject,
   SetStateAction,
   useCallback,
+  useRef,
 } from 'react';
 import { LevelEventType } from '../../game/types';
 import {
@@ -14,7 +15,7 @@ import {
   SNAP_INTERVALS,
 } from './constants';
 import { CustomShapeDef } from '../shape-composer/types';
-import { BehaviorType, HoverPos, PlacedEvent, SelectionRect, ShapeType, SnapInterval, Tool } from './types';
+import { BehaviorType, CustomAnimationData, CustomKeyframe, CustomSegmentHandle, HoverPos, PlacedEvent, SelectionRect, ShapeType, SnapInterval, Tool } from './types';
 
 interface UseBuildModePlacementInteractionsParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -43,6 +44,7 @@ interface UseBuildModePlacementInteractionsParams {
   snapEnabled: boolean;
   snapInterval: SnapInterval;
   setHoverPos: Dispatch<SetStateAction<HoverPos | null>>;
+  setCanvasCursor: Dispatch<SetStateAction<string>>;
   isDraggingSelection: boolean;
   setIsDraggingSelection: Dispatch<SetStateAction<boolean>>;
   selectionRect: SelectionRect | null;
@@ -50,12 +52,15 @@ interface UseBuildModePlacementInteractionsParams {
   isDraggingObjects: boolean;
   setIsDraggingObjects: Dispatch<SetStateAction<boolean>>;
   dragStateRef: MutableRefObject<{ lastGX: number; lastGY: number } | null>;
+  customAnimationDataRef: MutableRefObject<CustomAnimationData>;
+  onCustomAnimationDataChange: (data: CustomAnimationData) => void;
 }
 
 interface BuildModePlacementHandlers {
   handleCanvasMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleCanvasMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleCanvasMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+  handleCanvasContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   handleTimelineClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   clearCanvasDragState: () => void;
 }
@@ -87,6 +92,7 @@ export function useBuildModePlacementInteractions({
   snapEnabled,
   snapInterval,
   setHoverPos,
+  setCanvasCursor,
   isDraggingSelection,
   setIsDraggingSelection,
   selectionRect,
@@ -94,6 +100,8 @@ export function useBuildModePlacementInteractions({
   isDraggingObjects,
   setIsDraggingObjects,
   dragStateRef,
+  customAnimationDataRef,
+  onCustomAnimationDataChange,
 }: UseBuildModePlacementInteractionsParams): BuildModePlacementHandlers {
   const snapToGrid = useCallback((time: number): number => {
     if (bpm <= 0) return time;
@@ -105,6 +113,72 @@ export function useBuildModePlacementInteractions({
     const snapUnit = beatDuration / snapConfig.divisor;
     return Math.round(time / snapUnit) * snapUnit;
   }, [bpm, snapInterval]);
+
+  type ResizeHandle = {
+    sx: -1 | 0 | 1;
+    sy: -1 | 0 | 1;
+  };
+
+  const resizeDragRef = useRef<{
+    eventId: number;
+    handle: ResizeHandle;
+  } | null>(null);
+
+  const HANDLE_HIT_RADIUS = 9;
+  const HANDLE_PAD = 8;
+
+  const getResizeHandleCursor = (handle: ResizeHandle): string => {
+    if (handle.sx !== 0 && handle.sy !== 0) {
+      return handle.sx === handle.sy ? 'nwse-resize' : 'nesw-resize';
+    }
+    if (handle.sx === 0) return 'ns-resize';
+    return 'ew-resize';
+  };
+
+  const getSelectedResizableEvent = useCallback((): PlacedEvent | null => {
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+    if (ids.length !== 1) return null;
+    const selected = events.find(event => event.id === ids[0]);
+    if (!selected || selected.customShapeDef) return null;
+    return selected;
+  }, [events, selectedId, selectedIds]);
+
+  const getResizeHandleAt = useCallback((cx: number, cy: number): ResizeHandle | null => {
+    const selected = getSelectedResizableEvent();
+    if (!selected) return null;
+
+    const ex = selected.x * SCALE;
+    const ey = selected.y * SCALE;
+    const half = ((selected.size ?? 40) * SCALE) / 2 + HANDLE_PAD;
+    const rot = ((selected.rotation ?? 0) * Math.PI) / 180;
+    const c = Math.cos(rot);
+    const s = Math.sin(rot);
+
+    const handles: ResizeHandle[] = [
+      { sx: -1, sy: -1 },
+      { sx: 0, sy: -1 },
+      { sx: 1, sy: -1 },
+      { sx: -1, sy: 0 },
+      { sx: 1, sy: 0 },
+      { sx: -1, sy: 1 },
+      { sx: 0, sy: 1 },
+      { sx: 1, sy: 1 },
+    ];
+
+    for (const handle of handles) {
+      const lx = handle.sx * half;
+      const ly = handle.sy * half;
+      const hx = ex + lx * c - ly * s;
+      const hy = ey + lx * s + ly * c;
+      if (Math.hypot(cx - hx, cy - hy) <= HANDLE_HIT_RADIUS) {
+        return handle;
+      }
+    }
+
+    return null;
+  }, [getSelectedResizableEvent]);
 
   const getCanvasPos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -148,6 +222,19 @@ export function useBuildModePlacementInteractions({
 
     const hitId = findEventAtCanvasPos(pos.cx, pos.cy);
 
+    if (!isPlacementMode) {
+      const handle = getResizeHandleAt(pos.cx, pos.cy);
+      const selected = getSelectedResizableEvent();
+      if (handle && selected) {
+        resizeDragRef.current = {
+          eventId: selected.id,
+          handle,
+        };
+        setCanvasCursor(getResizeHandleCursor(handle));
+        return;
+      }
+    }
+
     if (isPlacementMode) {
       const id = nextIdRef.current++;
       const activeCustomShape = activeCustomShapeIdRef.current
@@ -175,7 +262,26 @@ export function useBuildModePlacementInteractions({
               },
             }
           : {}),
+        ...(activeBehaviorRef.current === 'custom'
+          ? {
+              customAnimation: {
+                keyframes: [{
+                  t: 0,
+                  x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
+                  y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
+                  rotation: 0,
+                  scale: 1,
+                }],
+                handles: [],
+              },
+            }
+          : {}),
       };
+
+      // When placing with custom behavior, initialize the shared custom animation data from the placed event
+      if (activeBehaviorRef.current === 'custom' && newEvent.customAnimation) {
+        onCustomAnimationDataChange(newEvent.customAnimation);
+      }
 
       setEvents(prev => [...prev, newEvent]);
       setSelectedId(id);
@@ -192,16 +298,21 @@ export function useBuildModePlacementInteractions({
       setSelectedIds(nextSelection);
       setSelectedId(hitId);
       setIsDraggingObjects(true);
+      setCanvasCursor('grabbing');
       dragStateRef.current = { lastGX: pos.gx, lastGY: pos.gy };
       return;
     }
 
     setIsDraggingSelection(true);
+    setCanvasCursor('crosshair');
     setSelectionRect({ x1: pos.gx, y1: pos.gy, x2: pos.gx, y2: pos.gy });
   }, [
     getCanvasPos,
     findEventAtCanvasPos,
     isPlacementMode,
+    getResizeHandleAt,
+    getSelectedResizableEvent,
+    setCanvasCursor,
     nextIdRef,
     activeCustomShapeIdRef,
     customShapesRef,
@@ -231,11 +342,46 @@ export function useBuildModePlacementInteractions({
     setHoverPos({ gx: pos.gx, gy: pos.gy });
 
     if (isDraggingSelection && selectionRect) {
+      setCanvasCursor('crosshair');
       setSelectionRect({ ...selectionRect, x2: pos.gx, y2: pos.gy });
       return;
     }
 
+    if (resizeDragRef.current) {
+      const drag = resizeDragRef.current;
+      const event = events.find(item => item.id === drag.eventId);
+      if (!event) return;
+
+      setCanvasCursor(getResizeHandleCursor(drag.handle));
+
+      const ex = event.x * SCALE;
+      const ey = event.y * SCALE;
+      const rot = ((event.rotation ?? 0) * Math.PI) / 180;
+      const c = Math.cos(-rot);
+      const s = Math.sin(-rot);
+      const localX = (pos.cx - ex) * c - (pos.cy - ey) * s;
+      const localY = (pos.cx - ex) * s + (pos.cy - ey) * c;
+
+      const currentHalf = ((event.size ?? 40) * SCALE) / 2;
+      const targetHalfX = drag.handle.sx !== 0
+        ? Math.max(7, Math.abs(localX) - HANDLE_PAD)
+        : currentHalf;
+      const targetHalfY = drag.handle.sy !== 0
+        ? Math.max(7, Math.abs(localY) - HANDLE_PAD)
+        : currentHalf;
+      const targetHalf = Math.max(7, Math.max(targetHalfX, targetHalfY));
+      const nextSize = Math.max(14, Math.min(200, (targetHalf * 2) / SCALE));
+
+      setEvents(prev => prev.map(item => (
+        item.id === drag.eventId
+          ? { ...item, size: nextSize }
+          : item
+      )));
+      return;
+    }
+
     if (isDraggingObjects && dragStateRef.current) {
+      setCanvasCursor('grabbing');
       const dx = pos.gx - dragStateRef.current.lastGX;
       const dy = pos.gy - dragStateRef.current.lastGY;
       dragStateRef.current = { lastGX: pos.gx, lastGY: pos.gy };
@@ -253,26 +399,52 @@ export function useBuildModePlacementInteractions({
           y: Math.max(0, Math.min(GAME_H, event.y + dy)),
         };
       }));
+      return;
     }
+
+    if (!isPlacementMode) {
+      const handle = getResizeHandleAt(pos.cx, pos.cy);
+      if (handle) {
+        setCanvasCursor(getResizeHandleCursor(handle));
+        return;
+      }
+
+      const hoveringId = findEventAtCanvasPos(pos.cx, pos.cy);
+      setCanvasCursor(hoveringId !== null ? 'grab' : 'default');
+      return;
+    }
+
+    setCanvasCursor('copy');
   }, [
     getCanvasPos,
     setHoverPos,
+    setCanvasCursor,
     isDraggingSelection,
     selectionRect,
     setSelectionRect,
+    events,
     isDraggingObjects,
     dragStateRef,
     selectedIds,
     selectedId,
     setEvents,
+    isPlacementMode,
+    getResizeHandleAt,
+    findEventAtCanvasPos,
   ]);
 
   const handleCanvasMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getCanvasPos(e);
 
+    if (resizeDragRef.current) {
+      resizeDragRef.current = null;
+      setCanvasCursor('default');
+    }
+
     if (isDraggingObjects) {
       setIsDraggingObjects(false);
       dragStateRef.current = null;
+      setCanvasCursor('default');
     }
 
     if (isPlacementModeRef.current) {
@@ -312,6 +484,7 @@ export function useBuildModePlacementInteractions({
     setSelectionRect(null);
   }, [
     getCanvasPos,
+    setCanvasCursor,
     isDraggingObjects,
     setIsDraggingObjects,
     dragStateRef,
@@ -363,7 +536,19 @@ export function useBuildModePlacementInteractions({
             },
           }
         : {}),
+      ...(activeBehaviorRef.current === 'custom'
+        ? {
+            customAnimation: {
+              keyframes: [{ t: 0, x: 512, y: 384, rotation: 0, scale: 1 }],
+              handles: [],
+            },
+          }
+        : {}),
     };
+
+    if (activeBehaviorRef.current === 'custom' && newEvent.customAnimation) {
+      onCustomAnimationDataChange(newEvent.customAnimation);
+    }
 
     setEvents(prev => [...prev, newEvent]);
     setSelectedId(id);
@@ -390,18 +575,81 @@ export function useBuildModePlacementInteractions({
     setSelectedIds,
   ]);
 
+  const handleCanvasContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only handle right-click for adding custom keyframes
+    if (activeBehaviorRef.current !== 'custom') return;
+    if (!isPlacementModeRef.current && selectedIds.length === 0 && selectedId === null) return;
+
+    e.preventDefault();
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+
+    const data = customAnimationDataRef.current;
+    const existingKfs = data.keyframes;
+    const existingHandles = data.handles;
+
+    // Determine the t value based on how many keyframes exist (evenly space them by default)
+    const count = existingKfs.length;
+    let t: number;
+    if (count === 0) t = 0;
+    else if (count === 1) t = 1;
+    else {
+      // Place new keyframe after the last one, evenly
+      const lastT = existingKfs[existingKfs.length - 1].t;
+      t = Math.min(1, lastT + (1 / (count + 1)));
+    }
+
+    const newKf: CustomKeyframe = {
+      t,
+      x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
+      y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
+      rotation: 0,
+      scale: 1,
+    };
+
+    const newKfs = [...existingKfs, newKf].sort((a, b) => a.t - b.t);
+
+    // If we're adding a keyframe between existing ones, we need to recalculate handles array
+    // For simplicity, just add a disabled handle for the new segment
+    const newHandles: CustomSegmentHandle[] = [];
+    for (let i = 0; i < newKfs.length - 1; i++) {
+      // Try to find an existing handle for this pair, otherwise create disabled
+      if (i < existingHandles.length && newKfs.length - 1 === existingKfs.length) {
+        newHandles.push(existingHandles[i]);
+      } else {
+        newHandles.push({ enabled: false, cp1x: 50, cp1y: 0, cp2x: -50, cp2y: 0 });
+      }
+    }
+
+    const newData: CustomAnimationData = { keyframes: newKfs, handles: newHandles };
+    onCustomAnimationDataChange(newData);
+
+    // Also update the selected event if one is selected and has custom behavior
+    const idsToUpdate = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+    if (idsToUpdate.length > 0) {
+      setEvents(prev => prev.map(ev =>
+        idsToUpdate.includes(ev.id) && ev.behavior === 'custom'
+          ? { ...ev, customAnimation: newData }
+          : ev
+      ));
+    }
+  }, [activeBehaviorRef, isPlacementModeRef, selectedIds, selectedId, getCanvasPos, customAnimationDataRef, onCustomAnimationDataChange, setEvents]);
+
   const clearCanvasDragState = useCallback(() => {
     setHoverPos(null);
+    setCanvasCursor('default');
     setIsDraggingObjects(false);
     setIsDraggingSelection(false);
     setSelectionRect(null);
     dragStateRef.current = null;
-  }, [setHoverPos, setIsDraggingObjects, setIsDraggingSelection, setSelectionRect, dragStateRef]);
+    resizeDragRef.current = null;
+  }, [setHoverPos, setCanvasCursor, setIsDraggingObjects, setIsDraggingSelection, setSelectionRect, dragStateRef]);
 
   return {
     handleCanvasMouseDown,
     handleCanvasMouseMove,
     handleCanvasMouseUp,
+    handleCanvasContextMenu,
     handleTimelineClick,
     clearCanvasDragState,
   };

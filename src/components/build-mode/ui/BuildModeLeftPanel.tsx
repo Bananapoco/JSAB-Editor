@@ -10,8 +10,9 @@ import {
   Upload,
 } from 'lucide-react';
 import { BEHAVIORS, SHAPES, TOOLS } from '../constants';
-import { ActivePanel, BehaviorType, ShapeType, Tool } from '../types';
+import { ActivePanel, BehaviorType, CustomAnimationData, PlacedEvent, ShapeType, Tool } from '../types';
 import { CustomShapeDef } from '../../shape-composer/types';
+import { CustomAnimationPanel } from './CustomAnimationPanel';
 
 interface BuildModeLeftPanelProps {
   activePanel: Exclude<ActivePanel, 'compose'>;
@@ -28,8 +29,12 @@ interface BuildModeLeftPanelProps {
   onBombParticleSpeedChange: (value: number) => void;
   activeSize: number;
   activeDuration: number;
+  selectedEvent: PlacedEvent | null;
+  selectedCount: number;
   onActiveSizeChange: (value: number) => void;
   onActiveDurationChange: (value: number) => void;
+  onUpdateSelectedSize: (value: number) => void;
+  onUpdateSelectedDuration: (value: number) => void;
   activeShape: ShapeType;
   activeCustomShapeId: string | null;
   customShapes: CustomShapeDef[];
@@ -48,6 +53,10 @@ interface BuildModeLeftPanelProps {
   onPlayerColorChange: (color: string) => void;
   bossName: string;
   onBossNameChange: (value: string) => void;
+  customAnimationData: CustomAnimationData;
+  onCustomAnimationDataChange: (data: CustomAnimationData) => void;
+  selectedCustomKfIndex: number | null;
+  onSelectCustomKf: (index: number | null) => void;
 }
 
 export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
@@ -65,8 +74,12 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   onBombParticleSpeedChange,
   activeSize,
   activeDuration,
+  selectedEvent,
+  selectedCount,
   onActiveSizeChange,
   onActiveDurationChange,
+  onUpdateSelectedSize,
+  onUpdateSelectedDuration,
   activeShape,
   activeCustomShapeId,
   customShapes,
@@ -85,7 +98,15 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   onPlayerColorChange,
   bossName,
   onBossNameChange,
+  customAnimationData,
+  onCustomAnimationDataChange,
+  selectedCustomKfIndex,
+  onSelectCustomKf,
 }) => {
+  const isEditingSelection = selectedCount > 0 && selectedEvent !== null;
+  const sizeValue = isEditingSelection ? Math.round(selectedEvent.size ?? activeSize) : activeSize;
+  const durationValue = isEditingSelection ? (selectedEvent.duration ?? activeDuration) : activeDuration;
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -176,6 +197,15 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
             )}
 
+            {activeBehavior === 'custom' && (activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
+              <CustomAnimationPanel
+                data={customAnimationData}
+                onChange={onCustomAnimationDataChange}
+                selectedKfIndex={selectedCustomKfIndex}
+                onSelectKf={onSelectCustomKf}
+              />
+            )}
+
             {activeBehavior === 'bomb' && (activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
               <>
                 <div className="w-full h-px bg-[#FF009933]" />
@@ -239,31 +269,49 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] uppercase tracking-widest text-[#444]">Size</span>
-                <span className="text-xs font-mono text-[#FF0099]">{activeSize}px</span>
+                <span className="text-[10px] uppercase tracking-widest text-[#444]">
+                  {isEditingSelection ? `Size (${selectedCount} selected)` : 'Size'}
+                </span>
+                <span className="text-xs font-mono text-[#FF0099]">{sizeValue}px</span>
               </div>
               <input
                 type="range"
                 min="20"
                 max="200"
-                value={activeSize}
-                onChange={e => onActiveSizeChange(+e.target.value)}
+                value={sizeValue}
+                onChange={e => {
+                  const value = +e.target.value;
+                  if (isEditingSelection) {
+                    onUpdateSelectedSize(value);
+                  } else {
+                    onActiveSizeChange(value);
+                  }
+                }}
                 className="w-full accent-[#FF0099] cursor-pointer"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] uppercase tracking-widest text-[#444]">Duration</span>
-                <span className="text-xs font-mono text-[#FF0099]">{activeDuration.toFixed(1)}s</span>
+                <span className="text-[10px] uppercase tracking-widest text-[#444]">
+                  {isEditingSelection ? `Duration (${selectedCount} selected)` : 'Duration'}
+                </span>
+                <span className="text-xs font-mono text-[#FF0099]">{durationValue.toFixed(1)}s</span>
               </div>
               <input
                 type="range"
                 min="0.1"
                 max="10"
                 step="0.1"
-                value={activeDuration}
-                onChange={e => onActiveDurationChange(+e.target.value)}
+                value={durationValue}
+                onChange={e => {
+                  const value = +e.target.value;
+                  if (isEditingSelection) {
+                    onUpdateSelectedDuration(value);
+                  } else {
+                    onActiveDurationChange(value);
+                  }
+                }}
                 className="w-full accent-[#FF0099] cursor-pointer"
               />
             </div>

@@ -2,7 +2,7 @@ import { LevelEvent, LevelEventType } from '../../game/types';
 import type { ShapeDef, BehaviorDef } from '../../game/engine/ObjectFactory';
 import { drawPieceShape } from '../shape-composer/drawing';
 import { CustomShapeDef, PieceType } from '../shape-composer/types';
-import { BombSettings, ShapeType } from './types';
+import { BombSettings, CustomAnimationData, ShapeType } from './types';
 
 export function drawShape(
   ctx: CanvasRenderingContext2D,
@@ -12,13 +12,13 @@ export function drawShape(
   selected: boolean,
 ) {
   const r = size / 2;
-  ctx.fillStyle = `${color}44`;
+  ctx.fillStyle = color;
   ctx.strokeStyle = color;
-  ctx.lineWidth = selected ? 3 : 2;
+  ctx.lineWidth = selected ? 2.5 : 1.5;
 
   if (selected) {
     ctx.shadowColor = color;
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 10;
   }
 
   ctx.beginPath();
@@ -141,6 +141,7 @@ export function buildBehaviorDefsForPlacedEvent(
   size: number,
   duration?: number,
   bombSettings?: BombSettings,
+  customAnimation?: CustomAnimationData,
 ): BehaviorDef[] {
   const defs: BehaviorDef[] = [];
 
@@ -184,6 +185,16 @@ export function buildBehaviorDefsForPlacedEvent(
         particleSpeed: bombSettings?.particleSpeed ?? 300,
       });
       break;
+    case 'custom':
+      if (customAnimation && customAnimation.keyframes.length >= 1) {
+        defs.push({
+          kind: 'customAnimation',
+          customKeyframes: customAnimation.keyframes,
+          customHandles: customAnimation.handles,
+          customDuration: duration ?? 2.0,
+        });
+      }
+      break;
     case 'static':
     default:
       break;
@@ -206,13 +217,13 @@ export function drawCompositeShape(
     ctx.save();
     ctx.translate(piece.x * scale, piece.y * scale);
     ctx.rotate((piece.rotation * Math.PI) / 180);
-    ctx.fillStyle = selected ? `${col}66` : `${col}44`;
-    ctx.strokeStyle = selected ? '#ffffff' : col;
-    ctx.lineWidth = selected ? 2.5 : 1.5;
+    ctx.fillStyle = col;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = selected ? 2 : 1.25;
 
     if (selected) {
-      ctx.shadowColor = '#fff';
-      ctx.shadowBlur = 6;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 8;
     }
 
     drawPieceShape(ctx, piece.type, r);

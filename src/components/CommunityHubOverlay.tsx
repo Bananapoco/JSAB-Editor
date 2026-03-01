@@ -40,7 +40,8 @@ export const CommunityHubOverlay = () => {
         EventBus.emit('load-level', {
             levelData: level.levelData,
             audioUrl: level.audioUrl,
-            imageMappings: level.imageMappings
+            imageMappings: level.imageMappings,
+            source: 'community'
         });
         setIsVisible(false);
         EventBus.emit('start-game'); 

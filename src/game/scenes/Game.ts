@@ -20,8 +20,15 @@ const TELEGRAPH_SEC = 0.5;      // seconds of warning before hazard becomes acti
 const FIXED_STEP_MS = 1000 / 60;
 const MAX_DELTA_MS = 100;
 
+interface LoadLevelPayload {
+    levelData: LevelData;
+    audioUrl: string;
+    source?: 'build' | 'community' | 'ai';
+    returnProject?: any;
+}
+
 export class Game extends Scene {
-    private onLoadLevel = (data: { levelData: LevelData; audioUrl: string }) => {
+    private onLoadLevel = (data: LoadLevelPayload) => {
         this.startLevel(data);
     };
 
@@ -47,6 +54,10 @@ export class Game extends Scene {
 
     // --- Phaser UI (kept as Phaser objects for simplicity) ---
     private progressBar!: Phaser.GameObjects.Rectangle;
+    private menuButtonText!: Phaser.GameObjects.Text;
+    private backButtonText!: Phaser.GameObjects.Text;
+    private showBackToEditor = false;
+    private returnProjectForEditor: any = null;
     private keys!: {
         W: Phaser.Input.Keyboard.Key;
         A: Phaser.Input.Keyboard.Key;
@@ -61,7 +72,7 @@ export class Game extends Scene {
     private isPlaying = false;
     private timelineIndex = 0;
     private sceneReady = false;
-    private pendingStartLevelData: { levelData: LevelData; audioUrl: string } | null = null;
+    private pendingStartLevelData: LoadLevelPayload | null = null;
 
     // --- Objects ---
     private playerObj!: CompositeObject;
@@ -98,7 +109,7 @@ export class Game extends Scene {
         // Phaser UI elements (drawn by Phaser, appear under our custom layer)
         const { width, height } = this.scale;
 
-        this.add.text(20, 20, '◀ MENU', {
+        this.menuButtonText = this.add.text(20, 20, '◀ MENU', {
             fontFamily: 'Arial Black', fontSize: '24px', color: '#ffffff',
         }).setInteractive({ useHandCursor: true })
           .on('pointerdown', () => {
@@ -106,6 +117,24 @@ export class Game extends Scene {
               this.scene.start('MainMenu');
           })
           .setDepth(10);
+
+        this.backButtonText = this.add.text(20, 56, '↩ BACK TO EDITOR', {
+            fontFamily: 'Arial Black', fontSize: '20px', color: '#00e5ff',
+        }).setInteractive({ useHandCursor: true })
+          .on('pointerdown', () => {
+              if (!this.showBackToEditor) return;
+              if (this.music) this.music.stop();
+              this.scene.start('MainMenu');
+              window.setTimeout(() => {
+                  if (this.returnProjectForEditor) {
+                      EventBus.emit('open-build-project', this.returnProjectForEditor);
+                  } else {
+                      EventBus.emit('open-editor');
+                  }
+              }, 0);
+          })
+          .setDepth(10)
+          .setVisible(false);
 
         this.progressBar = this.add.rectangle(0, height, 0, 6, 0x00ffff).setOrigin(0, 1).setDepth(10);
 
@@ -162,7 +191,7 @@ export class Game extends Scene {
     // Level loading
     // -----------------------------------------------------------------------
 
-    private startLevel(data: { levelData: LevelData; audioUrl: string }) {
+    private startLevel(data: LoadLevelPayload) {
         // In some flows load-level can arrive before create() has finished.
         if (!this.sceneReady || !this.cameras?.main || !this.playerObj) {
             this.pendingStartLevelData = data;
@@ -170,6 +199,15 @@ export class Game extends Scene {
         }
 
         this.levelData = data.levelData;
+        this.showBackToEditor = data.source === 'build';
+        this.returnProjectForEditor = data.returnProject ?? null;
+        if (this.backButtonText) {
+            this.backButtonText.setVisible(this.showBackToEditor);
+        }
+        if (this.menuButtonText) {
+            this.menuButtonText.setVisible(!this.showBackToEditor);
+        }
+
         // Ensure timeline is always a sorted array
         if (!Array.isArray(this.levelData.timeline)) {
             this.levelData.timeline = [];
@@ -516,6 +554,8 @@ export class Game extends Scene {
         this.sceneReady = false;
         this.pendingStartLevelData = null;
         this.overlayInputLocks = 0;
+        this.showBackToEditor = false;
+        this.returnProjectForEditor = null;
 
         this.sys.game.events.off('postrender', this.customRender, this);
         EventBus.removeListener('load-level', this.onLoadLevel);

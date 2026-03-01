@@ -9,9 +9,11 @@ interface BuildModeCanvasStageProps {
   isDraggingObjects: boolean;
   isPlacementMode: boolean;
   isDraggingSelection: boolean;
+  canvasCursor: string;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+  onContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseLeave: () => void;
 }
 
@@ -21,9 +23,11 @@ export const BuildModeCanvasStage: React.FC<BuildModeCanvasStageProps> = ({
   isDraggingObjects,
   isPlacementMode,
   isDraggingSelection,
+  canvasCursor,
   onMouseDown,
   onMouseMove,
   onMouseUp,
+  onContextMenu,
   onMouseLeave,
 }) => {
   return (
@@ -35,6 +39,7 @@ export const BuildModeCanvasStage: React.FC<BuildModeCanvasStageProps> = ({
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
+        onContextMenu={onContextMenu}
         onMouseLeave={onMouseLeave}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -47,7 +52,7 @@ export const BuildModeCanvasStage: React.FC<BuildModeCanvasStageProps> = ({
               ? 'copy'
               : isDraggingSelection
                 ? 'crosshair'
-                : 'default',
+                : canvasCursor,
         }}
       />
 

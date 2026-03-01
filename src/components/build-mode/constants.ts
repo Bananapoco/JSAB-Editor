@@ -6,6 +6,7 @@ import {
   Diamond,
   Hexagon,
   Move,
+  Pencil,
   RotateCw,
   Rocket,
   Square,
@@ -55,4 +56,5 @@ export const BEHAVIORS: { type: BehaviorType; icon: React.FC<any>; label: string
   { type: 'static', icon: Square, label: 'Static' },
   { type: 'sweep', icon: Move, label: 'Sweep' },
   { type: 'bomb', icon: Bomb, label: 'Bomb' },
+  { type: 'custom', icon: Pencil, label: 'Custom' },
 ];

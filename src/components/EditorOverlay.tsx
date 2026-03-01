@@ -107,6 +107,7 @@ export const EditorOverlay = () => {
         levelData,
         audioUrl,
         imageMappings,
+        source: 'ai' as const,
       };
 
       const savedLevels = JSON.parse(localStorage.getItem('community_levels') || '[]');

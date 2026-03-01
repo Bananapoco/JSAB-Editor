@@ -10,6 +10,7 @@ import { BuildModeCenterPanel } from './build-mode/ui/BuildModeCenterPanel';
 import {
   ActivePanel,
   BehaviorType,
+  CustomAnimationData,
   HoverPos,
   PlacedEvent,
   SelectionRect,
@@ -19,7 +20,7 @@ import {
 } from './build-mode/types';
 import { CustomShapeDef } from './shape-composer/types';
 import { createLevelPayload, savePayloadToCommunity } from './build-mode/levelPayload';
-import { SavedBuildProject, upsertBuildProject } from './build-mode/projectStorage';
+import { SavedAudioAsset, SavedBuildProject, upsertBuildProject } from './build-mode/projectStorage';
 import { useBuildModeKeyboardShortcuts } from './build-mode/useBuildModeKeyboardShortcuts';
 import { useBuildModeCanvasRender } from './build-mode/useBuildModeCanvasRender';
 import { useBuildModeInteractions } from './build-mode/useBuildModeInteractions';
@@ -59,6 +60,11 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [bombParticleCount, setBombParticleCount] = useState(12);
   const [bombParticleSpeed, setBombParticleSpeed] = useState(300);
 
+  const [customAnimationData, setCustomAnimationData] = useState<CustomAnimationData>({ keyframes: [], handles: [] });
+  const [selectedCustomKfIndex, setSelectedCustomKfIndex] = useState<number | null>(null);
+  const customAnimationDataRef = useRef(customAnimationData);
+  customAnimationDataRef.current = customAnimationData;
+
   const [bossName, setBossName] = useState(initialSnapshot?.bossName ?? 'My Level');
   const [bpm, setBpm] = useState(initialSnapshot?.bpm ?? 120);
   const [enemyColor, setEnemyColor] = useState(initialSnapshot?.enemyColor ?? '#FF0099');
@@ -66,6 +72,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [playerColor, setPlayerColor] = useState(initialSnapshot?.playerColor ?? '#00FFFF');
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [savedAudio, setSavedAudio] = useState<SavedAudioAsset | null>(initialSnapshot?.audio ?? null);
   const [audioDuration, setAudioDuration] = useState(initialSnapshot?.audioDuration ?? 60);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -80,6 +87,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoverPos, setHoverPos] = useState<HoverPos | null>(null);
+  const [canvasCursor, setCanvasCursor] = useState('default');
 
   const [activePanel, setActivePanel] = useState<ActivePanel>('tools');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialProject?.id ?? null);
@@ -222,6 +230,39 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     }
   };
 
+  const fileToDataUrl = useCallback((file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read audio file'));
+    reader.readAsDataURL(file);
+  }), []);
+
+  const restoreAudioFile = useCallback(async (asset: SavedAudioAsset) => {
+    try {
+      const response = await fetch(asset.dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], asset.name, { type: asset.type || blob.type || 'audio/mpeg' });
+      setAudioFile(file);
+    } catch {
+      setAudioFile(null);
+    }
+  }, []);
+
+  const handleAudioFileChange = useCallback(async (file: File) => {
+    setAudioFile(file);
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setSavedAudio({
+        name: file.name,
+        type: file.type || 'audio/mpeg',
+        dataUrl,
+      });
+    } catch {
+      setSavedAudio(null);
+    }
+  }, [fileToDataUrl]);
+
   const {
     togglePlay,
     seekTo,
@@ -252,6 +293,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     handleCanvasMouseDown,
     handleCanvasMouseMove,
     handleCanvasMouseUp,
+    handleCanvasContextMenu,
     handleTimelineClick,
     clearCanvasDragState,
   } = useBuildModePlacementInteractions({
@@ -281,6 +323,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     snapEnabled,
     snapInterval,
     setHoverPos,
+    setCanvasCursor,
     isDraggingSelection,
     setIsDraggingSelection,
     selectionRect,
@@ -288,6 +331,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     isDraggingObjects,
     setIsDraggingObjects,
     dragStateRef,
+    customAnimationDataRef,
+    onCustomAnimationDataChange: setCustomAnimationData,
   });
 
   useBuildModeKeyboardShortcuts({
@@ -335,7 +380,60 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     playerColor,
     activeCustomShapeId,
     customShapes,
+    activeBehavior,
+    customAnimationData,
+    selectedCustomKfIndex,
   });
+
+  // Sync custom animation data when selecting an event with custom behavior
+  useEffect(() => {
+    const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+    if (ids.length === 1) {
+      const evt = events.find(e => e.id === ids[0]);
+      if (evt?.behavior === 'custom' && evt.customAnimation) {
+        setCustomAnimationData(evt.customAnimation);
+        setSelectedCustomKfIndex(null);
+      }
+    }
+  }, [selectedId, selectedIds]); // intentionally not including events to avoid loops
+
+  // Sync custom animation panel edits back to the selected event
+  useEffect(() => {
+    const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+    if (ids.length > 0) {
+      const evt = events.find(e => e.id === ids[0]);
+      if (evt?.behavior === 'custom') {
+        setEvents(prev => prev.map(e =>
+          ids.includes(e.id) && e.behavior === 'custom'
+            ? { ...e, customAnimation: customAnimationData }
+            : e
+        ));
+      }
+    }
+  }, [customAnimationData]); // intentionally limited deps
+
+  const selectedEvent = (selectedIds.length > 0
+    ? events.find(event => event.id === selectedIds[0])
+    : (selectedId !== null ? events.find(event => event.id === selectedId) : undefined)) ?? null;
+
+  const updateSelectedEvents = useCallback((updates: Partial<PlacedEvent>) => {
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+    if (ids.length === 0) return;
+
+    setEventsTracked(prev => prev.map(event => (
+      ids.includes(event.id)
+        ? { ...event, ...updates }
+        : event
+    )));
+  }, [selectedId, selectedIds, setEventsTracked]);
+
+  useEffect(() => {
+    if (!audioFile && savedAudio?.dataUrl) {
+      void restoreAudioFile(savedAudio);
+    }
+  }, [audioFile, restoreAudioFile, savedAudio]);
 
   useEffect(() => {
     return () => {
@@ -356,8 +454,9 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     bgColor,
     playerColor,
     audioDuration,
+    audio: savedAudio,
     events,
-  }), [audioDuration, bgColor, bossName, bpm, enemyColor, events, playerColor]);
+  }), [audioDuration, bgColor, bossName, bpm, enemyColor, events, playerColor, savedAudio]);
 
   const persistProject = useCallback((mode: 'manual' | 'auto') => {
     const snapshot = buildProjectSnapshot();
@@ -395,6 +494,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
         bgColor,
         playerColor,
         audioDuration,
+        audio: savedAudio,
         events,
       };
       const signature = JSON.stringify(snapshot);
@@ -407,7 +507,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     }, 10000);
 
     return () => window.clearInterval(interval);
-  }, [audioDuration, bgColor, bossName, bpm, enemyColor, events, persistProject, playerColor]);
+  }, [audioDuration, bgColor, bossName, bpm, enemyColor, events, persistProject, playerColor, savedAudio]);
 
   const handleLaunch = () => {
     if (!audioFile) {
@@ -420,6 +520,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       return;
     }
 
+    const savedProject = persistProject('manual');
+
     const payload = createLevelPayload({
       events,
       bossName,
@@ -431,9 +533,15 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       audioFile,
     });
 
+    const launchPayload = {
+      ...payload,
+      source: 'build' as const,
+      returnProject: savedProject,
+    };
+
     savePayloadToCommunity(payload);
-    (window as any).pendingLevelData = payload;
-    EventBus.emit('load-level', payload);
+    (window as any).pendingLevelData = launchPayload;
+    EventBus.emit('load-level', launchPayload);
     onClose();
   };
 
@@ -506,6 +614,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               }}
               activeSize={activeSize}
               activeDuration={activeDuration}
+              selectedEvent={selectedEvent}
+              selectedCount={selectedIds.length > 0 ? selectedIds.length : (selectedId !== null ? 1 : 0)}
               onActiveSizeChange={value => {
                 activeSizeRef.current = value;
                 setActiveSize(value);
@@ -514,6 +624,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 activeDurationRef.current = value;
                 setActiveDuration(value);
               }}
+              onUpdateSelectedSize={value => updateSelectedEvents({ size: value })}
+              onUpdateSelectedDuration={value => updateSelectedEvents({ duration: value })}
               activeShape={activeShape}
               activeCustomShapeId={activeCustomShapeId}
               customShapes={customShapes}
@@ -533,7 +645,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               }}
               onOpenComposer={() => setActivePanel('compose')}
               audioFile={audioFile}
-              onAudioFileChange={setAudioFile}
+              onAudioFileChange={handleAudioFileChange}
               bpm={bpm}
               onBpmChange={setBpm}
               enemyColor={enemyColor}
@@ -544,6 +656,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               onPlayerColorChange={setPlayerColor}
               bossName={bossName}
               onBossNameChange={setBossName}
+              customAnimationData={customAnimationData}
+              onCustomAnimationDataChange={setCustomAnimationData}
+              selectedCustomKfIndex={selectedCustomKfIndex}
+              onSelectCustomKf={setSelectedCustomKfIndex}
             />
 
             <BuildModeCenterPanel
@@ -553,6 +669,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               isDraggingObjects={isDraggingObjects}
               isPlacementMode={isPlacementMode}
               isDraggingSelection={isDraggingSelection}
+              canvasCursor={canvasCursor}
               isScrubbing={isScrubbing}
               bpm={bpm}
               audioFile={audioFile}
@@ -569,6 +686,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               onCanvasMouseDown={handleCanvasMouseDown}
               onCanvasMouseMove={handleCanvasMouseMove}
               onCanvasMouseUp={handleCanvasMouseUp}
+              onCanvasContextMenu={handleCanvasContextMenu}
               onCanvasMouseLeave={clearCanvasDragState}
               onTogglePlay={togglePlay}
               onSkipByBeats={skipByBeats}

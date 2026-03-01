@@ -5,7 +5,7 @@ export class MainMenu extends Scene
 {
     private onLoadLevel = () => {
         // Only react while this scene is actually active.
-        if (!this.scene.isActive('MainMenu')) return;
+        if (!this.scene?.isActive?.('MainMenu')) return;
         this.scene.start('Game');
     };
 
@@ -73,19 +73,30 @@ export class MainMenu extends Scene
         EventBus.on('ui-input-lock:remove', this.onUiInputLockRemove);
         this.syncInputEnabled();
 
-        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        const cleanup = () => {
             EventBus.removeListener('load-level', this.onLoadLevel);
             EventBus.removeListener('ui-input-lock:add', this.onUiInputLockAdd);
             EventBus.removeListener('ui-input-lock:remove', this.onUiInputLockRemove);
             this.overlayInputLocks = 0;
-            this.input.enabled = true;
-        });
+            if (this.input) {
+                this.input.enabled = true;
+            }
+        };
+
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup);
+        this.events.once(Phaser.Scenes.Events.DESTROY, cleanup);
 
         // --- Bottom Bar / Settings ---
-        // Profile
-        const profileContainer = this.add.container(50, height - 80);
-        const profileBg = this.add.rectangle(0, 0, 200, 60, 0x222222).setOrigin(0, 0.5);
-        const profileText = this.add.text(20, 0, 'User Profile', { fontFamily: 'Arial', fontSize: '24px', color: '#ffffff' }).setOrigin(0, 0.5);
+        // Profile (responsive so it stays on-screen for narrow widths)
+        const profilePadding = 16;
+        const profileY = height - 40;
+        const profileWidth = Math.min(220, Math.max(140, width * 0.32));
+        const profileHeight = 44;
+        const profileFontSize = Math.max(14, Math.min(24, Math.floor(width * 0.025)));
+
+        const profileContainer = this.add.container(profilePadding, profileY);
+        const profileBg = this.add.rectangle(0, 0, profileWidth, profileHeight, 0x222222).setOrigin(0, 0.5);
+        const profileText = this.add.text(12, 0, 'User Profile', { fontFamily: 'Arial', fontSize: `${profileFontSize}px`, color: '#ffffff' }).setOrigin(0, 0.5);
         profileContainer.add([profileBg, profileText]);
         
         // Interactive Profile

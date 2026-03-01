@@ -2,6 +2,12 @@ import { PlacedEvent } from './types';
 
 const BUILD_PROJECTS_STORAGE_KEY = 'jsab_build_projects';
 
+export interface SavedAudioAsset {
+  name: string;
+  type: string;
+  dataUrl: string;
+}
+
 export interface BuildModeProjectSnapshot {
   bossName: string;
   bpm: number;
@@ -9,6 +15,7 @@ export interface BuildModeProjectSnapshot {
   bgColor: string;
   playerColor: string;
   audioDuration: number;
+  audio?: SavedAudioAsset | null;
   events: PlacedEvent[];
 }
 

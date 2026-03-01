@@ -13,6 +13,7 @@ import { HomingBehavior } from './behaviors/HomingBehavior';
 import { DieAfterBehavior } from './behaviors/DieAfterBehavior';
 import { BounceBehavior } from './behaviors/BounceBehavior';
 import { BombBehavior } from './behaviors/BombBehavior';
+import { CustomAnimationBehavior } from './behaviors/CustomAnimationBehavior';
 import { CircleCollider, AABBCollider } from './colliders/Collider';
 
 // ---------------------------------------------------------------------------
@@ -55,7 +56,8 @@ export type BehaviorKind =
     | 'dieAfter'
     | 'bounce'
     | 'spinning' // alias for rotate, kept for AI back-compat
-    | 'bomb';
+    | 'bomb'
+    | 'customAnimation';
 
 export interface BehaviorDef {
     kind: BehaviorKind;
@@ -97,6 +99,12 @@ export interface BehaviorDef {
     particleCount?: number;
     /** bomb: particle speed in px/s (default 300) */
     particleSpeed?: number;
+    /** customAnimation: array of keyframes [{t,x,y,rotation,scale}] */
+    customKeyframes?: { t: number; x: number; y: number; rotation: number; scale: number }[];
+    /** customAnimation: bezier handles per segment */
+    customHandles?: { enabled: boolean; cp1x: number; cp1y: number; cp2x: number; cp2y: number }[];
+    /** customAnimation: total duration for the animation in seconds */
+    customDuration?: number;
 }
 
 export interface ObjectDef {
@@ -208,6 +216,12 @@ export class ObjectFactory {
                     def.maxScale ?? 1.5,
                     def.particleCount ?? 12,
                     def.particleSpeed ?? 300
+                );
+            case 'customAnimation':
+                return new CustomAnimationBehavior(
+                    def.customKeyframes ?? [],
+                    def.customHandles ?? [],
+                    def.customDuration ?? 2.0,
                 );
         }
     }

@@ -11,6 +11,7 @@ interface BuildModeCenterPanelProps {
   isDraggingObjects: boolean;
   isPlacementMode: boolean;
   isDraggingSelection: boolean;
+  canvasCursor: string;
   isScrubbing: boolean;
   bpm: number;
   audioFile: File | null;
@@ -27,6 +28,7 @@ interface BuildModeCenterPanelProps {
   onCanvasMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onCanvasMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onCanvasMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+  onCanvasContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onCanvasMouseLeave: () => void;
   onTogglePlay: () => void;
   onSkipByBeats: (beats: number) => void;
@@ -48,6 +50,7 @@ export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
   isDraggingObjects,
   isPlacementMode,
   isDraggingSelection,
+  canvasCursor,
   isScrubbing,
   bpm,
   audioFile,
@@ -63,6 +66,7 @@ export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
   onCanvasMouseDown,
   onCanvasMouseMove,
   onCanvasMouseUp,
+  onCanvasContextMenu,
   onCanvasMouseLeave,
   onTogglePlay,
   onSkipByBeats,
@@ -84,9 +88,11 @@ export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
         isDraggingObjects={isDraggingObjects}
         isPlacementMode={isPlacementMode}
         isDraggingSelection={isDraggingSelection}
+        canvasCursor={canvasCursor}
         onMouseDown={onCanvasMouseDown}
         onMouseMove={onCanvasMouseMove}
         onMouseUp={onCanvasMouseUp}
+        onContextMenu={onCanvasContextMenu}
         onMouseLeave={onCanvasMouseLeave}
       />
 
