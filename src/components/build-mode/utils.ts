@@ -2,7 +2,7 @@ import { LevelEvent, LevelEventType } from '../../game/types';
 import type { ShapeDef, BehaviorDef } from '../../game/engine/ObjectFactory';
 import { drawPieceShape } from '../shape-composer/drawing';
 import { CustomShapeDef, PieceType } from '../shape-composer/types';
-import { BombSettings, CustomAnimationData, ShapeType } from './types';
+import { BehaviorSettings, BombSettings, CustomAnimationData, ShapeType } from './types';
 
 export function drawShape(
   ctx: CanvasRenderingContext2D,
@@ -141,6 +141,7 @@ export function buildBehaviorDefsForPlacedEvent(
   size: number,
   duration?: number,
   bombSettings?: BombSettings,
+  behaviorSettings?: BehaviorSettings,
   customAnimation?: CustomAnimationData,
 ): BehaviorDef[] {
   const defs: BehaviorDef[] = [];
@@ -164,16 +165,25 @@ export function buildBehaviorDefsForPlacedEvent(
 
   switch (explicitBehavior) {
     case 'spinning':
-      defs.push({ kind: 'rotate', speed: Math.PI });
+      defs.push({ kind: 'rotate', speed: behaviorSettings?.spinSpeed ?? Math.PI });
       break;
     case 'homing':
-      defs.push({ kind: 'homing', homingSpeed: 220 });
+      defs.push({ kind: 'homing', homingSpeed: behaviorSettings?.homingSpeed ?? 220 });
       break;
     case 'bouncing':
-      defs.push({ kind: 'bounce', vx: 160, vy: 140, radius: size / 2 });
+      defs.push({
+        kind: 'bounce',
+        vx: behaviorSettings?.bounceVx ?? 160,
+        vy: behaviorSettings?.bounceVy ?? 140,
+        radius: size / 2,
+      });
       break;
     case 'sweep':
-      defs.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+      defs.push({
+        kind: 'linearMove',
+        velocityX: behaviorSettings?.sweepVx ?? 220,
+        velocityY: behaviorSettings?.sweepVy ?? 0,
+      });
       break;
     case 'bomb':
       defs.push({

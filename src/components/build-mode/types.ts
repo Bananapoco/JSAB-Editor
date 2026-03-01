@@ -13,6 +13,15 @@ export interface BombSettings {
   particleSpeed: number;
 }
 
+export interface BehaviorSettings {
+  homingSpeed?: number;
+  spinSpeed?: number;
+  bounceVx?: number;
+  bounceVy?: number;
+  sweepVx?: number;
+  sweepVy?: number;
+}
+
 /** A single keyframe in a custom animation path. */
 export interface CustomKeyframe {
   /** Normalized time 0–1 within the object's duration. */
@@ -27,6 +36,17 @@ export interface CustomKeyframe {
   scale: number;
 }
 
+/** Easing preset name, or 'custom' for a user-defined cubic-bezier curve. */
+export type EasingPreset = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'custom';
+
+/** Custom cubic-bezier control points (same format as CSS cubic-bezier). */
+export interface CustomEasingCurve {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 /** Bezier handle pair for the segment between keyframe[i] and keyframe[i+1]. */
 export interface CustomSegmentHandle {
   /** If true, this segment uses cubic bezier interpolation. */
@@ -37,6 +57,10 @@ export interface CustomSegmentHandle {
   /** Control point 2 (relative to keyframe[i+1] position). */
   cp2x: number;
   cp2y: number;
+  /** Easing preset for this segment's timing (default: 'linear'). */
+  easing?: EasingPreset;
+  /** Custom cubic-bezier curve when easing === 'custom'. */
+  easingCurve?: CustomEasingCurve;
 }
 
 export interface CustomAnimationData {
@@ -62,5 +86,6 @@ export interface PlacedEvent extends LevelEvent {
   shape?: ShapeType;
   customShapeDef?: CustomShapeDef;
   bombSettings?: BombSettings;
+  behaviorSettings?: BehaviorSettings;
   customAnimation?: CustomAnimationData;
 }

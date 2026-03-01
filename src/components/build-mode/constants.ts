@@ -54,7 +54,6 @@ export const BEHAVIORS: { type: BehaviorType; icon: React.FC<any>; label: string
   { type: 'spinning', icon: RotateCw, label: 'Spinning' },
   { type: 'bouncing', icon: ArrowRight, label: 'Bouncing' },
   { type: 'static', icon: Square, label: 'Static' },
-  { type: 'sweep', icon: Move, label: 'Sweep' },
   { type: 'bomb', icon: Bomb, label: 'Bomb' },
   { type: 'custom', icon: Pencil, label: 'Custom' },
 ];

@@ -102,7 +102,7 @@ export interface BehaviorDef {
     /** customAnimation: array of keyframes [{t,x,y,rotation,scale}] */
     customKeyframes?: { t: number; x: number; y: number; rotation: number; scale: number }[];
     /** customAnimation: bezier handles per segment */
-    customHandles?: { enabled: boolean; cp1x: number; cp1y: number; cp2x: number; cp2y: number }[];
+    customHandles?: { enabled: boolean; cp1x: number; cp1y: number; cp2x: number; cp2y: number; easing?: string; easingCurve?: { x1: number; y1: number; x2: number; y2: number } }[];
     /** customAnimation: total duration for the animation in seconds */
     customDuration?: number;
 }

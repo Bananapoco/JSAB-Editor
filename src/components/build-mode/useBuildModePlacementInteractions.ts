@@ -38,6 +38,12 @@ interface UseBuildModePlacementInteractionsParams {
   bombGrowthDurationRef: MutableRefObject<number>;
   bombParticleCountRef: MutableRefObject<number>;
   bombParticleSpeedRef: MutableRefObject<number>;
+  homingSpeedRef: MutableRefObject<number>;
+  spinSpeedRef: MutableRefObject<number>;
+  bounceVxRef: MutableRefObject<number>;
+  bounceVyRef: MutableRefObject<number>;
+  sweepVxRef: MutableRefObject<number>;
+  sweepVyRef: MutableRefObject<number>;
   currentTime: number;
   audioDuration: number;
   bpm: number;
@@ -86,6 +92,12 @@ export function useBuildModePlacementInteractions({
   bombGrowthDurationRef,
   bombParticleCountRef,
   bombParticleSpeedRef,
+  homingSpeedRef,
+  spinSpeedRef,
+  bounceVxRef,
+  bounceVyRef,
+  sweepVxRef,
+  sweepVyRef,
   currentTime,
   audioDuration,
   bpm,
@@ -262,6 +274,15 @@ export function useBuildModePlacementInteractions({
               },
             }
           : {}),
+        ...(activeBehaviorRef.current === 'homing'
+          ? { behaviorSettings: { homingSpeed: homingSpeedRef.current } }
+          : activeBehaviorRef.current === 'spinning'
+            ? { behaviorSettings: { spinSpeed: spinSpeedRef.current } }
+            : activeBehaviorRef.current === 'bouncing'
+              ? { behaviorSettings: { bounceVx: bounceVxRef.current, bounceVy: bounceVyRef.current } }
+              : activeBehaviorRef.current === 'sweep'
+                ? { behaviorSettings: { sweepVx: sweepVxRef.current, sweepVy: sweepVyRef.current } }
+                : {}),
         ...(activeBehaviorRef.current === 'custom'
           ? {
               customAnimation: {
@@ -364,13 +385,13 @@ export function useBuildModePlacementInteractions({
 
       const currentHalf = ((event.size ?? 40) * SCALE) / 2;
       const targetHalfX = drag.handle.sx !== 0
-        ? Math.max(7, Math.abs(localX) - HANDLE_PAD)
+        ? Math.max(2, Math.abs(localX) - HANDLE_PAD)
         : currentHalf;
       const targetHalfY = drag.handle.sy !== 0
-        ? Math.max(7, Math.abs(localY) - HANDLE_PAD)
+        ? Math.max(2, Math.abs(localY) - HANDLE_PAD)
         : currentHalf;
-      const targetHalf = Math.max(7, Math.max(targetHalfX, targetHalfY));
-      const nextSize = Math.max(14, Math.min(200, (targetHalf * 2) / SCALE));
+      const targetHalf = Math.max(2, Math.max(targetHalfX, targetHalfY));
+      const nextSize = Math.max(4, Math.min(200, (targetHalf * 2) / SCALE));
 
       setEvents(prev => prev.map(item => (
         item.id === drag.eventId
@@ -536,6 +557,15 @@ export function useBuildModePlacementInteractions({
             },
           }
         : {}),
+      ...(activeBehaviorRef.current === 'homing'
+        ? { behaviorSettings: { homingSpeed: homingSpeedRef.current } }
+        : activeBehaviorRef.current === 'spinning'
+          ? { behaviorSettings: { spinSpeed: spinSpeedRef.current } }
+          : activeBehaviorRef.current === 'bouncing'
+            ? { behaviorSettings: { bounceVx: bounceVxRef.current, bounceVy: bounceVyRef.current } }
+            : activeBehaviorRef.current === 'sweep'
+              ? { behaviorSettings: { sweepVx: sweepVxRef.current, sweepVy: sweepVyRef.current } }
+              : {}),
       ...(activeBehaviorRef.current === 'custom'
         ? {
             customAnimation: {

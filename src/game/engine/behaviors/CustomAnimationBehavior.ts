@@ -16,9 +16,66 @@ export interface CustomAnimSegmentHandle {
     cp1y: number;
     cp2x: number;
     cp2y: number;
+    easing?: string;
+    easingCurve?: { x1: number; y1: number; x2: number; y2: number };
 }
 
-function cubicBezier(p0: number, p1: number, p2: number, p3: number, t: number): number {
+// ---------------------------------------------------------------------------
+// Easing helpers
+// ---------------------------------------------------------------------------
+
+/** Solve cubic-bezier(x1,y1,x2,y2)(t) – same semantics as CSS cubic-bezier.
+ *  Given a linear input `t` in [0,1], returns the eased output in [0,1].
+ *  Uses Newton-Raphson to invert the X curve, then evaluates Y. */
+function cubicBezierEasing(x1: number, y1: number, x2: number, y2: number, t: number): number {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+
+    // The bezier x(s) = 3(1-s)^2*s*x1 + 3(1-s)*s^2*x2 + s^3
+    // We need to find s such that x(s) = t, then return y(s).
+    const sampleCurveX = (s: number) => ((1 - 3 * x2 + 3 * x1) * s + (3 * x2 - 6 * x1)) * s * s + 3 * x1 * s;
+    const sampleCurveY = (s: number) => ((1 - 3 * y2 + 3 * y1) * s + (3 * y2 - 6 * y1)) * s * s + 3 * y1 * s;
+    const sampleCurveDerivX = (s: number) => (3 * (1 - 3 * x2 + 3 * x1)) * s * s + (2 * (3 * x2 - 6 * x1)) * s + 3 * x1;
+
+    // Newton-Raphson
+    let s = t;
+    for (let i = 0; i < 8; i++) {
+        const dx = sampleCurveX(s) - t;
+        if (Math.abs(dx) < 1e-6) break;
+        const d = sampleCurveDerivX(s);
+        if (Math.abs(d) < 1e-6) break;
+        s -= dx / d;
+    }
+    // Clamp
+    s = Math.max(0, Math.min(1, s));
+    return sampleCurveY(s);
+}
+
+const EASING_PRESETS: Record<string, [number, number, number, number]> = {
+    linear: [0, 0, 1, 1],
+    easeIn: [0.42, 0, 1, 1],
+    easeOut: [0, 0, 0.58, 1],
+    easeInOut: [0.42, 0, 0.58, 1],
+};
+
+function applyEasing(localT: number, handle?: CustomAnimSegmentHandle): number {
+    if (!handle) return localT;
+    const preset = handle.easing || 'linear';
+    if (preset === 'linear') return localT;
+    if (preset === 'custom' && handle.easingCurve) {
+        const { x1, y1, x2, y2 } = handle.easingCurve;
+        return cubicBezierEasing(x1, y1, x2, y2, localT);
+    }
+    const p = EASING_PRESETS[preset];
+    if (p) return cubicBezierEasing(p[0], p[1], p[2], p[3], localT);
+    return localT;
+}
+
+// ---------------------------------------------------------------------------
+// Spatial interpolation helpers
+// ---------------------------------------------------------------------------
+
+function cubicBezierPos(p0: number, p1: number, p2: number, p3: number, t: number): number {
     const u = 1 - t;
     return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
 }
@@ -29,7 +86,7 @@ function lerp(a: number, b: number, t: number): number {
 
 /**
  * Drives an object along a user-defined keyframe path with optional
- * cubic-bezier curve handles between keyframes.
+ * cubic-bezier curve handles between keyframes and per-segment easing.
  */
 export class CustomAnimationBehavior extends Behavior {
     private keyframes: CustomAnimKeyframe[];
@@ -93,14 +150,17 @@ export class CustomAnimationBehavior extends Behavior {
         const a = kfs[i];
         const b = kfs[i + 1];
         const segmentDuration = b.t - a.t;
-        const localT = segmentDuration > 0 ? (progress - a.t) / segmentDuration : 0;
+        const rawLocalT = segmentDuration > 0 ? (progress - a.t) / segmentDuration : 0;
 
         const handle = this.handles[i];
 
+        // Apply easing to the local t
+        const localT = applyEasing(rawLocalT, handle);
+
         let x: number, y: number;
         if (handle && handle.enabled) {
-            x = cubicBezier(a.x, a.x + handle.cp1x, b.x + handle.cp2x, b.x, localT);
-            y = cubicBezier(a.y, a.y + handle.cp1y, b.y + handle.cp2y, b.y, localT);
+            x = cubicBezierPos(a.x, a.x + handle.cp1x, b.x + handle.cp2x, b.x, localT);
+            y = cubicBezierPos(a.y, a.y + handle.cp1y, b.y + handle.cp2y, b.y, localT);
         } else {
             x = lerp(a.x, b.x, localT);
             y = lerp(a.y, b.y, localT);

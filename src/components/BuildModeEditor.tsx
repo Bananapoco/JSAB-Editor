@@ -52,13 +52,20 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [activeTool, setActiveTool] = useState<Tool>('projectile_throw');
   const [isPlacementMode, setIsPlacementMode] = useState(true);
   const [activeShape, setActiveShape] = useState<ShapeType>('square');
-  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('homing');
+  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('yesm');
   const [activeSize, setActiveSize] = useState(50);
   const [activeDuration, setActiveDuration] = useState(2);
 
   const [bombGrowthDuration, setBombGrowthDuration] = useState(2.0);
   const [bombParticleCount, setBombParticleCount] = useState(12);
   const [bombParticleSpeed, setBombParticleSpeed] = useState(300);
+
+  const [homingSpeed, setHomingSpeed] = useState(220);
+  const [spinSpeed, setSpinSpeed] = useState(Math.PI);
+  const [bounceVx, setBounceVx] = useState(160);
+  const [bounceVy, setBounceVy] = useState(140);
+  const [sweepVx, setSweepVx] = useState(220);
+  const [sweepVy, setSweepVy] = useState(0);
 
   const [customAnimationData, setCustomAnimationData] = useState<CustomAnimationData>({ keyframes: [], handles: [] });
   const [selectedCustomKfIndex, setSelectedCustomKfIndex] = useState<number | null>(null);
@@ -147,6 +154,19 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   bombParticleCountRef.current = bombParticleCount;
   const bombParticleSpeedRef = useRef(bombParticleSpeed);
   bombParticleSpeedRef.current = bombParticleSpeed;
+
+  const homingSpeedRef = useRef(homingSpeed);
+  homingSpeedRef.current = homingSpeed;
+  const spinSpeedRef = useRef(spinSpeed);
+  spinSpeedRef.current = spinSpeed;
+  const bounceVxRef = useRef(bounceVx);
+  bounceVxRef.current = bounceVx;
+  const bounceVyRef = useRef(bounceVy);
+  bounceVyRef.current = bounceVy;
+  const sweepVxRef = useRef(sweepVx);
+  sweepVxRef.current = sweepVx;
+  const sweepVyRef = useRef(sweepVy);
+  sweepVyRef.current = sweepVy;
 
   const pushUndoSnapshot = useCallback((snapshot: PlacedEvent[]) => {
     const cloned = JSON.parse(JSON.stringify(snapshot)) as PlacedEvent[];
@@ -342,6 +362,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     bombGrowthDurationRef,
     bombParticleCountRef,
     bombParticleSpeedRef,
+    homingSpeedRef,
+    spinSpeedRef,
+    bounceVxRef,
+    bounceVyRef,
+    sweepVxRef,
+    sweepVyRef,
     currentTime,
     audioDuration,
     bpm,
@@ -480,6 +506,55 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
         : event
     )));
   }, [selectedId, selectedIds, setEventsTracked]);
+
+  const updateSelectedBehaviorSettings = useCallback((updates: {
+    homingSpeed?: number;
+    spinSpeed?: number;
+    bounceVx?: number;
+    bounceVy?: number;
+    sweepVx?: number;
+    sweepVy?: number;
+  }) => {
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+    if (ids.length === 0) return;
+
+    setEventsTracked(prev => prev.map(event => {
+      if (!ids.includes(event.id)) return event;
+      return {
+        ...event,
+        behaviorSettings: {
+          ...(event.behaviorSettings ?? {}),
+          ...updates,
+        },
+      };
+    }));
+  }, [selectedId, selectedIds, setEventsTracked]);
+
+  const updateSelectedBombSettings = useCallback((updates: {
+    growthDuration?: number;
+    particleCount?: number;
+    particleSpeed?: number;
+  }) => {
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+    if (ids.length === 0) return;
+
+    setEventsTracked(prev => prev.map(event => {
+      if (!ids.includes(event.id)) return event;
+      return {
+        ...event,
+        bombSettings: {
+          growthDuration: event.bombSettings?.growthDuration ?? bombGrowthDuration,
+          particleCount: event.bombSettings?.particleCount ?? bombParticleCount,
+          particleSpeed: event.bombSettings?.particleSpeed ?? bombParticleSpeed,
+          ...updates,
+        },
+      };
+    }));
+  }, [selectedId, selectedIds, setEventsTracked, bombGrowthDuration, bombParticleCount, bombParticleSpeed]);
 
   useEffect(() => {
     if (!audioFile && savedAudio?.dataUrl) {
@@ -672,6 +747,38 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 bombParticleSpeedRef.current = value;
                 setBombParticleSpeed(value);
               }}
+              homingSpeed={homingSpeed}
+              onHomingSpeedChange={value => {
+                homingSpeedRef.current = value;
+                setHomingSpeed(value);
+              }}
+              spinSpeed={spinSpeed}
+              onSpinSpeedChange={value => {
+                spinSpeedRef.current = value;
+                setSpinSpeed(value);
+              }}
+              bounceVx={bounceVx}
+              bounceVy={bounceVy}
+              onBounceVxChange={value => {
+                bounceVxRef.current = value;
+                setBounceVx(value);
+              }}
+              onBounceVyChange={value => {
+                bounceVyRef.current = value;
+                setBounceVy(value);
+              }}
+              sweepVx={sweepVx}
+              sweepVy={sweepVy}
+              onSweepVxChange={value => {
+                sweepVxRef.current = value;
+                setSweepVx(value);
+              }}
+              onSweepVyChange={value => {
+                sweepVyRef.current = value;
+                setSweepVy(value);
+              }}
+              onUpdateSelectedBehaviorSettings={updateSelectedBehaviorSettings}
+              onUpdateSelectedBombSettings={updateSelectedBombSettings}
               activeSize={activeSize}
               activeDuration={activeDuration}
               selectedEvent={selectedEvent}

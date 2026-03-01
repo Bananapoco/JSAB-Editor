@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { CustomAnimationData, CustomKeyframe, CustomSegmentHandle } from '../types';
+import { EasingCurveEditor } from './EasingCurveEditor';
 
 interface Props {
   data: CustomAnimationData;
@@ -10,6 +11,15 @@ interface Props {
   selectedKfIndex: number | null;
   onSelectKf: (index: number | null) => void;
 }
+
+const DEFAULT_HANDLE: CustomSegmentHandle = {
+  enabled: false,
+  cp1x: 50,
+  cp1y: 0,
+  cp2x: -50,
+  cp2y: 0,
+  easing: 'linear',
+};
 
 export const CustomAnimationPanel: React.FC<Props> = ({
   data,
@@ -22,6 +32,14 @@ export const CustomAnimationPanel: React.FC<Props> = ({
   const updateKeyframe = (index: number, updates: Partial<CustomKeyframe>) => {
     const newKfs = keyframes.map((kf, i) => (i === index ? { ...kf, ...updates } : kf));
     onChange({ ...data, keyframes: newKfs });
+  };
+
+  const updateHandle = (segIndex: number, updates: Partial<CustomSegmentHandle>) => {
+    if (segIndex < 0 || segIndex >= Math.max(0, keyframes.length - 1)) return;
+    const newHandles = [...handles];
+    while (newHandles.length <= segIndex) newHandles.push({ ...DEFAULT_HANDLE });
+    newHandles[segIndex] = { ...newHandles[segIndex], ...updates };
+    onChange({ ...data, handles: newHandles });
   };
 
   const removeKeyframe = (index: number) => {
@@ -40,15 +58,26 @@ export const CustomAnimationPanel: React.FC<Props> = ({
   };
 
   const toggleHandle = (segIndex: number) => {
-    const newHandles = [...handles];
-    while (newHandles.length <= segIndex) {
-      newHandles.push({ enabled: false, cp1x: 50, cp1y: 0, cp2x: -50, cp2y: 0 });
-    }
-    newHandles[segIndex] = { ...newHandles[segIndex], enabled: !newHandles[segIndex].enabled };
-    onChange({ ...data, handles: newHandles });
+    const existing = handles[segIndex] ?? DEFAULT_HANDLE;
+    updateHandle(segIndex, {
+      enabled: !existing.enabled,
+      easing: existing.easing ?? 'linear',
+    });
   };
 
   const kf = selectedKfIndex !== null ? keyframes[selectedKfIndex] : null;
+
+  const selectedSegIndex = selectedKfIndex === null
+    ? null
+    : selectedKfIndex < keyframes.length - 1
+      ? selectedKfIndex
+      : selectedKfIndex > 0
+        ? selectedKfIndex - 1
+        : null;
+
+  const selectedSegHandle = selectedSegIndex !== null
+    ? (handles[selectedSegIndex] ?? DEFAULT_HANDLE)
+    : null;
 
   return (
     <div className="space-y-3">
@@ -167,6 +196,78 @@ export const CustomAnimationPanel: React.FC<Props> = ({
               />
             </div>
           </div>
+
+          {selectedSegIndex !== null && selectedSegHandle && (
+            <div className="space-y-2 pt-2 border-t border-[#252540]">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-[#666]">Segment {selectedSegIndex + 1} Curve</div>
+                <button
+                  onClick={() => toggleHandle(selectedSegIndex)}
+                  className="text-[9px] px-1.5 py-0.5 rounded border border-[#252540] text-[#aaa] hover:text-white"
+                >
+                  {selectedSegHandle.enabled ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+
+              {selectedSegHandle.enabled ? (
+                <>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="text-[9px] text-[#555]">CP1 X</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedSegHandle.cp1x)}
+                        onChange={e => updateHandle(selectedSegIndex, { cp1x: +e.target.value })}
+                        className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#00FFFF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-[#555]">CP1 Y</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedSegHandle.cp1y)}
+                        onChange={e => updateHandle(selectedSegIndex, { cp1y: +e.target.value })}
+                        className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#00FFFF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-[#555]">CP2 X</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedSegHandle.cp2x)}
+                        onChange={e => updateHandle(selectedSegIndex, { cp2x: +e.target.value })}
+                        className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#00FFFF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-[#555]">CP2 Y</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedSegHandle.cp2y)}
+                        onChange={e => updateHandle(selectedSegIndex, { cp2y: +e.target.value })}
+                        className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#00FFFF]"
+                      />
+                    </div>
+                  </div>
+
+                  <EasingCurveEditor
+                    easing={selectedSegHandle.easing ?? 'linear'}
+                    easingCurve={selectedSegHandle.easingCurve}
+                    onChange={(easing, curve) => {
+                      updateHandle(selectedSegIndex, {
+                        easing,
+                        easingCurve: easing === 'custom' ? curve : undefined,
+                      });
+                    }}
+                  />
+                </>
+              ) : (
+                <div className="text-[9px] text-[#666]">
+                  Enable curve for this segment to adjust bezier control points.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

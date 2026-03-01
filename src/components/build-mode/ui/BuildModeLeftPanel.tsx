@@ -27,6 +27,20 @@ interface BuildModeLeftPanelProps {
   onBombGrowthDurationChange: (value: number) => void;
   onBombParticleCountChange: (value: number) => void;
   onBombParticleSpeedChange: (value: number) => void;
+  homingSpeed: number;
+  onHomingSpeedChange: (value: number) => void;
+  spinSpeed: number;
+  onSpinSpeedChange: (value: number) => void;
+  bounceVx: number;
+  bounceVy: number;
+  onBounceVxChange: (value: number) => void;
+  onBounceVyChange: (value: number) => void;
+  sweepVx: number;
+  sweepVy: number;
+  onSweepVxChange: (value: number) => void;
+  onSweepVyChange: (value: number) => void;
+  onUpdateSelectedBehaviorSettings: (updates: { homingSpeed?: number; spinSpeed?: number; bounceVx?: number; bounceVy?: number; sweepVx?: number; sweepVy?: number }) => void;
+  onUpdateSelectedBombSettings: (updates: { growthDuration?: number; particleCount?: number; particleSpeed?: number }) => void;
   activeSize: number;
   activeDuration: number;
   selectedEvent: PlacedEvent | null;
@@ -72,6 +86,20 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   onBombGrowthDurationChange,
   onBombParticleCountChange,
   onBombParticleSpeedChange,
+  homingSpeed,
+  onHomingSpeedChange,
+  spinSpeed,
+  onSpinSpeedChange,
+  bounceVx,
+  bounceVy,
+  onBounceVxChange,
+  onBounceVyChange,
+  sweepVx,
+  sweepVy,
+  onSweepVxChange,
+  onSweepVyChange,
+  onUpdateSelectedBehaviorSettings,
+  onUpdateSelectedBombSettings,
   activeSize,
   activeDuration,
   selectedEvent,
@@ -106,6 +134,22 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   const isEditingSelection = selectedCount > 0 && selectedEvent !== null;
   const sizeValue = isEditingSelection ? Math.round(selectedEvent.size ?? activeSize) : activeSize;
   const durationValue = isEditingSelection ? (selectedEvent.duration ?? activeDuration) : activeDuration;
+
+  const behaviorForSettings = isEditingSelection ? selectedEvent.behavior : activeBehavior;
+  const toolForSettings = isEditingSelection ? selectedEvent.type : activeTool;
+  const selectedBehaviorSettings = selectedEvent?.behaviorSettings;
+  const selectedBombSettings = selectedEvent?.bombSettings;
+
+  const homingSpeedValue = isEditingSelection ? (selectedBehaviorSettings?.homingSpeed ?? homingSpeed) : homingSpeed;
+  const spinSpeedValue = isEditingSelection ? (selectedBehaviorSettings?.spinSpeed ?? spinSpeed) : spinSpeed;
+  const bounceVxValue = isEditingSelection ? (selectedBehaviorSettings?.bounceVx ?? bounceVx) : bounceVx;
+  const bounceVyValue = isEditingSelection ? (selectedBehaviorSettings?.bounceVy ?? bounceVy) : bounceVy;
+  const sweepVxValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVx ?? sweepVx) : sweepVx;
+  const sweepVyValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVy ?? sweepVy) : sweepVy;
+
+  const bombGrowthDurationValue = isEditingSelection ? (selectedBombSettings?.growthDuration ?? bombGrowthDuration) : bombGrowthDuration;
+  const bombParticleCountValue = isEditingSelection ? (selectedBombSettings?.particleCount ?? bombParticleCount) : bombParticleCount;
+  const bombParticleSpeedValue = isEditingSelection ? (selectedBombSettings?.particleSpeed ?? bombParticleSpeed) : bombParticleSpeed;
 
   return (
     <AnimatePresence mode="wait">
@@ -197,7 +241,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
             )}
 
-            {activeBehavior === 'custom' && (activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
+            {behaviorForSettings === 'custom' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
               <CustomAnimationPanel
                 data={customAnimationData}
                 onChange={onCustomAnimationDataChange}
@@ -206,7 +250,141 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               />
             )}
 
-            {activeBehavior === 'bomb' && (activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
+            {behaviorForSettings === 'homing' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Homing Speed</div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] text-[#666]">Tracking</span>
+                  <span className="text-xs font-mono text-[#FF0099]">{Math.round(homingSpeedValue)} px/s</span>
+                </div>
+                <input
+                  type="range"
+                  min="40"
+                  max="900"
+                  step="10"
+                  value={homingSpeedValue}
+                  onChange={e => {
+                    const value = +e.target.value;
+                    if (isEditingSelection) onUpdateSelectedBehaviorSettings({ homingSpeed: value });
+                    else onHomingSpeedChange(value);
+                  }}
+                  className="w-full accent-[#FF0099] cursor-pointer"
+                />
+              </div>
+            )}
+
+            {behaviorForSettings === 'spinning' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Spin Speed</div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] text-[#666]">Rotation</span>
+                  <span className="text-xs font-mono text-[#FF0099]">{spinSpeedValue.toFixed(2)} rad/s</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="12"
+                  step="0.1"
+                  value={spinSpeedValue}
+                  onChange={e => {
+                    const value = +e.target.value;
+                    if (isEditingSelection) onUpdateSelectedBehaviorSettings({ spinSpeed: value });
+                    else onSpinSpeedChange(value);
+                  }}
+                  className="w-full accent-[#FF0099] cursor-pointer"
+                />
+              </div>
+            )}
+
+            {behaviorForSettings === 'bouncing' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+              <div className="space-y-3">
+                <div className="text-[10px] uppercase tracking-widest text-[#444]">Bounce Velocity</div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">X Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceVxValue)} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-900"
+                    max="900"
+                    step="10"
+                    value={bounceVxValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceVx: value });
+                      else onBounceVxChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Y Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceVyValue)} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-900"
+                    max="900"
+                    step="10"
+                    value={bounceVyValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceVy: value });
+                      else onBounceVyChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+
+            {behaviorForSettings === 'sweep' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+              <div className="space-y-3">
+                <div className="text-[10px] uppercase tracking-widest text-[#444]">Sweep Velocity</div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">X Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepVxValue)} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-900"
+                    max="900"
+                    step="10"
+                    value={sweepVxValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepVx: value });
+                      else onSweepVxChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Y Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepVyValue)} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-900"
+                    max="900"
+                    step="10"
+                    value={sweepVyValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepVy: value });
+                      else onSweepVyChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+
+            {behaviorForSettings === 'bomb' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
               <>
                 <div className="w-full h-px bg-[#FF009933]" />
                 <div className="text-[10px] uppercase tracking-widest text-[#FF0099] font-bold mb-2 flex items-center gap-1">
@@ -216,15 +394,19 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] uppercase tracking-widest text-[#444]">Growth Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{bombGrowthDuration.toFixed(1)}s</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{bombGrowthDurationValue.toFixed(1)}s</span>
                   </div>
                   <input
                     type="range"
                     min="0.5"
                     max="5"
                     step="0.1"
-                    value={bombGrowthDuration}
-                    onChange={e => onBombGrowthDurationChange(+e.target.value)}
+                    value={bombGrowthDurationValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBombSettings({ growthDuration: value });
+                      else onBombGrowthDurationChange(value);
+                    }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
                   <div className="flex justify-between text-[9px] text-[#555] mt-1">
@@ -236,15 +418,19 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] uppercase tracking-widest text-[#444]">Particles</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleCount}</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleCountValue}</span>
                   </div>
                   <input
                     type="range"
                     min="4"
                     max="32"
                     step="1"
-                    value={bombParticleCount}
-                    onChange={e => onBombParticleCountChange(+e.target.value)}
+                    value={bombParticleCountValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBombSettings({ particleCount: value });
+                      else onBombParticleCountChange(value);
+                    }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
                 </div>
@@ -252,15 +438,19 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] uppercase tracking-widest text-[#444]">Explosion Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleSpeed}</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleSpeedValue}</span>
                   </div>
                   <input
                     type="range"
                     min="100"
                     max="600"
                     step="10"
-                    value={bombParticleSpeed}
-                    onChange={e => onBombParticleSpeedChange(+e.target.value)}
+                    value={bombParticleSpeedValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBombSettings({ particleSpeed: value });
+                      else onBombParticleSpeedChange(value);
+                    }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
                 </div>
@@ -276,7 +466,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
               <input
                 type="range"
-                min="20"
+                min="4"
                 max="200"
                 value={sizeValue}
                 onChange={e => {
@@ -299,20 +489,20 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 <span className="text-xs font-mono text-[#FF0099]">{durationValue.toFixed(1)}s</span>
               </div>
               <input
-                type="range"
+                type="number"
                 min="0.1"
-                max="10"
                 step="0.1"
                 value={durationValue}
                 onChange={e => {
                   const value = +e.target.value;
+                  if (!Number.isFinite(value) || value <= 0) return;
                   if (isEditingSelection) {
                     onUpdateSelectedDuration(value);
                   } else {
                     onActiveDurationChange(value);
                   }
                 }}
-                className="w-full accent-[#FF0099] cursor-pointer"
+                className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm focus:outline-none focus:border-[#FF0099]"
               />
             </div>
           </div>
