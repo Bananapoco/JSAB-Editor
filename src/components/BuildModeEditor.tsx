@@ -89,7 +89,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [hoverPos, setHoverPos] = useState<HoverPos | null>(null);
   const [canvasCursor, setCanvasCursor] = useState('default');
 
-  const [activePanel, setActivePanel] = useState<ActivePanel>('tools');
+  const [activePanel, setActivePanel] = useState<ActivePanel>('shapes');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialProject?.id ?? null);
   const [saveStatusText, setSaveStatusText] = useState('');
   const lastAutosaveSignatureRef = useRef<string>(initialSnapshot ? JSON.stringify(initialSnapshot) : '');
@@ -289,6 +289,31 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     timelineRef,
   });
 
+  const handleCustomAnimationDataChange = useCallback((data: CustomAnimationData) => {
+    setCustomAnimationData(data);
+
+    setEventsTracked(prev => {
+      const selected = selectedIds.length > 0
+        ? selectedIds
+        : (selectedId !== null ? [selectedId] : []);
+
+      const targetIds = selected.length > 0
+        ? selected
+        : (() => {
+            const last = prev[prev.length - 1];
+            return last && last.behavior === 'custom' ? [last.id] : [];
+          })();
+
+      if (targetIds.length === 0) return prev;
+
+      return prev.map(event => (
+        targetIds.includes(event.id) && event.behavior === 'custom'
+          ? { ...event, customAnimation: data }
+          : event
+      ));
+    });
+  }, [selectedId, selectedIds, setEventsTracked]);
+
   const {
     handleCanvasMouseDown,
     handleCanvasMouseMove,
@@ -332,8 +357,49 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     setIsDraggingObjects,
     dragStateRef,
     customAnimationDataRef,
-    onCustomAnimationDataChange: setCustomAnimationData,
+    onCustomAnimationDataChange: handleCustomAnimationDataChange,
   });
+
+  const deleteSelectedCustomKeyframe = useCallback((): boolean => {
+    if (selectedCustomKfIndex === null) return false;
+
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+
+    const selectedEvent = ids.length === 1
+      ? events.find(event => event.id === ids[0])
+      : (() => {
+          const last = events[events.length - 1];
+          return last && last.behavior === 'custom' ? last : undefined;
+        })();
+
+    if (!selectedEvent || selectedEvent.behavior !== 'custom' || !selectedEvent.customAnimation) return false;
+
+    const { keyframes, handles } = selectedEvent.customAnimation;
+    if (selectedCustomKfIndex < 0 || selectedCustomKfIndex >= keyframes.length) return false;
+
+    const newKfs = [...keyframes];
+    newKfs.splice(selectedCustomKfIndex, 1);
+
+    const newHandles = [...handles];
+    if (selectedCustomKfIndex < newHandles.length) {
+      newHandles.splice(selectedCustomKfIndex, 1);
+    } else if (selectedCustomKfIndex > 0 && newHandles.length >= selectedCustomKfIndex) {
+      newHandles.splice(selectedCustomKfIndex - 1, 1);
+    }
+
+    const newData: CustomAnimationData = { keyframes: newKfs, handles: newHandles };
+    handleCustomAnimationDataChange(newData);
+
+    if (newKfs.length === 0) {
+      setSelectedCustomKfIndex(null);
+    } else if (selectedCustomKfIndex >= newKfs.length) {
+      setSelectedCustomKfIndex(newKfs.length - 1);
+    }
+
+    return true;
+  }, [events, handleCustomAnimationDataChange, selectedCustomKfIndex, selectedId, selectedIds]);
 
   useBuildModeKeyboardShortcuts({
     selectedIdRef,
@@ -361,6 +427,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     setCurrentTime,
     onUndo: undo,
     onRedo: redo,
+    onDeleteSelectedCustomKeyframe: deleteSelectedCustomKeyframe,
   });
 
   useBuildModeCanvasRender({
@@ -385,32 +452,17 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     selectedCustomKfIndex,
   });
 
-  // Sync custom animation data when selecting an event with custom behavior
+  // Sync custom animation panel from currently selected custom event.
   useEffect(() => {
     const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
-    if (ids.length === 1) {
-      const evt = events.find(e => e.id === ids[0]);
-      if (evt?.behavior === 'custom' && evt.customAnimation) {
-        setCustomAnimationData(evt.customAnimation);
-        setSelectedCustomKfIndex(null);
-      }
-    }
-  }, [selectedId, selectedIds]); // intentionally not including events to avoid loops
+    if (ids.length !== 1) return;
 
-  // Sync custom animation panel edits back to the selected event
-  useEffect(() => {
-    const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
-    if (ids.length > 0) {
-      const evt = events.find(e => e.id === ids[0]);
-      if (evt?.behavior === 'custom') {
-        setEvents(prev => prev.map(e =>
-          ids.includes(e.id) && e.behavior === 'custom'
-            ? { ...e, customAnimation: customAnimationData }
-            : e
-        ));
-      }
+    const evt = events.find(e => e.id === ids[0]);
+    if (evt?.behavior === 'custom' && evt.customAnimation && evt.customAnimation !== customAnimationDataRef.current) {
+      setCustomAnimationData(evt.customAnimation);
+      setSelectedCustomKfIndex(null);
     }
-  }, [customAnimationData]); // intentionally limited deps
+  }, [events, selectedId, selectedIds]);
 
   const selectedEvent = (selectedIds.length > 0
     ? events.find(event => event.id === selectedIds[0])
@@ -522,6 +574,14 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
 
     const savedProject = persistProject('manual');
 
+    const returnProject = savedProject ?? {
+      id: currentProjectId ?? `temp-${Date.now()}`,
+      name: (bossName.trim() || 'Untitled Project'),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      snapshot: buildProjectSnapshot(),
+    };
+
     const payload = createLevelPayload({
       events,
       bossName,
@@ -536,7 +596,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     const launchPayload = {
       ...payload,
       source: 'build' as const,
-      returnProject: savedProject,
+      returnProject,
     };
 
     savePayloadToCommunity(payload);
@@ -657,7 +717,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               bossName={bossName}
               onBossNameChange={setBossName}
               customAnimationData={customAnimationData}
-              onCustomAnimationDataChange={setCustomAnimationData}
+              onCustomAnimationDataChange={handleCustomAnimationDataChange}
               selectedCustomKfIndex={selectedCustomKfIndex}
               onSelectCustomKf={setSelectedCustomKfIndex}
             />

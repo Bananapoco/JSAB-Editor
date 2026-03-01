@@ -578,7 +578,6 @@ export function useBuildModePlacementInteractions({
   const handleCanvasContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     // Only handle right-click for adding custom keyframes
     if (activeBehaviorRef.current !== 'custom') return;
-    if (!isPlacementModeRef.current && selectedIds.length === 0 && selectedId === null) return;
 
     e.preventDefault();
     const pos = getCanvasPos(e);
@@ -622,18 +621,9 @@ export function useBuildModePlacementInteractions({
     }
 
     const newData: CustomAnimationData = { keyframes: newKfs, handles: newHandles };
-    onCustomAnimationDataChange(newData);
 
-    // Also update the selected event if one is selected and has custom behavior
-    const idsToUpdate = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
-    if (idsToUpdate.length > 0) {
-      setEvents(prev => prev.map(ev =>
-        idsToUpdate.includes(ev.id) && ev.behavior === 'custom'
-          ? { ...ev, customAnimation: newData }
-          : ev
-      ));
-    }
-  }, [activeBehaviorRef, isPlacementModeRef, selectedIds, selectedId, getCanvasPos, customAnimationDataRef, onCustomAnimationDataChange, setEvents]);
+    onCustomAnimationDataChange(newData);
+  }, [activeBehaviorRef, isPlacementModeRef, selectedIds, selectedId, getCanvasPos, customAnimationDataRef, onCustomAnimationDataChange]);
 
   const clearCanvasDragState = useCallback(() => {
     setHoverPos(null);

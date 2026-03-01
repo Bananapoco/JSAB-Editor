@@ -27,6 +27,12 @@ export const EditorOverlay = () => {
       setMode('select');
     };
 
+    const showBuildEditor = () => {
+      setInitialBuildProject(null);
+      setIsVisible(true);
+      setMode('build');
+    };
+
     const showBuildProject = (project: SavedBuildProject) => {
       setInitialBuildProject(project);
       setIsVisible(true);
@@ -34,9 +40,11 @@ export const EditorOverlay = () => {
     };
 
     EventBus.on('open-editor', showEditor);
+    EventBus.on('open-build-editor', showBuildEditor);
     EventBus.on('open-build-project', showBuildProject);
     return () => {
       EventBus.removeListener('open-editor', showEditor);
+      EventBus.removeListener('open-build-editor', showBuildEditor);
       EventBus.removeListener('open-build-project', showBuildProject);
     };
   }, []);

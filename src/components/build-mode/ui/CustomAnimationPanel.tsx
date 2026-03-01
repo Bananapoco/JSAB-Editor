@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { CustomAnimationData, CustomKeyframe, CustomSegmentHandle } from '../types';
 
 interface Props {
@@ -65,24 +65,28 @@ export const CustomAnimationPanel: React.FC<Props> = ({
       <div className="space-y-1 max-h-40 overflow-y-auto">
         {keyframes.map((kfItem, i) => (
           <div key={i} className="flex flex-col gap-0.5">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onSelectKf(selectedKfIndex === i ? null : i)}
-              className={`flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-[10px] transition-all ${
-                selectedKfIndex === i
-                  ? 'bg-[#FF009933] border border-[#FF0099] text-white'
-                  : 'bg-[#151520] border border-[#252540] text-[#888] hover:text-white'
-              }`}
-            >
-              <span className="font-mono">KF {i + 1} — t:{(kfItem.t * 100).toFixed(0)}%</span>
+            <div className="flex items-center gap-1">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onSelectKf(selectedKfIndex === i ? null : i)}
+                className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] transition-all ${
+                  selectedKfIndex === i
+                    ? 'bg-[#FF009933] border border-[#FF0099] text-white'
+                    : 'bg-[#151520] border border-[#252540] text-[#888] hover:text-white'
+                }`}
+              >
+                <span className="font-mono">KF {i + 1} — t:{(kfItem.t * 100).toFixed(0)}%</span>
+              </motion.button>
+
               <button
-                onClick={e => { e.stopPropagation(); removeKeyframe(i); }}
-                className="p-0.5 rounded hover:bg-[#ff333344] text-[#ff4444]"
+                onClick={() => removeKeyframe(i)}
+                className="p-1 rounded border border-[#3a1f26] bg-[#2a141a] hover:bg-[#3a1b24] text-[#ff5555]"
+                title={`Delete keyframe ${i + 1}`}
               >
                 <Trash2 size={10} />
               </button>
-            </motion.button>
+            </div>
 
             {/* Segment handle toggle between this and next keyframe */}
             {i < keyframes.length - 1 && (

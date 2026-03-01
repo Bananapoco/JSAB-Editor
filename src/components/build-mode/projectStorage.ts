@@ -37,8 +37,55 @@ function safeReadProjects(): SavedBuildProject[] {
   }
 }
 
+function tryWriteProjects(projects: SavedBuildProject[]): boolean {
+  try {
+    localStorage.setItem(BUILD_PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function writeProjects(projects: SavedBuildProject[]) {
-  localStorage.setItem(BUILD_PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+  if (typeof window === 'undefined') return;
+
+  // Fast path.
+  if (tryWriteProjects(projects)) return;
+
+  // If quota is exceeded, progressively strip embedded audio payloads
+  // (data URLs are typically the largest part of snapshots), starting
+  // from the oldest projects.
+  const stripped = projects.map(project => ({
+    ...project,
+    snapshot: {
+      ...project.snapshot,
+      audio: project.snapshot.audio
+        ? {
+            ...project.snapshot.audio,
+            dataUrl: '',
+          }
+        : project.snapshot.audio,
+    },
+  }));
+
+  for (let i = stripped.length - 1; i >= 0; i--) {
+    const p = stripped[i];
+    if (p.snapshot.audio) {
+      p.snapshot.audio = null;
+    }
+
+    if (tryWriteProjects(stripped)) return;
+  }
+
+  // If still too big, drop oldest projects until it fits.
+  const trimmed = [...stripped];
+  while (trimmed.length > 0) {
+    trimmed.pop();
+    if (tryWriteProjects(trimmed)) return;
+  }
+
+  // Last resort: avoid throwing and keep app responsive.
+  tryWriteProjects([]);
 }
 
 export function readBuildProjects(): SavedBuildProject[] {

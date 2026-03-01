@@ -9,7 +9,7 @@ interface BuildModeToolRailProps {
 }
 
 const panelTabs: { id: ActivePanel; icon: React.FC<any>; title: string }[] = [
-  { id: 'tools', icon: Zap, title: 'Tools' },
+  { id: 'tools', icon: Zap, title: 'Tools & Animation' },
   { id: 'shapes', icon: Hexagon, title: 'Shapes' },
   { id: 'settings', icon: Settings, title: 'Settings' },
   { id: 'compose', icon: Layers, title: 'Shape Composer' },

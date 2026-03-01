@@ -9,7 +9,7 @@ import { CircleCollider, collidersOverlap } from '../engine/colliders/Collider';
 import { ExplosionData } from '../engine/behaviors/BombBehavior';
 import { buildEventObjectFromEvent, spawnExplosionParticlesForBomb } from './gameObjectUtils';
 
-const WORLD_W = 1024;
+const WORLD_W = 1366;
 const WORLD_H = 768;
 const PLAYER_HALF = 10;
 const PLAYER_SPEED = 600;       // px/s normal
@@ -109,27 +109,31 @@ export class Game extends Scene {
         // Phaser UI elements (drawn by Phaser, appear under our custom layer)
         const { width, height } = this.scale;
 
-        this.menuButtonText = this.add.text(20, 20, '◀ MENU', {
+        this.menuButtonText = this.add.text(width * 0.5, 20, '◀ MENU', {
             fontFamily: 'Arial Black', fontSize: '24px', color: '#ffffff',
-        }).setInteractive({ useHandCursor: true })
+        }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true })
           .on('pointerdown', () => {
               if (this.music) this.music.stop();
               this.scene.start('MainMenu');
           })
           .setDepth(10);
 
-        this.backButtonText = this.add.text(20, 56, '↩ BACK TO EDITOR', {
+        this.backButtonText = this.add.text(width * 0.5, 20, '↩ BACK TO EDITOR', {
             fontFamily: 'Arial Black', fontSize: '20px', color: '#00e5ff',
-        }).setInteractive({ useHandCursor: true })
+        }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true })
           .on('pointerdown', () => {
               if (!this.showBackToEditor) return;
+
+              // Capture before scene shutdown resets Game fields.
+              const returnProject = this.returnProjectForEditor;
+
               if (this.music) this.music.stop();
               this.scene.start('MainMenu');
               window.setTimeout(() => {
-                  if (this.returnProjectForEditor) {
-                      EventBus.emit('open-build-project', this.returnProjectForEditor);
+                  if (returnProject) {
+                      EventBus.emit('open-build-project', returnProject);
                   } else {
-                      EventBus.emit('open-editor');
+                      EventBus.emit('open-build-editor');
                   }
               }, 0);
           })

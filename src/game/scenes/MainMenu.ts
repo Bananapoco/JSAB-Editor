@@ -86,21 +86,22 @@ export class MainMenu extends Scene
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup);
         this.events.once(Phaser.Scenes.Events.DESTROY, cleanup);
 
-        // --- Bottom Bar / Settings ---
-        // Profile (responsive so it stays on-screen for narrow widths)
-        const profilePadding = 16;
-        const profileY = height - 40;
-        const profileWidth = Math.min(220, Math.max(140, width * 0.32));
+        // --- Top Profile + Bottom-right Settings ---
+        // Keep this centered so it's always visible even with ENVELOP cropping.
+        const profileWidth = Math.min(240, Math.max(150, width * 0.28));
         const profileHeight = 44;
-        const profileFontSize = Math.max(14, Math.min(24, Math.floor(width * 0.025)));
+        const profileFontSize = Math.max(14, Math.min(24, Math.floor(width * 0.022)));
+        const profileY = 28;
 
-        const profileContainer = this.add.container(profilePadding, profileY);
-        const profileBg = this.add.rectangle(0, 0, profileWidth, profileHeight, 0x222222).setOrigin(0, 0.5);
-        const profileText = this.add.text(12, 0, 'User Profile', { fontFamily: 'Arial', fontSize: `${profileFontSize}px`, color: '#ffffff' }).setOrigin(0, 0.5);
+        const profileContainer = this.add.container(width * 0.5, profileY).setDepth(20);
+        const profileBg = this.add.rectangle(0, 0, profileWidth, profileHeight, 0x222222).setOrigin(0.5, 0);
+        const profileText = this.add.text(0, profileHeight / 2, 'User Profile', { fontFamily: 'Arial', fontSize: `${profileFontSize}px`, color: '#ffffff' }).setOrigin(0.5, 0.5);
         profileContainer.add([profileBg, profileText]);
-        
+
         // Interactive Profile
         profileBg.setInteractive({ useHandCursor: true })
+            .on('pointerover', () => profileBg.setFillStyle(0x2f2f2f))
+            .on('pointerout', () => profileBg.setFillStyle(0x222222))
             .on('pointerdown', () => EventBus.emit('open-user-profile'));
 
 

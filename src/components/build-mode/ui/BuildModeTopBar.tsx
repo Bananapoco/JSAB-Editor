@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Clock, Play, Redo2, Save, Sparkles, Square, Undo2, X } from 'lucide-react';
+import { ChevronLeft, Clock, Play, Redo2, Save, Square, Undo2, X } from 'lucide-react';
 import { formatTime } from '../utils';
 
 interface BuildModeTopBarProps {
@@ -37,11 +37,11 @@ export const BuildModeTopBar: React.FC<BuildModeTopBarProps> = ({
       className="h-14 flex items-center px-4 gap-3 border-b border-[#1a1a2e] bg-[#0c0c14] shrink-0"
     >
       <button
-        onClick={onSwitchToAI}
+        onClick={onClose}
+        title="Back to Main Menu"
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1a1a2e] hover:bg-[#252540] text-[#888] hover:text-white transition-all"
       >
         <ChevronLeft size={16} />
-        <Sparkles size={14} />
       </button>
 
       <div className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#FF009920] to-[#FF660020] border border-[#FF0099] text-[#FF0099] font-bold text-sm tracking-wide">

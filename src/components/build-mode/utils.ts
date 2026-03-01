@@ -13,10 +13,10 @@ export function drawShape(
 ) {
   const r = size / 2;
   ctx.fillStyle = color;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = selected ? 2.5 : 1.5;
 
   if (selected) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 2;
     ctx.shadowColor = color;
     ctx.shadowBlur = 10;
   }
@@ -68,7 +68,7 @@ export function drawShape(
   }
 
   ctx.fill();
-  ctx.stroke();
+  if (selected) ctx.stroke();
   ctx.shadowBlur = 0;
 }
 
@@ -81,7 +81,7 @@ export function shiftColor(hex: string, amount: number): string {
 }
 
 export function shapeTypeToShapeDef(shape: ShapeType, size: number, color: string): ShapeDef {
-  const opts = { fillColor: color, strokeColor: color, glowColor: color, glowRadius: 12 };
+  const opts = { fillColor: color };
 
   switch (shape) {
     case 'circle':
@@ -108,7 +108,7 @@ export function shapeTypeToShapeDef(shape: ShapeType, size: number, color: strin
 }
 
 export function pieceTypeToShapeDef(type: PieceType, size: number, color: string): ShapeDef {
-  const opts = { fillColor: color, strokeColor: color, glowColor: color, glowRadius: 12 };
+  const opts = { fillColor: color };
 
   switch (type) {
     case 'circle':
@@ -218,17 +218,17 @@ export function drawCompositeShape(
     ctx.translate(piece.x * scale, piece.y * scale);
     ctx.rotate((piece.rotation * Math.PI) / 180);
     ctx.fillStyle = col;
-    ctx.strokeStyle = col;
-    ctx.lineWidth = selected ? 2 : 1.25;
 
     if (selected) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1.75;
       ctx.shadowColor = col;
       ctx.shadowBlur = 8;
     }
 
     drawPieceShape(ctx, piece.type, r);
     ctx.fill();
-    ctx.stroke();
+    if (selected) ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.restore();
   }

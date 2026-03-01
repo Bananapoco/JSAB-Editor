@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { BehaviorType, ShapeType, SnapInterval, Tool } from './types';
 
-export const GAME_W = 1024;
+export const GAME_W = 1366;
 export const GAME_H = 768;
 export const CANVAS_W = 640;
 export const CANVAS_H = Math.round((CANVAS_W * GAME_H) / GAME_W);

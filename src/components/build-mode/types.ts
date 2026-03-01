@@ -17,7 +17,7 @@ export interface BombSettings {
 export interface CustomKeyframe {
   /** Normalized time 0–1 within the object's duration. */
   t: number;
-  /** World X position (0–1024). */
+  /** World X position (0–1366). */
   x: number;
   /** World Y position (0–768). */
   y: number;

@@ -24,6 +24,7 @@ interface UseBuildModeKeyboardShortcutsParams {
   setCurrentTime: Dispatch<SetStateAction<number>>;
   onUndo: () => void;
   onRedo: () => void;
+  onDeleteSelectedCustomKeyframe?: () => boolean;
 }
 
 export function useBuildModeKeyboardShortcuts({
@@ -48,6 +49,7 @@ export function useBuildModeKeyboardShortcuts({
   setCurrentTime,
   onUndo,
   onRedo,
+  onDeleteSelectedCustomKeyframe,
 }: UseBuildModeKeyboardShortcutsParams) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -122,6 +124,11 @@ export function useBuildModeKeyboardShortcuts({
       }
 
       if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (onDeleteSelectedCustomKeyframe?.()) {
+          e.preventDefault();
+          return;
+        }
+
         const ids = selectedIdsRef.current.length > 0
           ? selectedIdsRef.current
           : (selectedIdRef.current !== null ? [selectedIdRef.current] : []);
@@ -130,6 +137,7 @@ export function useBuildModeKeyboardShortcuts({
           setEvents(prev => prev.filter(ev => !ids.includes(ev.id)));
           setSelectedId(null);
           setSelectedIds([]);
+          e.preventDefault();
         }
       }
 
@@ -174,6 +182,7 @@ export function useBuildModeKeyboardShortcuts({
     onEscape,
     onUndo,
     onRedo,
+    onDeleteSelectedCustomKeyframe,
     pasteNudgeRef,
     selectedIdRef,
     selectedIdsRef,
