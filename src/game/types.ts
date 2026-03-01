@@ -21,7 +21,7 @@ export interface LevelEvent {
     /** Audio timestamp in seconds when this event triggers. */
     timestamp: number;
     type: LevelEventType;
-    x: number;    // 0–1024
+    x: number;    // 0–1366
     y: number;    // 0–768
     size?: number;
     rotation?: number;

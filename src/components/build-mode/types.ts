@@ -2,7 +2,19 @@ import { LevelEvent } from '../../game/types';
 import { CustomShapeDef } from '../shape-composer/types';
 
 export type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'pulse' | 'boss_move';
-export type BehaviorType = 'homing' | 'spinning' | 'bouncing' | 'static' | 'sweep' | 'bomb' | 'custom';
+
+/** Primary movement behaviors – mutually exclusive (only one controls position at a time). */
+export type MovementBehavior = 'static' | 'bouncing' | 'sweep' | 'homing' | 'custom';
+
+/**
+ * Modifier behaviors – stackable on top of any compatible movement.
+ * Conflicts: 'custom' movement disables both modifiers (custom controls rotation + scale itself).
+ */
+export type ModifierBehavior = 'spinning' | 'bomb';
+
+/** Union of all behavior kinds (kept for legacy compatibility). */
+export type BehaviorType = MovementBehavior | ModifierBehavior;
+
 export type ShapeType = 'square' | 'circle' | 'triangle' | 'diamond' | 'hexagon' | 'star';
 export type SnapInterval = '1/4' | '1/2' | '1' | '2' | '4';
 export type ActivePanel = 'tools' | 'shapes' | 'settings' | 'compose';
@@ -14,12 +26,17 @@ export interface BombSettings {
 }
 
 export interface BehaviorSettings {
+  /** Homing pursuit speed in px/beat. */
   homingSpeed?: number;
   spinSpeed?: number;
-  bounceVx?: number;
-  bounceVy?: number;
-  sweepVx?: number;
-  sweepVy?: number;
+  /** Bounce movement speed in px/beat. */
+  bounceSpeed?: number;
+  /** Bounce initial direction in degrees (0 = right, 90 = down). */
+  bounceAngle?: number;
+  /** Sweep movement speed in px/beat. */
+  sweepSpeed?: number;
+  /** Sweep direction in degrees (0 = right, 90 = down). */
+  sweepAngle?: number;
 }
 
 /** A single keyframe in a custom animation path. */
@@ -92,4 +109,10 @@ export interface PlacedEvent extends LevelEvent {
   bombSettings?: BombSettings;
   behaviorSettings?: BehaviorSettings;
   customAnimation?: CustomAnimationData;
+  /**
+   * Stackable modifier behaviors layered on top of the primary movement.
+   * When present, `behavior` holds the movement type; modifiers are listed here.
+   * Absent on legacy events (where behavior may be 'spinning' or 'bomb' directly).
+   */
+  behaviorModifiers?: ModifierBehavior[];
 }

@@ -1,5 +1,5 @@
 import { RefObject, useEffect } from 'react';
-import { CANVAS_H, CANVAS_W, SCALE, TOOLS } from './constants';
+import { CANVAS_H, CANVAS_W, GAME_H, GAME_W, SCALE, TOOLS } from './constants';
 import {
   BehaviorType,
   CustomAnimationData,
@@ -318,8 +318,8 @@ export function useBuildModeCanvasRender({
       }
     }
 
-    const px = 512 * SCALE;
-    const py = 384 * SCALE;
+    const px = (GAME_W / 2) * SCALE;
+    const py = (GAME_H / 2) * SCALE;
     ctx.save();
     ctx.fillStyle = playerColor;
     ctx.globalAlpha = 0.9;

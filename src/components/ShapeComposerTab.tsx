@@ -413,6 +413,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       }
 
       if (e.code === 'Escape') {
+        e.preventDefault();
         setPendingType(null);
         setSelectedId(null);
       }

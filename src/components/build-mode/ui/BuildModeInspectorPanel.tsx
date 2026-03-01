@@ -27,6 +27,23 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
   onUpdateSelected,
   onLaunch,
 }) => {
+  const [timestampInput, setTimestampInput] = React.useState('0');
+  const [xInput, setXInput] = React.useState('0');
+  const [yInput, setYInput] = React.useState('0');
+  const [sizeInput, setSizeInput] = React.useState('40');
+  const [rotationInput, setRotationInput] = React.useState('0');
+  const [durationInput, setDurationInput] = React.useState('2');
+
+  React.useEffect(() => {
+    if (!selectedEvent) return;
+    setTimestampInput(String(selectedEvent.timestamp ?? 0));
+    setXInput(String(selectedEvent.x ?? 0));
+    setYInput(String(selectedEvent.y ?? 0));
+    setSizeInput(String(selectedEvent.size ?? 40));
+    setRotationInput(String(selectedEvent.rotation ?? 0));
+    setDurationInput(String(selectedEvent.duration ?? 2));
+  }, [selectedEvent]);
+
   return (
     <motion.div
       initial={{ x: 20, opacity: 0 }}
@@ -67,8 +84,25 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
             <input
               type="number"
               step="0.01"
-              value={selectedEvent.timestamp}
-              onChange={e => onUpdateSelected({ timestamp: parseFloat(e.target.value) || 0 })}
+              value={timestampInput}
+              onChange={e => {
+                const raw = e.target.value;
+                setTimestampInput(raw);
+                if (raw === '') return;
+                const value = Number(raw);
+                if (!Number.isFinite(value)) return;
+                onUpdateSelected({ timestamp: Math.max(0, value) });
+              }}
+              onBlur={() => {
+                const value = Number(timestampInput);
+                if (!Number.isFinite(value)) {
+                  setTimestampInput(String(selectedEvent.timestamp ?? 0));
+                  return;
+                }
+                const safe = Math.max(0, value);
+                setTimestampInput(String(safe));
+                onUpdateSelected({ timestamp: safe });
+              }}
               className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
             />
           </div>
@@ -79,8 +113,29 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
                 <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1">{key}</div>
                 <input
                   type="number"
-                  value={selectedEvent[key]}
-                  onChange={e => onUpdateSelected({ [key]: +e.target.value })}
+                  value={key === 'x' ? xInput : yInput}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    if (key === 'x') setXInput(raw);
+                    else setYInput(raw);
+
+                    if (raw === '') return;
+                    const value = Number(raw);
+                    if (!Number.isFinite(value)) return;
+                    onUpdateSelected({ [key]: value });
+                  }}
+                  onBlur={() => {
+                    const raw = key === 'x' ? xInput : yInput;
+                    const value = Number(raw);
+                    if (!Number.isFinite(value)) {
+                      if (key === 'x') setXInput(String(selectedEvent.x ?? 0));
+                      else setYInput(String(selectedEvent.y ?? 0));
+                      return;
+                    }
+                    if (key === 'x') setXInput(String(value));
+                    else setYInput(String(value));
+                    onUpdateSelected({ [key]: value });
+                  }}
                   className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
                 />
               </div>
@@ -94,8 +149,24 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
               </div>
               <input
                 type="number"
-                value={selectedEvent.size ?? 40}
-                onChange={e => onUpdateSelected({ size: +e.target.value })}
+                value={sizeInput}
+                onChange={e => {
+                  const raw = e.target.value;
+                  setSizeInput(raw);
+                  if (raw === '') return;
+                  const value = Number(raw);
+                  if (!Number.isFinite(value) || value <= 0) return;
+                  onUpdateSelected({ size: value });
+                }}
+                onBlur={() => {
+                  const value = Number(sizeInput);
+                  if (!Number.isFinite(value) || value <= 0) {
+                    setSizeInput(String(selectedEvent.size ?? 40));
+                    return;
+                  }
+                  setSizeInput(String(value));
+                  onUpdateSelected({ size: value });
+                }}
                 className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
               />
             </div>
@@ -105,8 +176,24 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
               </div>
               <input
                 type="number"
-                value={selectedEvent.rotation ?? 0}
-                onChange={e => onUpdateSelected({ rotation: +e.target.value })}
+                value={rotationInput}
+                onChange={e => {
+                  const raw = e.target.value;
+                  setRotationInput(raw);
+                  if (raw === '') return;
+                  const value = Number(raw);
+                  if (!Number.isFinite(value)) return;
+                  onUpdateSelected({ rotation: value });
+                }}
+                onBlur={() => {
+                  const value = Number(rotationInput);
+                  if (!Number.isFinite(value)) {
+                    setRotationInput(String(selectedEvent.rotation ?? 0));
+                    return;
+                  }
+                  setRotationInput(String(value));
+                  onUpdateSelected({ rotation: value });
+                }}
                 className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
               />
             </div>
@@ -119,8 +206,24 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
             <input
               type="number"
               step="0.1"
-              value={selectedEvent.duration ?? 2}
-              onChange={e => onUpdateSelected({ duration: +e.target.value })}
+              value={durationInput}
+              onChange={e => {
+                const raw = e.target.value;
+                setDurationInput(raw);
+                if (raw === '') return;
+                const value = Number(raw);
+                if (!Number.isFinite(value) || value <= 0) return;
+                onUpdateSelected({ duration: value });
+              }}
+              onBlur={() => {
+                const value = Number(durationInput);
+                if (!Number.isFinite(value) || value <= 0) {
+                  setDurationInput(String(selectedEvent.duration ?? 2));
+                  return;
+                }
+                setDurationInput(String(value));
+                onUpdateSelected({ duration: value });
+              }}
               className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
             />
           </div>

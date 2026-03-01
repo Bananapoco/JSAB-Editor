@@ -25,6 +25,7 @@ interface UseBuildModeKeyboardShortcutsParams {
   onUndo: () => void;
   onRedo: () => void;
   onDeleteSelectedCustomKeyframe?: () => boolean;
+  onEnterSelectMode?: () => void;
 }
 
 export function useBuildModeKeyboardShortcuts({
@@ -50,6 +51,7 @@ export function useBuildModeKeyboardShortcuts({
   onUndo,
   onRedo,
   onDeleteSelectedCustomKeyframe,
+  onEnterSelectMode,
 }: UseBuildModeKeyboardShortcutsParams) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -141,7 +143,14 @@ export function useBuildModeKeyboardShortcuts({
         }
       }
 
+      if (e.code === 'KeyS' && !isMod) {
+        e.preventDefault();
+        onEnterSelectMode?.();
+        return;
+      }
+
       if (e.code === 'Escape') {
+        e.preventDefault();
         onEscape();
       }
 
@@ -183,6 +192,7 @@ export function useBuildModeKeyboardShortcuts({
     onUndo,
     onRedo,
     onDeleteSelectedCustomKeyframe,
+    onEnterSelectMode,
     pasteNudgeRef,
     selectedIdRef,
     selectedIdsRef,

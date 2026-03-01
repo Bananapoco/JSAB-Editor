@@ -12,12 +12,15 @@ import {
   BehaviorType,
   CustomAnimationData,
   HoverPos,
+  ModifierBehavior,
+  MovementBehavior,
   PlacedEvent,
   SelectionRect,
   ShapeType,
   SnapInterval,
   Tool,
 } from './build-mode/types';
+import { MODIFIER_BEHAVIORS } from './build-mode/constants';
 import { CustomShapeDef } from './shape-composer/types';
 import { createLevelPayload, savePayloadToCommunity } from './build-mode/levelPayload';
 import { SavedAudioAsset, SavedBuildProject, upsertBuildProject } from './build-mode/projectStorage';
@@ -53,18 +56,19 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [isPlacementMode, setIsPlacementMode] = useState(true);
   const [activeShape, setActiveShape] = useState<ShapeType>('square');
   const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('static');
+  const [activeModifiers, setActiveModifiers] = useState<ModifierBehavior[]>([]);
   const [activeSize, setActiveSize] = useState(50);
   const [activeDuration, setActiveDuration] = useState(2);
 
   const [bombGrowthBeats, setBombGrowthBeats] = useState(4);
   const [bombParticleCount, setBombParticleCount] = useState(12);
 
-  const [homingSpeed, setHomingSpeed] = useState(220);
+  const [homingSpeed, setHomingSpeed] = useState(110);  // px/beat
   const [spinSpeed, setSpinSpeed] = useState(Math.PI);
-  const [bounceVx, setBounceVx] = useState(160);
-  const [bounceVy, setBounceVy] = useState(140);
-  const [sweepVx, setSweepVx] = useState(220);
-  const [sweepVy, setSweepVy] = useState(0);
+  const [bounceSpeed, setBounceSpeed] = useState(100); // px/beat
+  const [bounceAngle, setBounceAngle] = useState(45);  // degrees
+  const [sweepSpeed, setSweepSpeed] = useState(110);   // px/beat
+  const [sweepAngle, setSweepAngle] = useState(0);     // degrees
 
   const [customAnimationData, setCustomAnimationData] = useState<CustomAnimationData>({ keyframes: [], handles: [] });
   const [selectedCustomKfIndex, setSelectedCustomKfIndex] = useState<number | null>(null);
@@ -137,6 +141,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   activeToolRef.current = activeTool;
   const activeBehaviorRef = useRef(activeBehavior);
   activeBehaviorRef.current = activeBehavior;
+  const activeModifiersRef = useRef(activeModifiers);
+  activeModifiersRef.current = activeModifiers;
   const activeShapeRef = useRef(activeShape);
   activeShapeRef.current = activeShape;
   const activeSizeRef = useRef(activeSize);
@@ -156,14 +162,14 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   homingSpeedRef.current = homingSpeed;
   const spinSpeedRef = useRef(spinSpeed);
   spinSpeedRef.current = spinSpeed;
-  const bounceVxRef = useRef(bounceVx);
-  bounceVxRef.current = bounceVx;
-  const bounceVyRef = useRef(bounceVy);
-  bounceVyRef.current = bounceVy;
-  const sweepVxRef = useRef(sweepVx);
-  sweepVxRef.current = sweepVx;
-  const sweepVyRef = useRef(sweepVy);
-  sweepVyRef.current = sweepVy;
+  const bounceSpeedRef = useRef(bounceSpeed);
+  bounceSpeedRef.current = bounceSpeed;
+  const bounceAngleRef = useRef(bounceAngle);
+  bounceAngleRef.current = bounceAngle;
+  const sweepSpeedRef = useRef(sweepSpeed);
+  sweepSpeedRef.current = sweepSpeed;
+  const sweepAngleRef = useRef(sweepAngle);
+  sweepAngleRef.current = sweepAngle;
 
   const pushUndoSnapshot = useCallback((snapshot: PlacedEvent[]) => {
     const cloned = JSON.parse(JSON.stringify(snapshot)) as PlacedEvent[];
@@ -351,6 +357,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     nextIdRef,
     activeToolRef,
     activeBehaviorRef,
+    activeModifiersRef,
     activeShapeRef,
     activeSizeRef,
     activeDurationRef,
@@ -360,10 +367,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     bombParticleCountRef,
     homingSpeedRef,
     spinSpeedRef,
-    bounceVxRef,
-    bounceVyRef,
-    sweepVxRef,
-    sweepVyRef,
+    bounceSpeedRef,
+    bounceAngleRef,
+    sweepSpeedRef,
+    sweepAngleRef,
     currentTime,
     audioDuration,
     bpm,
@@ -380,6 +387,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     dragStateRef,
     customAnimationDataRef,
     onCustomAnimationDataChange: handleCustomAnimationDataChange,
+    onObjectSelected: () => setActivePanel('tools'),
   });
 
   const deleteSelectedCustomKeyframe = useCallback((): boolean => {
@@ -437,9 +445,14 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     isPlayingRef,
     setIsPlaying,
     onEscape: () => {
-      setIsPlacementMode(false);
-      isPlacementModeRef.current = false;
-      clearCanvasDragState();
+      if (isPlacementModeRef.current) {
+        setIsPlacementMode(false);
+        isPlacementModeRef.current = false;
+        clearCanvasDragState();
+      } else {
+        setSelectedId(null);
+        setSelectedIds([]);
+      }
     },
     bpmRef,
     snapIntervalRef,
@@ -450,6 +463,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     onUndo: undo,
     onRedo: redo,
     onDeleteSelectedCustomKeyframe: deleteSelectedCustomKeyframe,
+    onEnterSelectMode: () => {
+      setIsPlacementMode(false);
+      isPlacementModeRef.current = false;
+    },
   });
 
   useBuildModeCanvasRender({
@@ -503,13 +520,52 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     )));
   }, [selectedId, selectedIds, setEventsTracked]);
 
+  /** Returns which modifiers are incompatible with the given movement type. */
+  const getIncompatibleModifiers = (movement: BehaviorType): ModifierBehavior[] =>
+    MODIFIER_BEHAVIORS
+      .filter(m => m.conflicts.includes(movement as MovementBehavior))
+      .map(m => m.type);
+
+  /**
+   * Toggle a modifier on/off for both the active placement state and any selected events.
+   * The modifier is silently ignored if it's incompatible with the current movement.
+   */
+  const handleModifierToggle = useCallback((modifier: ModifierBehavior) => {
+    const incompatible = getIncompatibleModifiers(activeBehaviorRef.current);
+    if (incompatible.includes(modifier)) return;
+
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+
+    setActiveModifiers(prev => {
+      const next = prev.includes(modifier)
+        ? prev.filter(m => m !== modifier)
+        : [...prev, modifier];
+      activeModifiersRef.current = next;
+      return next;
+    });
+
+    if (ids.length > 0) {
+      setEventsTracked(prev => prev.map(event => {
+        if (!ids.includes(event.id)) return event;
+        const currentMods = event.behaviorModifiers ?? [];
+        const nextMods = currentMods.includes(modifier)
+          ? currentMods.filter(m => m !== modifier)
+          : [...currentMods, modifier];
+        return { ...event, behaviorModifiers: nextMods };
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedIds, setEventsTracked]);
+
   const updateSelectedBehaviorSettings = useCallback((updates: {
     homingSpeed?: number;
     spinSpeed?: number;
-    bounceVx?: number;
-    bounceVy?: number;
-    sweepVx?: number;
-    sweepVy?: number;
+    bounceSpeed?: number;
+    bounceAngle?: number;
+    sweepSpeed?: number;
+    sweepAngle?: number;
   }) => {
     const ids = selectedIds.length > 0
       ? selectedIds
@@ -693,7 +749,17 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       <div className="flex-1 flex overflow-hidden">
         <BuildModeToolRail
           activePanel={activePanel}
-          onPanelChange={setActivePanel}
+          onPanelChange={(panel) => {
+            setActivePanel(panel);
+            // Switching panels implies placement mode — exit select mode
+            setIsPlacementMode(true);
+            isPlacementModeRef.current = true;
+          }}
+          isSelectMode={!isPlacementMode}
+          onEnterSelectMode={() => {
+            setIsPlacementMode(false);
+            isPlacementModeRef.current = false;
+          }}
         />
 
         {activePanel === 'compose' && (
@@ -716,17 +782,25 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               isPlacementMode={isPlacementMode}
               activeTool={activeTool}
               activeBehavior={activeBehavior}
+              activeModifiers={activeModifiers}
+              onModifierToggle={handleModifierToggle}
               onBehaviorChange={behavior => {
                 const ids = selectedIds.length > 0
                   ? selectedIds
                   : (selectedId !== null ? [selectedId] : []);
 
+                // Clear modifiers that are incompatible with the new movement type.
+                const incompatible = getIncompatibleModifiers(behavior);
+                const filteredModifiers = activeModifiers.filter(m => !incompatible.includes(m));
+                setActiveModifiers(filteredModifiers);
+                activeModifiersRef.current = filteredModifiers;
+
                 if (ids.length > 0) {
-                  setEventsTracked(prev => prev.map(event => (
-                    ids.includes(event.id)
-                      ? { ...event, behavior }
-                      : event
-                  )));
+                  setEventsTracked(prev => prev.map(event => {
+                    if (!ids.includes(event.id)) return event;
+                    const filteredMods = (event.behaviorModifiers ?? []).filter(m => !incompatible.includes(m));
+                    return { ...event, behavior, behaviorModifiers: filteredMods };
+                  }));
                 }
 
                 activeBehaviorRef.current = behavior;
@@ -758,25 +832,25 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 spinSpeedRef.current = value;
                 setSpinSpeed(value);
               }}
-              bounceVx={bounceVx}
-              bounceVy={bounceVy}
-              onBounceVxChange={value => {
-                bounceVxRef.current = value;
-                setBounceVx(value);
+              bounceSpeed={bounceSpeed}
+              bounceAngle={bounceAngle}
+              onBounceSpeedChange={value => {
+                bounceSpeedRef.current = value;
+                setBounceSpeed(value);
               }}
-              onBounceVyChange={value => {
-                bounceVyRef.current = value;
-                setBounceVy(value);
+              onBounceAngleChange={value => {
+                bounceAngleRef.current = value;
+                setBounceAngle(value);
               }}
-              sweepVx={sweepVx}
-              sweepVy={sweepVy}
-              onSweepVxChange={value => {
-                sweepVxRef.current = value;
-                setSweepVx(value);
+              sweepSpeed={sweepSpeed}
+              sweepAngle={sweepAngle}
+              onSweepSpeedChange={value => {
+                sweepSpeedRef.current = value;
+                setSweepSpeed(value);
               }}
-              onSweepVyChange={value => {
-                sweepVyRef.current = value;
-                setSweepVy(value);
+              onSweepAngleChange={value => {
+                sweepAngleRef.current = value;
+                setSweepAngle(value);
               }}
               onUpdateSelectedBehaviorSettings={updateSelectedBehaviorSettings}
               onUpdateSelectedBombSettings={updateSelectedBombSettings}
@@ -875,6 +949,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               onSelectEvent={id => {
                 setSelectedId(id);
                 setSelectedIds([id]);
+                setActivePanel('tools');
               }}
             />
 

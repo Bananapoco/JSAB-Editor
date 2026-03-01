@@ -96,7 +96,14 @@ export function spawnExplosionParticlesForBomb(
       }));
     }
 
-    projectile.addBehavior(new LinearMoveBehavior(new Vector2(vx, vy)));
+    // Convert the pre-computed px/s velocity back to speed + angle for the new API.
+    // BPM is 120 here so 1 beat = 0.5 s; speed (px/beat) = pxPerSec * 60 / 120 = pxPerSec / 2.
+    // Instead, we pass bpm=120 and express speed in px/beat: pxPerSec * (60/bpm).
+    const particleBpm = 120;
+    const pxPerSec = Math.hypot(vx, vy);
+    const speedPxBeat = pxPerSec * 60 / particleBpm;
+    const angleDeg = (Math.atan2(vy, vx) * 180) / Math.PI;
+    projectile.addBehavior(new LinearMoveBehavior(speedPxBeat, angleDeg, particleBpm, 0));
 
     // No collider on projectiles — they're purely visual hazards that use
     // the pruneInactive off-screen check to be cleaned up automatically.

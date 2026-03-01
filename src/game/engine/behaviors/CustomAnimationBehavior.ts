@@ -87,11 +87,19 @@ function lerp(a: number, b: number, t: number): number {
 /**
  * Drives an object along a user-defined keyframe path with optional
  * cubic-bezier curve handles between keyframes and per-segment easing.
+ *
+ * Progress is derived from absolute audio time (`currentTime - spawnTime`)
+ * rather than accumulated dt, keeping the animation drift-free and
+ * beat-accurate.
+ *
+ * @param keyframes     Sorted array of keyframes (t is normalised 0–1).
+ * @param handles       Per-segment bezier handle data.
+ * @param totalDuration Total animation duration in seconds.
+ * @param spawnTime     Audio timestamp (seconds) when the object was spawned.
  */
 export class CustomAnimationBehavior extends Behavior {
     private keyframes: CustomAnimKeyframe[];
     private handles: CustomAnimSegmentHandle[];
-    private elapsed = 0;
     private totalDuration: number;
     private originX = 0;
     private originY = 0;
@@ -101,6 +109,7 @@ export class CustomAnimationBehavior extends Behavior {
         keyframes: CustomAnimKeyframe[],
         handles: CustomAnimSegmentHandle[],
         totalDuration: number,
+        private spawnTime = 0,
     ) {
         super();
         // Sort by time just in case
@@ -109,7 +118,7 @@ export class CustomAnimationBehavior extends Behavior {
         this.totalDuration = totalDuration > 0 ? totalDuration : 1;
     }
 
-    tick(dt: number, _currentTime: number, _playerPos?: Vector2): void {
+    tick(dt: number, currentTime: number, _playerPos?: Vector2): void {
         if (!this.object || this.keyframes.length === 0) return;
 
         if (!this.started) {
@@ -118,8 +127,9 @@ export class CustomAnimationBehavior extends Behavior {
             this.started = true;
         }
 
-        this.elapsed += dt;
-        const progress = Math.min(this.elapsed / this.totalDuration, 1);
+        // Derive elapsed from absolute audio time — no accumulated dt drift.
+        const elapsed = currentTime - this.spawnTime;
+        const progress = Math.min(elapsed / this.totalDuration, 1);
 
         const { x, y, rotation, scale } = this.evaluate(progress);
 

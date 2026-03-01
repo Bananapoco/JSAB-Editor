@@ -2,7 +2,7 @@ import { LevelEvent, LevelEventType } from '../../game/types';
 import type { ShapeDef, BehaviorDef } from '../../game/engine/ObjectFactory';
 import { drawPieceShape } from '../shape-composer/drawing';
 import { CustomShapeDef, PieceType } from '../shape-composer/types';
-import { BehaviorSettings, BombSettings, CustomAnimationData, ShapeType } from './types';
+import { BehaviorSettings, BombSettings, CustomAnimationData, ModifierBehavior, ShapeType } from './types';
 
 export function drawShape(
   ctx: CanvasRenderingContext2D,
@@ -224,6 +224,15 @@ export function stretchShapeDef(shape: ShapeDef, stretchX = 1, stretchY = 1): Sh
   return shape;
 }
 
+/**
+ * Builds the BehaviorDef array for a PlacedEvent.
+ *
+ * Supports two formats:
+ * - **Legacy**: `behavior` is 'spinning' | 'bomb' | 'homing' | 'bouncing' | 'sweep' | 'static' | 'custom'
+ *   and `behaviorModifiers` is absent.
+ * - **New stacking**: `behavior` is the primary movement type, `behaviorModifiers` is an array of
+ *   modifier behaviors ('spinning' | 'bomb') applied on top.
+ */
 export function buildBehaviorDefsForPlacedEvent(
   eventType: LevelEventType,
   behavior: LevelEvent['behavior'] | undefined,
@@ -232,10 +241,17 @@ export function buildBehaviorDefsForPlacedEvent(
   bombSettings?: BombSettings,
   behaviorSettings?: BehaviorSettings,
   customAnimation?: CustomAnimationData,
+  behaviorModifiers?: ModifierBehavior[],
 ): BehaviorDef[] {
   const defs: BehaviorDef[] = [];
 
-  if (behavior !== 'bomb' && duration && duration > 0) {
+  // Determine if a bomb behavior will be present (either as legacy primary or as a modifier).
+  const hasBomb = behaviorModifiers
+    ? behaviorModifiers.includes('bomb')
+    : behavior === 'bomb';
+
+  // Bomb manages its own lifecycle, so omit dieAfter when bomb is present.
+  if (!hasBomb && duration && duration > 0) {
     defs.push({ kind: 'dieAfter', lifetime: duration });
   }
 
@@ -244,7 +260,7 @@ export function buildBehaviorDefsForPlacedEvent(
   }
 
   if (eventType === 'boss_move') {
-    defs.push({ kind: 'bounce', vx: 220, vy: 0, radius: size / 2 });
+    defs.push({ kind: 'bounce', speed: 110, directionDeg: 0, radius: size / 2 });
   }
 
   const explicitBehavior =
@@ -252,35 +268,24 @@ export function buildBehaviorDefsForPlacedEvent(
       ? behavior
       : undefined;
 
+  // ── Movement / primary behavior ──────────────────────────────────────────
   switch (explicitBehavior) {
-    case 'spinning':
-      defs.push({ kind: 'rotate', speed: behaviorSettings?.spinSpeed ?? Math.PI });
-      break;
     case 'homing':
-      defs.push({ kind: 'homing', homingSpeed: behaviorSettings?.homingSpeed ?? 220 });
+      defs.push({ kind: 'homing', homingSpeed: behaviorSettings?.homingSpeed ?? 110 });
       break;
     case 'bouncing':
       defs.push({
         kind: 'bounce',
-        vx: behaviorSettings?.bounceVx ?? 160,
-        vy: behaviorSettings?.bounceVy ?? 140,
+        speed: behaviorSettings?.bounceSpeed ?? 100,
+        directionDeg: behaviorSettings?.bounceAngle ?? 45,
         radius: size / 2,
       });
       break;
     case 'sweep':
       defs.push({
         kind: 'linearMove',
-        velocityX: behaviorSettings?.sweepVx ?? 220,
-        velocityY: behaviorSettings?.sweepVy ?? 0,
-      });
-      break;
-    case 'bomb':
-      defs.push({
-        kind: 'bomb',
-        growthBeats: bombSettings?.growthBeats ?? 4,
-        initialScale: 0.1,
-        maxScale: 1.5,
-        particleCount: bombSettings?.particleCount ?? 12,
+        speed: behaviorSettings?.sweepSpeed ?? 110,
+        directionDeg: behaviorSettings?.sweepAngle ?? 0,
       });
       break;
     case 'custom':
@@ -293,9 +298,44 @@ export function buildBehaviorDefsForPlacedEvent(
         });
       }
       break;
+
+    // ── Legacy-only primary behaviors (absent when behaviorModifiers is set) ──
+    case 'spinning':
+      if (!behaviorModifiers) {
+        defs.push({ kind: 'rotate', speed: behaviorSettings?.spinSpeed ?? Math.PI });
+      }
+      break;
+    case 'bomb':
+      if (!behaviorModifiers) {
+        defs.push({
+          kind: 'bomb',
+          growthBeats: bombSettings?.growthBeats ?? 4,
+          initialScale: 0.1,
+          maxScale: 1.5,
+          particleCount: bombSettings?.particleCount ?? 12,
+        });
+      }
+      break;
+
     case 'static':
     default:
       break;
+  }
+
+  // ── Modifier behaviors (new stacking system) ─────────────────────────────
+  if (behaviorModifiers) {
+    if (behaviorModifiers.includes('spinning')) {
+      defs.push({ kind: 'rotate', speed: behaviorSettings?.spinSpeed ?? Math.PI });
+    }
+    if (behaviorModifiers.includes('bomb')) {
+      defs.push({
+        kind: 'bomb',
+        growthBeats: bombSettings?.growthBeats ?? 4,
+        initialScale: 0.1,
+        maxScale: 1.5,
+        particleCount: bombSettings?.particleCount ?? 12,
+      });
+    }
   }
 
   return defs;

@@ -91,7 +91,7 @@ Output ONLY metadata, theme, and a short explanation. Do not output timeline.`,
         const eventsPerWindow = Math.max(4, Math.min(12, Math.ceil(targetEvents / windowCount)));
         const timelineSystemPrompt = `Generate only timeline events for the given time range.
 Rules:
-- Screen is 1024x768
+- Screen is 1366x768
 - Events should be varied and playable
 - Bullet hell
 - ALL hazards are procedural vector shape (circle, rect, polygon, or composite children). No image assets.

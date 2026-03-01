@@ -35,7 +35,7 @@ export const levelSchema = {
                             type: 'string',
                             enum: ['projectile_throw', 'spawn_obstacle', 'screen_shake', 'pulse'],
                         },
-                        x: { type: 'number', description: 'World X position (0–1024)' },
+                        x: { type: 'number', description: 'World X position (0–1366)' },
                         y: { type: 'number', description: 'World Y position (0–768)' },
                         size: { type: 'number', description: 'Approximate size in pixels' },
                         rotation: { type: 'number', description: 'Initial rotation in degrees' },

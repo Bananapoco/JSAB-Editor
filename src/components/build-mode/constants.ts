@@ -6,6 +6,7 @@ import {
   Diamond,
   Hexagon,
   Move,
+  MoveRight,
   Pencil,
   RotateCw,
   Rocket,
@@ -15,7 +16,7 @@ import {
   Triangle,
   Zap,
 } from 'lucide-react';
-import { BehaviorType, ShapeType, SnapInterval, Tool } from './types';
+import { BehaviorType, ModifierBehavior, MovementBehavior, ShapeType, SnapInterval, Tool } from './types';
 
 export const GAME_W = 1366;
 export const GAME_H = 768;
@@ -49,11 +50,52 @@ export const SHAPES: { type: ShapeType; icon: React.FC<any>; label: string }[] =
   { type: 'star', icon: Star, label: 'Star' },
 ];
 
+/** Legacy flat list – kept for any code that still references BEHAVIORS. */
 export const BEHAVIORS: { type: BehaviorType; icon: React.FC<any>; label: string }[] = [
   { type: 'homing', icon: Target, label: 'Homing' },
   { type: 'spinning', icon: RotateCw, label: 'Spinning' },
   { type: 'bouncing', icon: ArrowRight, label: 'Bouncing' },
   { type: 'static', icon: Square, label: 'Static' },
+  { type: 'sweep', icon: MoveRight, label: 'Sweep' },
   { type: 'bomb', icon: Bomb, label: 'Bomb' },
   { type: 'custom', icon: Pencil, label: 'Custom' },
+];
+
+/**
+ * Primary movement behaviors – rendered as an exclusive radio-style group.
+ * Exactly one is always active.
+ */
+export const MOVEMENT_BEHAVIORS: { type: MovementBehavior; icon: React.FC<any>; label: string; description: string }[] = [
+  { type: 'static',   icon: Square,    label: 'Static',  description: 'Stays in place' },
+  { type: 'bouncing', icon: ArrowRight, label: 'Bounce',  description: 'Ricochets off walls' },
+  { type: 'sweep',    icon: MoveRight,  label: 'Sweep',   description: 'Moves in a straight line' },
+  { type: 'homing',   icon: Target,     label: 'Homing',  description: 'Tracks the player' },
+  { type: 'custom',   icon: Pencil,     label: 'Custom',  description: 'Keyframe animation path' },
+];
+
+/**
+ * Modifier behaviors – rendered as stackable toggles below the movement group.
+ * Multiple can be active at once; `conflicts` lists movement types that disable this modifier.
+ */
+export const MODIFIER_BEHAVIORS: {
+  type: ModifierBehavior;
+  icon: React.FC<any>;
+  label: string;
+  description: string;
+  conflicts: MovementBehavior[];
+}[] = [
+  {
+    type: 'spinning',
+    icon: RotateCw,
+    label: 'Spinning',
+    description: 'Continuously rotates',
+    conflicts: ['custom'], // custom controls rotation itself
+  },
+  {
+    type: 'bomb',
+    icon: Bomb,
+    label: 'Bomb',
+    description: 'Grows then explodes into projectiles',
+    conflicts: ['custom'], // custom controls scale itself
+  },
 ];

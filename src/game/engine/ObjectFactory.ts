@@ -61,7 +61,10 @@ export type BehaviorKind =
 
 export interface BehaviorDef {
     kind: BehaviorKind;
-    /** rotate / spinning: rad/s (default π ≈ 180°/s) */
+    /**
+     * rotate / spinning: angular speed in rad/s (default π ≈ 180°/s).
+     * linearMove / bounce: movement speed in px/beat.
+     */
     speed?: number;
     /** pulse: min scale */
     minScale?: number;
@@ -79,18 +82,12 @@ export interface BehaviorDef {
     angularSpeed?: number;
     /** orbit: starting angle in radians */
     initialAngle?: number;
-    /** linearMove: X velocity in px/s */
-    velocityX?: number;
-    /** linearMove: Y velocity in px/s */
-    velocityY?: number;
-    /** homing: pursuit speed in px/s */
+    /** linearMove / bounce: direction of travel in degrees (0 = right, 90 = down) */
+    directionDeg?: number;
+    /** homing: pursuit speed in px/beat */
     homingSpeed?: number;
     /** dieAfter: lifetime in seconds */
     lifetime?: number;
-    /** bounce: X velocity in px/s */
-    vx?: number;
-    /** bounce: Y velocity in px/s */
-    vy?: number;
     /** bomb: how many beats the shape grows before exploding (default 4) */
     growthBeats?: number;
     /** bomb: initial scale (default 0.1) */
@@ -206,19 +203,33 @@ export class ObjectFactory {
                 );
             case 'orbit':
                 return new OrbitBehavior(
-                    new Vector2(def.centerX ?? 512, def.centerY ?? 384),
+                    new Vector2(def.centerX ?? 683, def.centerY ?? 384),
                     def.radius ?? 100,
                     def.angularSpeed ?? Math.PI,
                     def.initialAngle ?? 0,
+                    def.bpm ?? 120,
+                    def.spawnTime ?? 0,
                 );
             case 'linearMove':
-                return new LinearMoveBehavior(new Vector2(def.velocityX ?? 0, def.velocityY ?? 0));
+                return new LinearMoveBehavior(
+                    def.speed ?? 110,
+                    def.directionDeg ?? 0,
+                    def.bpm ?? 120,
+                    def.spawnTime ?? 0,
+                );
             case 'homing':
-                return new HomingBehavior(def.homingSpeed ?? 200);
+                return new HomingBehavior(def.homingSpeed ?? 110, def.bpm ?? 120, def.spawnTime ?? 0);
             case 'dieAfter':
-                return new DieAfterBehavior(def.lifetime ?? 5);
+                return new DieAfterBehavior(def.lifetime ?? 5, def.spawnTime ?? 0);
             case 'bounce':
-                return new BounceBehavior(def.vx ?? 150, def.vy ?? 150, 1024, 768, def.radius ?? 20);
+                return new BounceBehavior(
+                    def.speed ?? 100,
+                    def.directionDeg ?? 45,
+                    1366, 768,
+                    def.radius ?? 20,
+                    def.bpm ?? 120,
+                    def.spawnTime ?? 0,
+                );
             case 'bomb':
                 return new BombBehavior(
                     def.growthBeats ?? 4,
@@ -233,6 +244,7 @@ export class ObjectFactory {
                     def.customKeyframes ?? [],
                     def.customHandles ?? [],
                     def.customDuration ?? 2.0,
+                    def.spawnTime ?? 0,
                 );
         }
     }
@@ -270,7 +282,7 @@ export class ObjectFactory {
         // Auto-attach a DieAfterBehavior when despawnTime is known
         if (def.despawnTime != null) {
             const lifetime = def.despawnTime - def.spawnTime;
-            if (lifetime > 0) obj.addBehavior(new DieAfterBehavior(lifetime));
+            if (lifetime > 0) obj.addBehavior(new DieAfterBehavior(lifetime, def.spawnTime));
         }
 
         // Attach collider
@@ -326,13 +338,13 @@ export class ObjectFactory {
                 behaviors.push({ kind: 'rotate', speed: Math.PI });
                 break;
             case 'homing':
-                behaviors.push({ kind: 'homing', homingSpeed: 220 });
+                behaviors.push({ kind: 'homing', homingSpeed: 110 });
                 break;
             case 'bouncing':
-                behaviors.push({ kind: 'bounce', vx: 160, vy: 140, radius: size / 2 });
+                behaviors.push({ kind: 'bounce', speed: 100, directionDeg: 45, radius: size / 2 });
                 break;
             case 'sweep':
-                behaviors.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
+                behaviors.push({ kind: 'linearMove', speed: 110, directionDeg: 0 });
                 break;
             case 'bomb': {
                 // Convert duration to beats; default to 4 beats

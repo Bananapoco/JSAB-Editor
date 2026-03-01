@@ -1,11 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Hexagon, Layers, Settings, Zap } from 'lucide-react';
+import { Hexagon, Layers, MousePointer2, Settings, Zap } from 'lucide-react';
 import { ActivePanel } from '../types';
 
 interface BuildModeToolRailProps {
   activePanel: ActivePanel;
   onPanelChange: (panel: ActivePanel) => void;
+  isSelectMode: boolean;
+  onEnterSelectMode: () => void;
 }
 
 const panelTabs: { id: ActivePanel; icon: React.FC<any>; title: string }[] = [
@@ -18,6 +20,8 @@ const panelTabs: { id: ActivePanel; icon: React.FC<any>; title: string }[] = [
 export const BuildModeToolRail: React.FC<BuildModeToolRailProps> = ({
   activePanel,
   onPanelChange,
+  isSelectMode,
+  onEnterSelectMode,
 }) => {
   return (
     <motion.div
@@ -26,6 +30,21 @@ export const BuildModeToolRail: React.FC<BuildModeToolRailProps> = ({
       transition={{ delay: 0.1 }}
       className="w-20 bg-[#0c0c14] border-r border-[#1a1a2e] flex flex-col items-center py-4 gap-2 shrink-0"
     >
+      {/* Select mode button */}
+      <button
+        onClick={onEnterSelectMode}
+        title="Select (S)"
+        className={`p-3 rounded-xl transition-all tool-btn ${
+          isSelectMode
+            ? 'bg-[#1a1a2e] text-white'
+            : 'bg-[#1a1a2e] text-[#666] hover:text-white hover:bg-[#252540]'
+        }`}
+      >
+        <MousePointer2 size={20} />
+      </button>
+
+      <div className="w-8 border-t border-[#1a1a2e] my-1" />
+
       <div className="flex flex-col gap-1 mb-4">
         {panelTabs.map(({ id, icon: Icon, title }) => (
           <button

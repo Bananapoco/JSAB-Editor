@@ -9,8 +9,17 @@ import {
   Palette,
   Upload,
 } from 'lucide-react';
-import { BEHAVIORS, SHAPES, TOOLS } from '../constants';
-import { ActivePanel, BehaviorType, CustomAnimationData, PlacedEvent, ShapeType, Tool } from '../types';
+import { MODIFIER_BEHAVIORS, MOVEMENT_BEHAVIORS, SHAPES, TOOLS } from '../constants';
+import {
+  ActivePanel,
+  BehaviorType,
+  CustomAnimationData,
+  ModifierBehavior,
+  MovementBehavior,
+  PlacedEvent,
+  ShapeType,
+  Tool,
+} from '../types';
 import { CustomShapeDef } from '../../shape-composer/types';
 import { CustomAnimationPanel } from './CustomAnimationPanel';
 
@@ -19,26 +28,34 @@ interface BuildModeLeftPanelProps {
   isPlacementMode: boolean;
   activeTool: Tool;
   activeBehavior: BehaviorType;
+  activeModifiers: ModifierBehavior[];
   onBehaviorChange: (behavior: BehaviorType) => void;
+  onModifierToggle: (modifier: ModifierBehavior) => void;
   onSelectTool: (tool: Tool) => void;
   bombGrowthBeats: number;
   bombParticleCount: number;
-
   onBombGrowthBeatsChange: (value: number) => void;
   onBombParticleCountChange: (value: number) => void;
   homingSpeed: number;
   onHomingSpeedChange: (value: number) => void;
   spinSpeed: number;
   onSpinSpeedChange: (value: number) => void;
-  bounceVx: number;
-  bounceVy: number;
-  onBounceVxChange: (value: number) => void;
-  onBounceVyChange: (value: number) => void;
-  sweepVx: number;
-  sweepVy: number;
-  onSweepVxChange: (value: number) => void;
-  onSweepVyChange: (value: number) => void;
-  onUpdateSelectedBehaviorSettings: (updates: { homingSpeed?: number; spinSpeed?: number; bounceVx?: number; bounceVy?: number; sweepVx?: number; sweepVy?: number }) => void;
+  bounceSpeed: number;
+  bounceAngle: number;
+  onBounceSpeedChange: (value: number) => void;
+  onBounceAngleChange: (value: number) => void;
+  sweepSpeed: number;
+  sweepAngle: number;
+  onSweepSpeedChange: (value: number) => void;
+  onSweepAngleChange: (value: number) => void;
+  onUpdateSelectedBehaviorSettings: (updates: {
+    homingSpeed?: number;
+    spinSpeed?: number;
+    bounceSpeed?: number;
+    bounceAngle?: number;
+    sweepSpeed?: number;
+    sweepAngle?: number;
+  }) => void;
   onUpdateSelectedBombSettings: (updates: { growthBeats?: number; particleCount?: number }) => void;
   activeSize: number;
   activeDuration: number;
@@ -72,12 +89,42 @@ interface BuildModeLeftPanelProps {
   onSelectCustomKf: (index: number | null) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers – resolve effective movement / modifiers from a PlacedEvent,
+// handling legacy events where behavior was 'spinning' or 'bomb' directly.
+// ---------------------------------------------------------------------------
+
+function getEffectiveMovement(event: PlacedEvent): MovementBehavior {
+  if (event.behaviorModifiers !== undefined) {
+    // New format: behavior IS the movement type
+    return (event.behavior as MovementBehavior) ?? 'static';
+  }
+  // Legacy format: spinning/bomb were standalone primaries
+  if (event.behavior === 'spinning' || event.behavior === 'bomb') return 'static';
+  return (event.behavior as MovementBehavior) ?? 'static';
+}
+
+function getEffectiveModifiers(event: PlacedEvent): ModifierBehavior[] {
+  if (event.behaviorModifiers !== undefined) return event.behaviorModifiers;
+  // Legacy: infer modifiers from behavior field
+  const mods: ModifierBehavior[] = [];
+  if (event.behavior === 'spinning') mods.push('spinning');
+  if (event.behavior === 'bomb') mods.push('bomb');
+  return mods;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   activePanel,
   isPlacementMode,
   activeTool,
   activeBehavior,
+  activeModifiers,
   onBehaviorChange,
+  onModifierToggle,
   onSelectTool,
   bombGrowthBeats,
   bombParticleCount,
@@ -87,14 +134,14 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   onHomingSpeedChange,
   spinSpeed,
   onSpinSpeedChange,
-  bounceVx,
-  bounceVy,
-  onBounceVxChange,
-  onBounceVyChange,
-  sweepVx,
-  sweepVy,
-  onSweepVxChange,
-  onSweepVyChange,
+  bounceSpeed,
+  bounceAngle,
+  onBounceSpeedChange,
+  onBounceAngleChange,
+  sweepSpeed,
+  sweepAngle,
+  onSweepSpeedChange,
+  onSweepAngleChange,
   onUpdateSelectedBehaviorSettings,
   onUpdateSelectedBombSettings,
   activeSize,
@@ -131,21 +178,41 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   const isEditingSelection = selectedCount > 0 && selectedEvent !== null;
   const sizeValue = isEditingSelection ? Math.round(selectedEvent.size ?? activeSize) : activeSize;
   const durationValue = isEditingSelection ? (selectedEvent.duration ?? activeDuration) : activeDuration;
+  const [durationInput, setDurationInput] = React.useState(String(durationValue));
+  const [bpmInput, setBpmInput] = React.useState(String(bpm));
 
-  const behaviorForSettings = isEditingSelection ? selectedEvent.behavior : activeBehavior;
-  const toolForSettings = isEditingSelection ? selectedEvent.type : activeTool;
+  React.useEffect(() => {
+    setDurationInput(String(durationValue));
+  }, [durationValue, isEditingSelection, selectedCount]);
+
+  React.useEffect(() => {
+    setBpmInput(String(bpm));
+  }, [bpm]);
+
+  // Resolve the "effective" movement and modifiers for settings display.
+  // When a selection exists, reflect that event's state; otherwise use the active placement state.
+  const movementForSettings: MovementBehavior = isEditingSelection
+    ? getEffectiveMovement(selectedEvent)
+    : (activeBehavior as MovementBehavior);
+
+  const modifiersForSettings: ModifierBehavior[] = isEditingSelection
+    ? getEffectiveModifiers(selectedEvent)
+    : activeModifiers;
+
   const selectedBehaviorSettings = selectedEvent?.behaviorSettings;
   const selectedBombSettings = selectedEvent?.bombSettings;
 
-  const homingSpeedValue = isEditingSelection ? (selectedBehaviorSettings?.homingSpeed ?? homingSpeed) : homingSpeed;
-  const spinSpeedValue = isEditingSelection ? (selectedBehaviorSettings?.spinSpeed ?? spinSpeed) : spinSpeed;
-  const bounceVxValue = isEditingSelection ? (selectedBehaviorSettings?.bounceVx ?? bounceVx) : bounceVx;
-  const bounceVyValue = isEditingSelection ? (selectedBehaviorSettings?.bounceVy ?? bounceVy) : bounceVy;
-  const sweepVxValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVx ?? sweepVx) : sweepVx;
-  const sweepVyValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVy ?? sweepVy) : sweepVy;
-
-  const bombGrowthBeatsValue = isEditingSelection ? (selectedBombSettings?.growthBeats ?? bombGrowthBeats) : bombGrowthBeats;
+  const homingSpeedValue  = isEditingSelection ? (selectedBehaviorSettings?.homingSpeed ?? homingSpeed) : homingSpeed;
+  const spinSpeedValue    = isEditingSelection ? (selectedBehaviorSettings?.spinSpeed ?? spinSpeed) : spinSpeed;
+  const bounceSpeedValue  = isEditingSelection ? (selectedBehaviorSettings?.bounceSpeed ?? bounceSpeed) : bounceSpeed;
+  const bounceAngleValue  = isEditingSelection ? (selectedBehaviorSettings?.bounceAngle ?? bounceAngle) : bounceAngle;
+  const sweepSpeedValue   = isEditingSelection ? (selectedBehaviorSettings?.sweepSpeed ?? sweepSpeed) : sweepSpeed;
+  const sweepAngleValue   = isEditingSelection ? (selectedBehaviorSettings?.sweepAngle ?? sweepAngle) : sweepAngle;
+  const bombGrowthBeatsValue   = isEditingSelection ? (selectedBombSettings?.growthBeats ?? bombGrowthBeats) : bombGrowthBeats;
   const bombParticleCountValue = isEditingSelection ? (selectedBombSettings?.particleCount ?? bombParticleCount) : bombParticleCount;
+
+  const toolForSettings = isEditingSelection ? selectedEvent.type : activeTool;
+  const isBehaviorTool = toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle';
 
   return (
     <AnimatePresence mode="wait">
@@ -156,8 +223,11 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
         exit={{ opacity: 0, x: -10 }}
         className="w-52 bg-[#0a0a12] border-r border-[#1a1a2e] p-4 shrink-0 overflow-y-auto"
       >
+        {/* ── TOOLS PANEL ─────────────────────────────────────────────────── */}
         {activePanel === 'tools' && (
           <div className="space-y-6">
+
+            {/* Tool selector */}
             <div>
               <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Tool</div>
               <div className="grid grid-cols-2 gap-2">
@@ -186,6 +256,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
             </div>
 
+            {/* Placement mode indicator */}
             <div>
               <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Mode</div>
               <div className="flex items-center gap-2 p-3 rounded-xl bg-[#151520] border border-[#252540]">
@@ -212,32 +283,106 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               )}
             </div>
 
-            {(activeTool === 'projectile_throw' || activeTool === 'spawn_obstacle') && (
+            {/* ── Behavior grid ───────────────────────────────────────────── */}
+            {isBehaviorTool && (
               <div>
-                <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Behavior</div>
-                <div className="grid grid-cols-3 gap-2">
-                  {BEHAVIORS.map(({ type, icon: Icon, label }) => (
-                    <motion.button
-                      key={type}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onBehaviorChange(type)}
-                      className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
-                        activeBehavior === type
-                          ? 'bg-[#FF0099] text-white'
-                          : 'bg-[#151520] text-[#666] hover:text-white hover:bg-[#252540]'
-                      }`}
-                      title={label}
-                    >
-                      <Icon size={16} />
-                      <span className="text-[9px] leading-none uppercase tracking-wide">{label}</span>
-                    </motion.button>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[10px] uppercase tracking-widest text-[#444]">Behavior</div>
+                  <div className="text-[9px] text-[#FF009966] tracking-wide">⇧ to stack</div>
                 </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  {/* Movement behaviors */}
+                  {MOVEMENT_BEHAVIORS.map(({ type, icon: Icon, label }) => {
+                    const isActiveMovement = movementForSettings === type;
+                    return (
+                      <motion.button
+                        key={type}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={e => {
+                          if (e.shiftKey) {
+                            // Shift+click on a movement behavior → just set it normally
+                            // (movement behaviors can't be stacked with each other)
+                            onBehaviorChange(type);
+                          } else {
+                            onBehaviorChange(type);
+                          }
+                        }}
+                        className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 border ${
+                          isActiveMovement
+                            ? 'bg-[#FF0099] border-[#FF0099] text-white'
+                            : 'bg-[#151520] border-[#252540] text-[#666] hover:text-white hover:bg-[#252540]'
+                        }`}
+                        title={`${label} (movement)`}
+                      >
+                        <Icon size={14} />
+                        <span className="text-[9px] leading-none uppercase tracking-wide">{label}</span>
+                      </motion.button>
+                    );
+                  })}
+
+                  {/* Modifier behaviors */}
+                  {MODIFIER_BEHAVIORS.map(({ type, icon: Icon, label, conflicts }) => {
+                    const isActiveModifier = modifiersForSettings.includes(type);
+                    const isConflicting = conflicts.includes(movementForSettings);
+
+                    return (
+                      <motion.button
+                        key={type}
+                        whileHover={isConflicting ? {} : { scale: 1.05 }}
+                        whileTap={isConflicting ? {} : { scale: 0.95 }}
+                        onClick={e => {
+                          if (isConflicting) return;
+                          // Shift+click OR regular click both toggle the modifier.
+                          // Modifiers are stackable — they always toggle regardless of shift.
+                          onModifierToggle(type);
+                        }}
+                        className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 border relative ${
+                          isConflicting
+                            ? 'bg-[#0d0d18] border-[#1a1a2e] text-[#333] cursor-not-allowed'
+                            : isActiveModifier
+                              ? 'border-[#FF0099] text-[#FF0099] bg-[#FF009918]'
+                              : 'bg-[#151520] border-[#252540] text-[#666] hover:text-white hover:bg-[#252540]'
+                        }`}
+                        title={
+                          isConflicting
+                            ? `${label} is incompatible with ${movementForSettings}`
+                            : `${label} modifier — click to ${isActiveModifier ? 'remove' : 'stack'}`
+                        }
+                      >
+                        <Icon size={14} />
+                        <span className="text-[9px] leading-none uppercase tracking-wide">{label}</span>
+                        {/* Small "+" badge on inactive stackable, "✓" when stacked */}
+                        {!isConflicting && (
+                          <span
+                            className={`absolute top-0.5 right-0.5 text-[8px] leading-none font-bold ${
+                              isActiveModifier ? 'text-[#FF0099]' : 'text-[#444]'
+                            }`}
+                          >
+                            {isActiveModifier ? '✓' : '+'}
+                          </span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* Active stack summary – shows when at least one modifier is on */}
+                {modifiersForSettings.length > 0 && (
+                  <div className="mt-2 px-2 py-1.5 rounded-lg bg-[#FF009912] border border-[#FF009933]">
+                    <div className="text-[9px] text-[#FF0099] font-medium uppercase tracking-wide leading-none">
+                      {movementForSettings !== 'static' ? movementForSettings : ''}
+                      {movementForSettings !== 'static' && modifiersForSettings.length > 0 ? ' + ' : ''}
+                      {modifiersForSettings.join(' + ')}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {behaviorForSettings === 'custom' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+            {/* ── Custom animation panel ──────────────────────────────────── */}
+            {movementForSettings === 'custom' && isBehaviorTool && (
               <CustomAnimationPanel
                 data={customAnimationData}
                 onChange={onCustomAnimationDataChange}
@@ -246,18 +391,19 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               />
             )}
 
-            {behaviorForSettings === 'homing' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+            {/* ── Movement-specific settings ──────────────────────────────── */}
+            {movementForSettings === 'homing' && isBehaviorTool && (
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Homing Speed</div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[10px] text-[#666]">Tracking</span>
-                  <span className="text-xs font-mono text-[#FF0099]">{Math.round(homingSpeedValue)} px/s</span>
+                  <span className="text-xs font-mono text-[#FF0099]">{Math.round(homingSpeedValue)} px/beat</span>
                 </div>
                 <input
                   type="range"
-                  min="40"
-                  max="900"
-                  step="10"
+                  min="10"
+                  max="400"
+                  step="5"
                   value={homingSpeedValue}
                   onChange={e => {
                     const value = +e.target.value;
@@ -269,7 +415,108 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
             )}
 
-            {behaviorForSettings === 'spinning' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+            {movementForSettings === 'bouncing' && isBehaviorTool && (
+              <div className="space-y-3">
+                <div className="text-[10px] uppercase tracking-widest text-[#444]">Bounce</div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceSpeedValue)} px/beat</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="400"
+                    step="5"
+                    value={bounceSpeedValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceSpeed: value });
+                      else onBounceSpeedChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Direction</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceAngleValue)}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="359"
+                    step="1"
+                    value={bounceAngleValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceAngle: value });
+                      else onBounceAngleChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-[#555] mt-1">
+                    <span>→ 0°</span>
+                    <span>↓ 90°</span>
+                    <span>← 180°</span>
+                    <span>↑ 270°</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {movementForSettings === 'sweep' && isBehaviorTool && (
+              <div className="space-y-3">
+                <div className="text-[10px] uppercase tracking-widest text-[#444]">Sweep</div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Speed</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepSpeedValue)} px/beat</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="400"
+                    step="5"
+                    value={sweepSpeedValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepSpeed: value });
+                      else onSweepSpeedChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] text-[#666]">Direction</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepAngleValue)}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="359"
+                    step="1"
+                    value={sweepAngleValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepAngle: value });
+                      else onSweepAngleChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-[#555] mt-1">
+                    <span>→ 0°</span>
+                    <span>↓ 90°</span>
+                    <span>← 180°</span>
+                    <span>↑ 270°</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Modifier-specific settings ──────────────────────────────── */}
+            {modifiersForSettings.includes('spinning') && isBehaviorTool && (
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Spin Speed</div>
                 <div className="flex justify-between items-center mb-2">
@@ -292,95 +539,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </div>
             )}
 
-            {behaviorForSettings === 'bouncing' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
-              <div className="space-y-3">
-                <div className="text-[10px] uppercase tracking-widest text-[#444]">Bounce Velocity</div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-[#666]">X Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceVxValue)} px/s</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-900"
-                    max="900"
-                    step="10"
-                    value={bounceVxValue}
-                    onChange={e => {
-                      const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceVx: value });
-                      else onBounceVxChange(value);
-                    }}
-                    className="w-full accent-[#FF0099] cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-[#666]">Y Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(bounceVyValue)} px/s</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-900"
-                    max="900"
-                    step="10"
-                    value={bounceVyValue}
-                    onChange={e => {
-                      const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ bounceVy: value });
-                      else onBounceVyChange(value);
-                    }}
-                    className="w-full accent-[#FF0099] cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-
-            {behaviorForSettings === 'sweep' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
-              <div className="space-y-3">
-                <div className="text-[10px] uppercase tracking-widest text-[#444]">Sweep Velocity</div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-[#666]">X Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepVxValue)} px/s</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-900"
-                    max="900"
-                    step="10"
-                    value={sweepVxValue}
-                    onChange={e => {
-                      const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepVx: value });
-                      else onSweepVxChange(value);
-                    }}
-                    className="w-full accent-[#FF0099] cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-[#666]">Y Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{Math.round(sweepVyValue)} px/s</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-900"
-                    max="900"
-                    step="10"
-                    value={sweepVyValue}
-                    onChange={e => {
-                      const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBehaviorSettings({ sweepVy: value });
-                      else onSweepVyChange(value);
-                    }}
-                    className="w-full accent-[#FF0099] cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-
-            {behaviorForSettings === 'bomb' && (toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle') && (
+            {modifiersForSettings.includes('bomb') && isBehaviorTool && (
               <>
                 <div className="w-full h-px bg-[#FF009933]" />
                 <div className="text-[10px] uppercase tracking-widest text-[#FF0099] font-bold mb-2 flex items-center gap-1">
@@ -433,10 +592,12 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               </>
             )}
 
+            {/* ── Size & Duration ─────────────────────────────────────────── */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] uppercase tracking-widest text-[#444]">
-                  {isEditingSelection ? `Size (${selectedCount} selected)` : 'Size'}
+                <span className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
+                  <Maximize2 size={9} />
+                  {isEditingSelection ? `Size (${selectedCount})` : 'Size'}
                 </span>
                 <span className="text-xs font-mono text-[#FF0099]">{sizeValue}px</span>
               </div>
@@ -447,11 +608,8 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 value={sizeValue}
                 onChange={e => {
                   const value = +e.target.value;
-                  if (isEditingSelection) {
-                    onUpdateSelectedSize(value);
-                  } else {
-                    onActiveSizeChange(value);
-                  }
+                  if (isEditingSelection) onUpdateSelectedSize(value);
+                  else onActiveSizeChange(value);
                 }}
                 className="w-full accent-[#FF0099] cursor-pointer"
               />
@@ -460,7 +618,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
             <div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] uppercase tracking-widest text-[#444]">
-                  {isEditingSelection ? `Duration (${selectedCount} selected)` : 'Duration'}
+                  {isEditingSelection ? `Duration (${selectedCount})` : 'Duration'}
                 </span>
                 <span className="text-xs font-mono text-[#FF0099]">{durationValue.toFixed(1)}s</span>
               </div>
@@ -468,14 +626,23 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                 type="number"
                 min="0.1"
                 step="0.1"
-                value={durationValue}
+                value={durationInput}
                 onChange={e => {
-                  const value = +e.target.value;
+                  const raw = e.target.value;
+                  setDurationInput(raw);
+
+                  if (raw === '') return;
+
+                  const value = Number(raw);
                   if (!Number.isFinite(value) || value <= 0) return;
-                  if (isEditingSelection) {
-                    onUpdateSelectedDuration(value);
-                  } else {
-                    onActiveDurationChange(value);
+
+                  if (isEditingSelection) onUpdateSelectedDuration(value);
+                  else onActiveDurationChange(value);
+                }}
+                onBlur={() => {
+                  const value = Number(durationInput);
+                  if (!Number.isFinite(value) || value <= 0) {
+                    setDurationInput(String(durationValue));
                   }
                 }}
                 className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm focus:outline-none focus:border-[#FF0099]"
@@ -484,6 +651,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
           </div>
         )}
 
+        {/* ── SHAPES PANEL ────────────────────────────────────────────────── */}
         {activePanel === 'shapes' && (
           <div className="space-y-4">
             <div className="text-[10px] uppercase tracking-widest text-[#444]">Primitive Shapes</div>
@@ -554,6 +722,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
           </div>
         )}
 
+        {/* ── SETTINGS PANEL ──────────────────────────────────────────────── */}
         {activePanel === 'settings' && (
           <div className="space-y-5">
             <div>
@@ -586,8 +755,23 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
               <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">BPM</div>
               <input
                 type="number"
-                value={bpm}
-                onChange={e => onBpmChange(+e.target.value)}
+                value={bpmInput}
+                onChange={e => {
+                  const raw = e.target.value;
+                  setBpmInput(raw);
+
+                  if (raw === '') return;
+
+                  const value = Number(raw);
+                  if (!Number.isFinite(value)) return;
+                  onBpmChange(value);
+                }}
+                onBlur={() => {
+                  const value = Number(bpmInput);
+                  if (!Number.isFinite(value)) {
+                    setBpmInput(String(bpm));
+                  }
+                }}
                 className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm focus:outline-none focus:border-[#FF0099]"
               />
             </div>

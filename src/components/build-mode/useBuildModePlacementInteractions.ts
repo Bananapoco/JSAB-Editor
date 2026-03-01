@@ -15,7 +15,7 @@ import {
   SNAP_INTERVALS,
 } from './constants';
 import { CustomShapeDef } from '../shape-composer/types';
-import { BehaviorType, CustomAnimationData, CustomKeyframe, CustomSegmentHandle, HoverPos, PlacedEvent, SelectionRect, ShapeType, SnapInterval, Tool } from './types';
+import { BehaviorSettings, BehaviorType, CustomAnimationData, CustomKeyframe, CustomSegmentHandle, HoverPos, ModifierBehavior, PlacedEvent, SelectionRect, ShapeType, SnapInterval, Tool } from './types';
 
 interface UseBuildModePlacementInteractionsParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -30,6 +30,7 @@ interface UseBuildModePlacementInteractionsParams {
   nextIdRef: MutableRefObject<number>;
   activeToolRef: MutableRefObject<Tool>;
   activeBehaviorRef: MutableRefObject<BehaviorType>;
+  activeModifiersRef: MutableRefObject<ModifierBehavior[]>;
   activeShapeRef: MutableRefObject<ShapeType>;
   activeSizeRef: MutableRefObject<number>;
   activeDurationRef: MutableRefObject<number>;
@@ -40,10 +41,10 @@ interface UseBuildModePlacementInteractionsParams {
   
   homingSpeedRef: MutableRefObject<number>;
   spinSpeedRef: MutableRefObject<number>;
-  bounceVxRef: MutableRefObject<number>;
-  bounceVyRef: MutableRefObject<number>;
-  sweepVxRef: MutableRefObject<number>;
-  sweepVyRef: MutableRefObject<number>;
+  bounceSpeedRef: MutableRefObject<number>;
+  bounceAngleRef: MutableRefObject<number>;
+  sweepSpeedRef: MutableRefObject<number>;
+  sweepAngleRef: MutableRefObject<number>;
   currentTime: number;
   audioDuration: number;
   bpm: number;
@@ -60,6 +61,7 @@ interface UseBuildModePlacementInteractionsParams {
   dragStateRef: MutableRefObject<{ lastGX: number; lastGY: number } | null>;
   customAnimationDataRef: MutableRefObject<CustomAnimationData>;
   onCustomAnimationDataChange: (data: CustomAnimationData) => void;
+  onObjectSelected: () => void;
 }
 
 interface BuildModePlacementHandlers {
@@ -84,6 +86,7 @@ export function useBuildModePlacementInteractions({
   nextIdRef,
   activeToolRef,
   activeBehaviorRef,
+  activeModifiersRef,
   activeShapeRef,
   activeSizeRef,
   activeDurationRef,
@@ -93,10 +96,10 @@ export function useBuildModePlacementInteractions({
   bombParticleCountRef,
   homingSpeedRef,
   spinSpeedRef,
-  bounceVxRef,
-  bounceVyRef,
-  sweepVxRef,
-  sweepVyRef,
+  bounceSpeedRef,
+  bounceAngleRef,
+  sweepSpeedRef,
+  sweepAngleRef,
   currentTime,
   audioDuration,
   bpm,
@@ -113,6 +116,7 @@ export function useBuildModePlacementInteractions({
   dragStateRef,
   customAnimationDataRef,
   onCustomAnimationDataChange,
+  onObjectSelected,
 }: UseBuildModePlacementInteractionsParams): BuildModePlacementHandlers {
   const snapToGrid = useCallback((time: number): number => {
     if (bpm <= 0) return time;
@@ -257,6 +261,23 @@ export function useBuildModePlacementInteractions({
         ? customShapesRef.current.find(shape => shape.id === activeCustomShapeIdRef.current)
         : undefined;
 
+      // Build behaviorSettings covering both movement and modifier needs.
+      const placeBehaviorSettings: BehaviorSettings = {};
+      if (activeBehaviorRef.current === 'homing') placeBehaviorSettings.homingSpeed = homingSpeedRef.current;
+      if (activeBehaviorRef.current === 'bouncing') {
+        placeBehaviorSettings.bounceSpeed = bounceSpeedRef.current;
+        placeBehaviorSettings.bounceAngle = bounceAngleRef.current;
+      }
+      if (activeBehaviorRef.current === 'sweep') {
+        placeBehaviorSettings.sweepSpeed = sweepSpeedRef.current;
+        placeBehaviorSettings.sweepAngle = sweepAngleRef.current;
+      }
+      if (activeModifiersRef.current.includes('spinning')) {
+        placeBehaviorSettings.spinSpeed = spinSpeedRef.current;
+      }
+
+      const hasBombModifier = activeModifiersRef.current.includes('bomb');
+
       const newEvent: PlacedEvent = {
         id,
         timestamp: parseFloat(currentTime.toFixed(3)),
@@ -265,13 +286,14 @@ export function useBuildModePlacementInteractions({
         y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
         size: activeSizeRef.current,
         behavior: activeBehaviorRef.current,
+        behaviorModifiers: [...activeModifiersRef.current],
         duration: activeDurationRef.current,
         rotation: 0,
         shape: activeShapeRef.current,
         stretchX: 1,
         stretchY: 1,
         ...(activeCustomShape ? { customShapeDef: activeCustomShape } : {}),
-        ...(activeBehaviorRef.current === 'bomb'
+        ...(hasBombModifier
           ? {
               bombSettings: {
                 growthBeats: bombGrowthBeatsRef.current,
@@ -279,15 +301,7 @@ export function useBuildModePlacementInteractions({
               },
             }
           : {}),
-        ...(activeBehaviorRef.current === 'homing'
-          ? { behaviorSettings: { homingSpeed: homingSpeedRef.current } }
-          : activeBehaviorRef.current === 'spinning'
-            ? { behaviorSettings: { spinSpeed: spinSpeedRef.current } }
-            : activeBehaviorRef.current === 'bouncing'
-              ? { behaviorSettings: { bounceVx: bounceVxRef.current, bounceVy: bounceVyRef.current } }
-              : activeBehaviorRef.current === 'sweep'
-                ? { behaviorSettings: { sweepVx: sweepVxRef.current, sweepVy: sweepVyRef.current } }
-                : {}),
+        ...(Object.keys(placeBehaviorSettings).length > 0 ? { behaviorSettings: placeBehaviorSettings } : {}),
         ...(activeBehaviorRef.current === 'custom'
           ? {
               customAnimation: {
@@ -326,6 +340,7 @@ export function useBuildModePlacementInteractions({
       setIsDraggingObjects(true);
       setCanvasCursor('grabbing');
       dragStateRef.current = { lastGX: pos.gx, lastGY: pos.gy };
+      onObjectSelected();
       return;
     }
 
@@ -344,12 +359,19 @@ export function useBuildModePlacementInteractions({
     customShapesRef,
     currentTime,
     activeToolRef,
-    activeSizeRef,
     activeBehaviorRef,
+    activeModifiersRef,
     activeDurationRef,
     activeShapeRef,
+    activeSizeRef,
     bombGrowthBeatsRef,
     bombParticleCountRef,
+    homingSpeedRef,
+    spinSpeedRef,
+    bounceSpeedRef,
+    bounceAngleRef,
+    sweepSpeedRef,
+    sweepAngleRef,
     setEvents,
     setSelectedId,
     setSelectedIds,
@@ -358,6 +380,7 @@ export function useBuildModePlacementInteractions({
     dragStateRef,
     setIsDraggingSelection,
     setSelectionRect,
+    onObjectSelected,
   ]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -521,6 +544,7 @@ export function useBuildModePlacementInteractions({
         if (hitId !== null) {
           setSelectedId(hitId);
           setSelectedIds([hitId]);
+          onObjectSelected();
         } else {
           setSelectedId(null);
           setSelectedIds([]);
@@ -531,6 +555,7 @@ export function useBuildModePlacementInteractions({
           .map(event => event.id);
         setSelectedIds(ids);
         setSelectedId(ids.length > 0 ? ids[0] : null);
+        if (ids.length > 0) onObjectSelected();
       }
     }
 
@@ -551,6 +576,7 @@ export function useBuildModePlacementInteractions({
     setSelectedId,
     setSelectedIds,
     events,
+    onObjectSelected,
   ]);
 
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -569,21 +595,39 @@ export function useBuildModePlacementInteractions({
       ? customShapesRef.current.find(shape => shape.id === activeCustomShapeIdRef.current)
       : undefined;
 
+    // Build behaviorSettings covering both movement and modifier needs.
+    const timelineBehaviorSettings: BehaviorSettings = {};
+    if (activeBehaviorRef.current === 'homing') timelineBehaviorSettings.homingSpeed = homingSpeedRef.current;
+    if (activeBehaviorRef.current === 'bouncing') {
+      timelineBehaviorSettings.bounceSpeed = bounceSpeedRef.current;
+      timelineBehaviorSettings.bounceAngle = bounceAngleRef.current;
+    }
+    if (activeBehaviorRef.current === 'sweep') {
+      timelineBehaviorSettings.sweepSpeed = sweepSpeedRef.current;
+      timelineBehaviorSettings.sweepAngle = sweepAngleRef.current;
+    }
+    if (activeModifiersRef.current.includes('spinning')) {
+      timelineBehaviorSettings.spinSpeed = spinSpeedRef.current;
+    }
+
+    const hasBombModifierTimeline = activeModifiersRef.current.includes('bomb');
+
     const newEvent: PlacedEvent = {
       id,
       timestamp: parseFloat(time.toFixed(3)),
       type: activeToolRef.current as LevelEventType,
-      x: 512,
-      y: 384,
+      x: Math.round(GAME_W / 2),
+      y: Math.round(GAME_H / 2),
       size: activeSizeRef.current,
       behavior: activeBehaviorRef.current,
+      behaviorModifiers: [...activeModifiersRef.current],
       duration: activeDurationRef.current,
       rotation: 0,
       shape: activeShapeRef.current,
       stretchX: 1,
       stretchY: 1,
       ...(activeCustomShape ? { customShapeDef: activeCustomShape } : {}),
-      ...(activeBehaviorRef.current === 'bomb'
+      ...(hasBombModifierTimeline
         ? {
             bombSettings: {
               growthBeats: bombGrowthBeatsRef.current,
@@ -591,19 +635,11 @@ export function useBuildModePlacementInteractions({
             },
           }
         : {}),
-      ...(activeBehaviorRef.current === 'homing'
-        ? { behaviorSettings: { homingSpeed: homingSpeedRef.current } }
-        : activeBehaviorRef.current === 'spinning'
-          ? { behaviorSettings: { spinSpeed: spinSpeedRef.current } }
-          : activeBehaviorRef.current === 'bouncing'
-            ? { behaviorSettings: { bounceVx: bounceVxRef.current, bounceVy: bounceVyRef.current } }
-            : activeBehaviorRef.current === 'sweep'
-              ? { behaviorSettings: { sweepVx: sweepVxRef.current, sweepVy: sweepVyRef.current } }
-              : {}),
+      ...(Object.keys(timelineBehaviorSettings).length > 0 ? { behaviorSettings: timelineBehaviorSettings } : {}),
       ...(activeBehaviorRef.current === 'custom'
         ? {
             customAnimation: {
-              keyframes: [{ t: 0, x: 512, y: 384, rotation: 0, scale: 1 }],
+              keyframes: [{ t: 0, x: Math.round(GAME_W / 2), y: Math.round(GAME_H / 2), rotation: 0, scale: 1 }],
               handles: [],
             },
           }
@@ -627,15 +663,23 @@ export function useBuildModePlacementInteractions({
     activeCustomShapeIdRef,
     customShapesRef,
     activeToolRef,
-    activeSizeRef,
     activeBehaviorRef,
+    activeModifiersRef,
     activeDurationRef,
     activeShapeRef,
+    activeSizeRef,
     bombGrowthBeatsRef,
     bombParticleCountRef,
+    homingSpeedRef,
+    spinSpeedRef,
+    bounceSpeedRef,
+    bounceAngleRef,
+    sweepSpeedRef,
+    sweepAngleRef,
     setEvents,
     setSelectedId,
     setSelectedIds,
+    onCustomAnimationDataChange,
   ]);
 
   const handleCanvasContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

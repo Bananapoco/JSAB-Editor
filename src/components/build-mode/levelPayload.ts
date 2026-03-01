@@ -39,7 +39,7 @@ export function createLevelPayload({
     metadata: { bossName, bpm, duration: audioDuration },
     theme: { enemyColor, backgroundColor: bgColor, playerColor },
     timeline: events
-      .map(({ id, shape, stretchX = 1, stretchY = 1, customShapeDef, bombSettings, behaviorSettings, customAnimation, ...rest }) => {
+      .map(({ id, shape, stretchX = 1, stretchY = 1, customShapeDef, bombSettings, behaviorSettings, customAnimation, behaviorModifiers, ...rest }) => {
         if (rest.type === 'screen_shake') return rest;
 
         const size = rest.size ?? 40;
@@ -51,6 +51,7 @@ export function createLevelPayload({
           bombSettings,
           behaviorSettings,
           customAnimation,
+          behaviorModifiers,
         );
 
         if (customShapeDef) {
