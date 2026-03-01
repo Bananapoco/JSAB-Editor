@@ -587,26 +587,22 @@ export function useBuildModePlacementInteractions({
     const existingKfs = data.keyframes;
     const existingHandles = data.handles;
 
-    // Determine the t value based on how many keyframes exist (evenly space them by default)
-    const count = existingKfs.length;
-    let t: number;
-    if (count === 0) t = 0;
-    else if (count === 1) t = 1;
-    else {
-      // Place new keyframe after the last one, evenly
-      const lastT = existingKfs[existingKfs.length - 1].t;
-      t = Math.min(1, lastT + (1 / (count + 1)));
-    }
-
+    // Add new keyframe with a temporary t value; we'll redistribute evenly below.
     const newKf: CustomKeyframe = {
-      t,
+      t: 0, // will be overwritten
       x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
       y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
       rotation: 0,
       scale: 1,
     };
 
-    const newKfs = [...existingKfs, newKf].sort((a, b) => a.t - b.t);
+    const newKfs = [...existingKfs, newKf];
+
+    // Evenly distribute t values across all keyframes (0 to 1)
+    const totalCount = newKfs.length;
+    for (let i = 0; i < totalCount; i++) {
+      newKfs[i] = { ...newKfs[i], t: totalCount === 1 ? 0 : i / (totalCount - 1) };
+    }
 
     // If we're adding a keyframe between existing ones, we need to recalculate handles array
     // For simplicity, just add a disabled handle for the new segment
