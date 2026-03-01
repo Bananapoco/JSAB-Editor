@@ -67,8 +67,8 @@ export interface BehaviorDef {
     minScale?: number;
     /** pulse: max scale */
     maxScale?: number;
-    /** pulse: period in seconds */
-    period?: number;
+    /** pulse: how often to pulse relative to a beat (1 = every beat, 0.5 = every 2 beats, 2 = twice per beat) */
+    beatRate?: number;
     /** orbit: world-space center X */
     centerX?: number;
     /** orbit: world-space center Y */
@@ -91,20 +91,22 @@ export interface BehaviorDef {
     vx?: number;
     /** bounce: Y velocity in px/s */
     vy?: number;
-    /** bomb: growth duration in seconds (default 2.0) */
-    growthDuration?: number;
+    /** bomb: how many beats the shape grows before exploding (default 4) */
+    growthBeats?: number;
     /** bomb: initial scale (default 0.1) */
     initialScale?: number;
-    /** bomb: number of particles on explosion (default 12) */
+    /** bomb: number of projectiles on explosion (default 12) */
     particleCount?: number;
-    /** bomb: particle speed in px/s (default 300) */
-    particleSpeed?: number;
     /** customAnimation: array of keyframes [{t,x,y,rotation,scale}] */
     customKeyframes?: { t: number; x: number; y: number; rotation: number; scale: number }[];
     /** customAnimation: bezier handles per segment */
     customHandles?: { enabled: boolean; cp1x: number; cp1y: number; cp2x: number; cp2y: number; easing?: string; easingCurve?: { x1: number; y1: number; x2: number; y2: number } }[];
     /** customAnimation: total duration for the animation in seconds */
     customDuration?: number;
+    /** Injected at build time — BPM of the song (used by pulse, bomb, etc.) */
+    bpm?: number;
+    /** Injected at build time — audio timestamp when the parent object spawned */
+    spawnTime?: number;
 }
 
 export interface ObjectDef {
@@ -124,6 +126,8 @@ export interface ObjectDef {
     despawnTime?: number;
     /** Optional collider radius override (default derived from shape). */
     colliderRadius?: number;
+    /** BPM of the song — injected so beat-synced behaviors work. */
+    bpm?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +197,13 @@ export class ObjectFactory {
             case 'spinning':
                 return new RotateBehavior(def.speed ?? Math.PI);
             case 'pulse':
-                return new PulseBehavior(def.minScale ?? 0.8, def.maxScale ?? 1.2, def.period ?? 1.0);
+                return new PulseBehavior(
+                    def.minScale ?? 0.8,
+                    def.maxScale ?? 1.2,
+                    def.beatRate ?? 1.0,
+                    def.bpm ?? 120,
+                    def.spawnTime ?? 0,
+                );
             case 'orbit':
                 return new OrbitBehavior(
                     new Vector2(def.centerX ?? 512, def.centerY ?? 384),
@@ -211,11 +221,12 @@ export class ObjectFactory {
                 return new BounceBehavior(def.vx ?? 150, def.vy ?? 150, 1024, 768, def.radius ?? 20);
             case 'bomb':
                 return new BombBehavior(
-                    def.growthDuration ?? 2.0,
+                    def.growthBeats ?? 4,
                     def.initialScale ?? 0.1,
                     def.maxScale ?? 1.5,
                     def.particleCount ?? 12,
-                    def.particleSpeed ?? 300
+                    def.bpm ?? 120,
+                    def.spawnTime ?? 0,
                 );
             case 'customAnimation':
                 return new CustomAnimationBehavior(
@@ -247,7 +258,12 @@ export class ObjectFactory {
 
         if (def.behaviors) {
             for (const b of def.behaviors) {
-                obj.addBehavior(ObjectFactory.buildBehavior(b));
+                // Inject bpm and spawnTime so beat-synced behaviors work
+                obj.addBehavior(ObjectFactory.buildBehavior({
+                    ...b,
+                    bpm: b.bpm ?? def.bpm,
+                    spawnTime: b.spawnTime ?? def.spawnTime,
+                }));
             }
         }
 
@@ -289,12 +305,17 @@ export class ObjectFactory {
         duration: number,
         behavior: string,
         enemyColor: string,
+        bpm = 120,
+        spawnTime = 0,
     ): CompositeObject {
         // Choose a shape based on event type
         const isProjectile = eventType === 'projectile_throw';
         const shapeDef: ShapeDef = isProjectile
             ? { kind: 'circle', radius: size / 2, fillColor: enemyColor, glowColor: enemyColor, glowRadius: 12 }
             : { kind: 'rect', width: size, height: size, fillColor: enemyColor, glowColor: enemyColor, glowRadius: 18 };
+
+        const effectiveBpm = bpm > 0 ? bpm : 120;
+        const beatDuration = 60 / effectiveBpm;
 
         const behaviors: BehaviorDef[] = [];
         // Bomb handles its own lifecycle (grow + explode), so don't auto-attach dieAfter.
@@ -313,15 +334,17 @@ export class ObjectFactory {
             case 'sweep':
                 behaviors.push({ kind: 'linearMove', velocityX: 220, velocityY: 0 });
                 break;
-            case 'bomb':
+            case 'bomb': {
+                // Convert duration to beats; default to 4 beats
+                const growthBeats = duration > 0 ? Math.round(duration / beatDuration) : 4;
                 behaviors.push({
                     kind: 'bomb',
-                    growthDuration: duration > 0 ? duration : 2.0,
+                    growthBeats,
                     initialScale: 0.1,
                     particleCount: 12,
-                    particleSpeed: 300,
                 });
                 break;
+            }
             case 'static':
             default:
                 break;
@@ -332,7 +355,8 @@ export class ObjectFactory {
             rotation,
             shape: shapeDef,
             behaviors,
-            spawnTime: 0,
+            spawnTime,
+            bpm: effectiveBpm,
             despawnTime: duration > 0 ? duration : undefined,
         });
     }

@@ -35,9 +35,9 @@ interface UseBuildModePlacementInteractionsParams {
   activeDurationRef: MutableRefObject<number>;
   activeCustomShapeIdRef: MutableRefObject<string | null>;
   customShapesRef: MutableRefObject<CustomShapeDef[]>;
-  bombGrowthDurationRef: MutableRefObject<number>;
+  bombGrowthBeatsRef: MutableRefObject<number>;
   bombParticleCountRef: MutableRefObject<number>;
-  bombParticleSpeedRef: MutableRefObject<number>;
+  
   homingSpeedRef: MutableRefObject<number>;
   spinSpeedRef: MutableRefObject<number>;
   bounceVxRef: MutableRefObject<number>;
@@ -89,9 +89,8 @@ export function useBuildModePlacementInteractions({
   activeDurationRef,
   activeCustomShapeIdRef,
   customShapesRef,
-  bombGrowthDurationRef,
+  bombGrowthBeatsRef,
   bombParticleCountRef,
-  bombParticleSpeedRef,
   homingSpeedRef,
   spinSpeedRef,
   bounceVxRef,
@@ -163,7 +162,11 @@ export function useBuildModePlacementInteractions({
 
     const ex = selected.x * SCALE;
     const ey = selected.y * SCALE;
-    const half = ((selected.size ?? 40) * SCALE) / 2 + HANDLE_PAD;
+    const baseHalf = ((selected.size ?? 40) * SCALE) / 2;
+    const stretchX = Math.max(0.2, Math.abs(selected.stretchX ?? 1));
+    const stretchY = Math.max(0.2, Math.abs(selected.stretchY ?? 1));
+    const halfX = baseHalf * stretchX + HANDLE_PAD;
+    const halfY = baseHalf * stretchY + HANDLE_PAD;
     const rot = ((selected.rotation ?? 0) * Math.PI) / 180;
     const c = Math.cos(rot);
     const s = Math.sin(rot);
@@ -180,8 +183,8 @@ export function useBuildModePlacementInteractions({
     ];
 
     for (const handle of handles) {
-      const lx = handle.sx * half;
-      const ly = handle.sy * half;
+      const lx = handle.sx * halfX;
+      const ly = handle.sy * halfY;
       const hx = ex + lx * c - ly * s;
       const hy = ey + lx * s + ly * c;
       if (Math.hypot(cx - hx, cy - hy) <= HANDLE_HIT_RADIUS) {
@@ -215,9 +218,10 @@ export function useBuildModePlacementInteractions({
       const event = events[i];
       const ex = event.x * SCALE;
       const ey = event.y * SCALE;
+      const stretchMax = Math.max(Math.abs(event.stretchX ?? 1), Math.abs(event.stretchY ?? 1));
       const radius = event.customShapeDef
-        ? event.customShapeDef.colliderRadius * SCALE
-        : ((event.size ?? 40) * SCALE) / 2;
+        ? event.customShapeDef.colliderRadius * SCALE * stretchMax
+        : ((event.size ?? 40) * SCALE) / 2 * stretchMax;
       const dx = cx - ex;
       const dy = cy - ey;
       if (dx * dx + dy * dy <= radius * radius) {
@@ -264,13 +268,14 @@ export function useBuildModePlacementInteractions({
         duration: activeDurationRef.current,
         rotation: 0,
         shape: activeShapeRef.current,
+        stretchX: 1,
+        stretchY: 1,
         ...(activeCustomShape ? { customShapeDef: activeCustomShape } : {}),
         ...(activeBehaviorRef.current === 'bomb'
           ? {
               bombSettings: {
-                growthDuration: bombGrowthDurationRef.current,
+                growthBeats: bombGrowthBeatsRef.current,
                 particleCount: bombParticleCountRef.current,
-                particleSpeed: bombParticleSpeedRef.current,
               },
             }
           : {}),
@@ -343,9 +348,8 @@ export function useBuildModePlacementInteractions({
     activeBehaviorRef,
     activeDurationRef,
     activeShapeRef,
-    bombGrowthDurationRef,
+    bombGrowthBeatsRef,
     bombParticleCountRef,
-    bombParticleSpeedRef,
     setEvents,
     setSelectedId,
     setSelectedIds,
@@ -383,21 +387,50 @@ export function useBuildModePlacementInteractions({
       const localX = (pos.cx - ex) * c - (pos.cy - ey) * s;
       const localY = (pos.cx - ex) * s + (pos.cy - ey) * c;
 
-      const currentHalf = ((event.size ?? 40) * SCALE) / 2;
-      const targetHalfX = drag.handle.sx !== 0
-        ? Math.max(2, Math.abs(localX) - HANDLE_PAD)
-        : currentHalf;
-      const targetHalfY = drag.handle.sy !== 0
-        ? Math.max(2, Math.abs(localY) - HANDLE_PAD)
-        : currentHalf;
-      const targetHalf = Math.max(2, Math.max(targetHalfX, targetHalfY));
-      const nextSize = Math.max(4, Math.min(200, (targetHalf * 2) / SCALE));
+      const baseHalf = ((event.size ?? 40) * SCALE) / 2;
+      const stretchX = Math.max(0.2, Math.abs(event.stretchX ?? 1));
+      const stretchY = Math.max(0.2, Math.abs(event.stretchY ?? 1));
 
-      setEvents(prev => prev.map(item => (
-        item.id === drag.eventId
-          ? { ...item, size: nextSize }
-          : item
-      )));
+      if (drag.handle.sx !== 0 && drag.handle.sy !== 0) {
+        // Corner handles scale the object uniformly (keep aspect/stretch ratio).
+        const currentHalfX = Math.max(2, baseHalf * stretchX);
+        const currentHalfY = Math.max(2, baseHalf * stretchY);
+        const targetHalfX = Math.max(2, Math.abs(localX) - HANDLE_PAD);
+        const targetHalfY = Math.max(2, Math.abs(localY) - HANDLE_PAD);
+        const factor = Math.max(targetHalfX / currentHalfX, targetHalfY / currentHalfY);
+        const nextSize = Math.max(4, Math.min(200, (baseHalf * factor * 2) / SCALE));
+
+        setEvents(prev => prev.map(item => (
+          item.id === drag.eventId
+            ? { ...item, size: nextSize }
+            : item
+        )));
+        return;
+      }
+
+      // Side handles stretch only on one axis.
+      if (drag.handle.sx !== 0) {
+        const targetHalfX = Math.max(2, Math.abs(localX) - HANDLE_PAD);
+        const nextStretchX = Math.max(0.2, Math.min(4, targetHalfX / Math.max(2, baseHalf)));
+
+        setEvents(prev => prev.map(item => (
+          item.id === drag.eventId
+            ? { ...item, stretchX: nextStretchX }
+            : item
+        )));
+        return;
+      }
+
+      if (drag.handle.sy !== 0) {
+        const targetHalfY = Math.max(2, Math.abs(localY) - HANDLE_PAD);
+        const nextStretchY = Math.max(0.2, Math.min(4, targetHalfY / Math.max(2, baseHalf)));
+
+        setEvents(prev => prev.map(item => (
+          item.id === drag.eventId
+            ? { ...item, stretchY: nextStretchY }
+            : item
+        )));
+      }
       return;
     }
 
@@ -547,13 +580,14 @@ export function useBuildModePlacementInteractions({
       duration: activeDurationRef.current,
       rotation: 0,
       shape: activeShapeRef.current,
+      stretchX: 1,
+      stretchY: 1,
       ...(activeCustomShape ? { customShapeDef: activeCustomShape } : {}),
       ...(activeBehaviorRef.current === 'bomb'
         ? {
             bombSettings: {
-              growthDuration: bombGrowthDurationRef.current,
+              growthBeats: bombGrowthBeatsRef.current,
               particleCount: bombParticleCountRef.current,
-              particleSpeed: bombParticleSpeedRef.current,
             },
           }
         : {}),
@@ -597,9 +631,8 @@ export function useBuildModePlacementInteractions({
     activeBehaviorRef,
     activeDurationRef,
     activeShapeRef,
-    bombGrowthDurationRef,
+    bombGrowthBeatsRef,
     bombParticleCountRef,
-    bombParticleSpeedRef,
     setEvents,
     setSelectedId,
     setSelectedIds,

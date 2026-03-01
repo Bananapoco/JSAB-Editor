@@ -21,12 +21,11 @@ interface BuildModeLeftPanelProps {
   activeBehavior: BehaviorType;
   onBehaviorChange: (behavior: BehaviorType) => void;
   onSelectTool: (tool: Tool) => void;
-  bombGrowthDuration: number;
+  bombGrowthBeats: number;
   bombParticleCount: number;
-  bombParticleSpeed: number;
-  onBombGrowthDurationChange: (value: number) => void;
+
+  onBombGrowthBeatsChange: (value: number) => void;
   onBombParticleCountChange: (value: number) => void;
-  onBombParticleSpeedChange: (value: number) => void;
   homingSpeed: number;
   onHomingSpeedChange: (value: number) => void;
   spinSpeed: number;
@@ -40,7 +39,7 @@ interface BuildModeLeftPanelProps {
   onSweepVxChange: (value: number) => void;
   onSweepVyChange: (value: number) => void;
   onUpdateSelectedBehaviorSettings: (updates: { homingSpeed?: number; spinSpeed?: number; bounceVx?: number; bounceVy?: number; sweepVx?: number; sweepVy?: number }) => void;
-  onUpdateSelectedBombSettings: (updates: { growthDuration?: number; particleCount?: number; particleSpeed?: number }) => void;
+  onUpdateSelectedBombSettings: (updates: { growthBeats?: number; particleCount?: number }) => void;
   activeSize: number;
   activeDuration: number;
   selectedEvent: PlacedEvent | null;
@@ -80,12 +79,10 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   activeBehavior,
   onBehaviorChange,
   onSelectTool,
-  bombGrowthDuration,
+  bombGrowthBeats,
   bombParticleCount,
-  bombParticleSpeed,
-  onBombGrowthDurationChange,
+  onBombGrowthBeatsChange,
   onBombParticleCountChange,
-  onBombParticleSpeedChange,
   homingSpeed,
   onHomingSpeedChange,
   spinSpeed,
@@ -147,9 +144,8 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   const sweepVxValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVx ?? sweepVx) : sweepVx;
   const sweepVyValue = isEditingSelection ? (selectedBehaviorSettings?.sweepVy ?? sweepVy) : sweepVy;
 
-  const bombGrowthDurationValue = isEditingSelection ? (selectedBombSettings?.growthDuration ?? bombGrowthDuration) : bombGrowthDuration;
+  const bombGrowthBeatsValue = isEditingSelection ? (selectedBombSettings?.growthBeats ?? bombGrowthBeats) : bombGrowthBeats;
   const bombParticleCountValue = isEditingSelection ? (selectedBombSettings?.particleCount ?? bombParticleCount) : bombParticleCount;
-  const bombParticleSpeedValue = isEditingSelection ? (selectedBombSettings?.particleSpeed ?? bombParticleSpeed) : bombParticleSpeed;
 
   return (
     <AnimatePresence mode="wait">
@@ -393,19 +389,19 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Growth Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{bombGrowthDurationValue.toFixed(1)}s</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Growth Beats</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{bombGrowthBeatsValue}</span>
                   </div>
                   <input
                     type="range"
-                    min="0.5"
-                    max="5"
-                    step="0.1"
-                    value={bombGrowthDurationValue}
+                    min="1"
+                    max="16"
+                    step="1"
+                    value={bombGrowthBeatsValue}
                     onChange={e => {
                       const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBombSettings({ growthDuration: value });
-                      else onBombGrowthDurationChange(value);
+                      if (isEditingSelection) onUpdateSelectedBombSettings({ growthBeats: value });
+                      else onBombGrowthBeatsChange(value);
                     }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
@@ -417,7 +413,7 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Particles</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Projectiles</span>
                     <span className="text-xs font-mono text-[#FF0099]">{bombParticleCountValue}</span>
                   </div>
                   <input
@@ -430,26 +426,6 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                       const value = +e.target.value;
                       if (isEditingSelection) onUpdateSelectedBombSettings({ particleCount: value });
                       else onBombParticleCountChange(value);
-                    }}
-                    className="w-full accent-[#FF0099] cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Explosion Speed</span>
-                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleSpeedValue}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="100"
-                    max="600"
-                    step="10"
-                    value={bombParticleSpeedValue}
-                    onChange={e => {
-                      const value = +e.target.value;
-                      if (isEditingSelection) onUpdateSelectedBombSettings({ particleSpeed: value });
-                      else onBombParticleSpeedChange(value);
                     }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />

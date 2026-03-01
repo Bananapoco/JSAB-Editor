@@ -5,6 +5,10 @@ export class CircleShape extends PrimitiveShape {
         super(options);
     }
 
+    clone(): CircleShape {
+        return new CircleShape(this.radius, { ...this.options });
+    }
+
     drawLocal(ctx: CanvasRenderingContext2D): void {
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);

@@ -486,18 +486,22 @@ export class Game extends Scene {
     // -----------------------------------------------------------------------
 
     private pruneInactive() {
+        const newSpawns: CompositeObject[] = [];
         this.hazards = this.hazards.filter(h => {
             if (!h.active) {
                 // Check if this object has explosion data from a BombBehavior
                 const explosionData = (h as any).explosionData as ExplosionData | undefined;
                 if (explosionData) {
-                    spawnExplosionParticlesForBomb(this.levelData, this.hazards, explosionData);
+                    spawnExplosionParticlesForBomb(this.levelData, newSpawns, explosionData);
                 }
                 return false;
             }
             const { x, y } = h.position;
             return x > -150 && x < WORLD_W + 150 && y > -150 && y < WORLD_H + 150;
         });
+        if (newSpawns.length > 0) {
+            this.hazards.push(...newSpawns);
+        }
     }
 
     // -----------------------------------------------------------------------

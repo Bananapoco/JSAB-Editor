@@ -16,6 +16,13 @@ export class PolygonShape extends PrimitiveShape {
         return new PolygonShape(pts, options);
     }
 
+    clone(): PolygonShape {
+        return new PolygonShape(
+            this.points.map(p => new Vector2(p.x, p.y)),
+            { ...this.options },
+        );
+    }
+
     drawLocal(ctx: CanvasRenderingContext2D): void {
         if (this.points.length < 2) return;
         ctx.beginPath();

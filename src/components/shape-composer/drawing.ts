@@ -88,12 +88,25 @@ export function drawPieceOnComposer(
     ctx.strokeRect(-rx, -ry, rx * 2, ry * 2);
     ctx.setLineDash([]);
 
-    const handleSize = 6;
-    for (const hx of [-rx, rx]) {
-      for (const hy of [-ry, ry]) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
-      }
+    const cornerHandleSize = 6;
+    const edgeHandleSize = 5;
+    const handles = [
+      { sx: -1, sy: -1 },
+      { sx: 0, sy: -1 },
+      { sx: 1, sy: -1 },
+      { sx: -1, sy: 0 },
+      { sx: 1, sy: 0 },
+      { sx: -1, sy: 1 },
+      { sx: 0, sy: 1 },
+      { sx: 1, sy: 1 },
+    ] as const;
+
+    for (const handle of handles) {
+      const hx = handle.sx * rx;
+      const hy = handle.sy * ry;
+      const handleSize = handle.sx !== 0 && handle.sy !== 0 ? cornerHandleSize : edgeHandleSize;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
     }
 
     const rotHandleY = -ry - 18;

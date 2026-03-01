@@ -27,6 +27,9 @@ export abstract class PrimitiveShape {
         }
     }
 
+    /** Create a deep copy of this shape. */
+    abstract clone(): PrimitiveShape;
+
     /** Draw the shape at the local origin. Override in subclasses. */
     abstract drawLocal(ctx: CanvasRenderingContext2D): void;
 

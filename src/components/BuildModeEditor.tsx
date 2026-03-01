@@ -52,13 +52,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [activeTool, setActiveTool] = useState<Tool>('projectile_throw');
   const [isPlacementMode, setIsPlacementMode] = useState(true);
   const [activeShape, setActiveShape] = useState<ShapeType>('square');
-  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('yesm');
+  const [activeBehavior, setActiveBehavior] = useState<BehaviorType>('static');
   const [activeSize, setActiveSize] = useState(50);
   const [activeDuration, setActiveDuration] = useState(2);
 
-  const [bombGrowthDuration, setBombGrowthDuration] = useState(2.0);
+  const [bombGrowthBeats, setBombGrowthBeats] = useState(4);
   const [bombParticleCount, setBombParticleCount] = useState(12);
-  const [bombParticleSpeed, setBombParticleSpeed] = useState(300);
 
   const [homingSpeed, setHomingSpeed] = useState(220);
   const [spinSpeed, setSpinSpeed] = useState(Math.PI);
@@ -148,12 +147,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   activeCustomShapeIdRef.current = activeCustomShapeId;
   const customShapesRef = useRef(customShapes);
   customShapesRef.current = customShapes;
-  const bombGrowthDurationRef = useRef(bombGrowthDuration);
-  bombGrowthDurationRef.current = bombGrowthDuration;
+  const bombGrowthBeatsRef = useRef(bombGrowthBeats);
+  bombGrowthBeatsRef.current = bombGrowthBeats;
   const bombParticleCountRef = useRef(bombParticleCount);
   bombParticleCountRef.current = bombParticleCount;
-  const bombParticleSpeedRef = useRef(bombParticleSpeed);
-  bombParticleSpeedRef.current = bombParticleSpeed;
 
   const homingSpeedRef = useRef(homingSpeed);
   homingSpeedRef.current = homingSpeed;
@@ -359,9 +356,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     activeDurationRef,
     activeCustomShapeIdRef,
     customShapesRef,
-    bombGrowthDurationRef,
+    bombGrowthBeatsRef,
     bombParticleCountRef,
-    bombParticleSpeedRef,
     homingSpeedRef,
     spinSpeedRef,
     bounceVxRef,
@@ -533,9 +529,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   }, [selectedId, selectedIds, setEventsTracked]);
 
   const updateSelectedBombSettings = useCallback((updates: {
-    growthDuration?: number;
+    growthBeats?: number;
     particleCount?: number;
-    particleSpeed?: number;
   }) => {
     const ids = selectedIds.length > 0
       ? selectedIds
@@ -547,14 +542,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       return {
         ...event,
         bombSettings: {
-          growthDuration: event.bombSettings?.growthDuration ?? bombGrowthDuration,
+          growthBeats: event.bombSettings?.growthBeats ?? bombGrowthBeats,
           particleCount: event.bombSettings?.particleCount ?? bombParticleCount,
-          particleSpeed: event.bombSettings?.particleSpeed ?? bombParticleSpeed,
           ...updates,
         },
       };
     }));
-  }, [selectedId, selectedIds, setEventsTracked, bombGrowthDuration, bombParticleCount, bombParticleSpeed]);
+  }, [selectedId, selectedIds, setEventsTracked, bombGrowthBeats, bombParticleCount]);
 
   useEffect(() => {
     if (!audioFile && savedAudio?.dataUrl) {
@@ -723,6 +717,18 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               activeTool={activeTool}
               activeBehavior={activeBehavior}
               onBehaviorChange={behavior => {
+                const ids = selectedIds.length > 0
+                  ? selectedIds
+                  : (selectedId !== null ? [selectedId] : []);
+
+                if (ids.length > 0) {
+                  setEventsTracked(prev => prev.map(event => (
+                    ids.includes(event.id)
+                      ? { ...event, behavior }
+                      : event
+                  )));
+                }
+
                 activeBehaviorRef.current = behavior;
                 setActiveBehavior(behavior);
               }}
@@ -732,20 +738,15 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 setIsPlacementMode(true);
                 isPlacementModeRef.current = true;
               }}
-              bombGrowthDuration={bombGrowthDuration}
+              bombGrowthBeats={bombGrowthBeats}
               bombParticleCount={bombParticleCount}
-              bombParticleSpeed={bombParticleSpeed}
-              onBombGrowthDurationChange={value => {
-                bombGrowthDurationRef.current = value;
-                setBombGrowthDuration(value);
+              onBombGrowthBeatsChange={value => {
+                bombGrowthBeatsRef.current = value;
+                setBombGrowthBeats(value);
               }}
               onBombParticleCountChange={value => {
                 bombParticleCountRef.current = value;
                 setBombParticleCount(value);
-              }}
-              onBombParticleSpeedChange={value => {
-                bombParticleSpeedRef.current = value;
-                setBombParticleSpeed(value);
               }}
               homingSpeed={homingSpeed}
               onHomingSpeedChange={value => {

@@ -8,9 +8,9 @@ export type SnapInterval = '1/4' | '1/2' | '1' | '2' | '4';
 export type ActivePanel = 'tools' | 'shapes' | 'settings' | 'compose';
 
 export interface BombSettings {
-  growthDuration: number;
+  /** How many beats the bomb grows before exploding */
+  growthBeats: number;
   particleCount: number;
-  particleSpeed: number;
 }
 
 export interface BehaviorSettings {
@@ -84,6 +84,10 @@ export interface HoverPos {
 export interface PlacedEvent extends LevelEvent {
   id: number;
   shape?: ShapeType;
+  /** Non-uniform horizontal stretch (1 = unchanged). */
+  stretchX?: number;
+  /** Non-uniform vertical stretch (1 = unchanged). */
+  stretchY?: number;
   customShapeDef?: CustomShapeDef;
   bombSettings?: BombSettings;
   behaviorSettings?: BehaviorSettings;

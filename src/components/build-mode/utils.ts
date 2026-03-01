@@ -80,30 +80,61 @@ export function shiftColor(hex: string, amount: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-export function shapeTypeToShapeDef(shape: ShapeType, size: number, color: string): ShapeDef {
+export function shapeTypeToShapeDef(
+  shape: ShapeType,
+  size: number,
+  color: string,
+  stretchX = 1,
+  stretchY = 1,
+): ShapeDef {
   const opts = { fillColor: color };
+  const sx = Math.max(0.2, Math.abs(stretchX));
+  const sy = Math.max(0.2, Math.abs(stretchY));
+  const r = size / 2;
 
   switch (shape) {
-    case 'circle':
-      return { kind: 'circle', radius: size / 2, ...opts };
-    case 'triangle':
-      return { kind: 'polygon', sides: 3, radius: size / 2, ...opts };
-    case 'diamond':
-      return { kind: 'polygon', sides: 4, radius: size / 2, ...opts };
-    case 'hexagon':
-      return { kind: 'polygon', sides: 6, radius: size / 2, ...opts };
+    case 'circle': {
+      // Engine has circles but no ellipse primitive; approximate ellipse via polygon points.
+      const points: [number, number][] = [];
+      const segments = 20;
+      for (let i = 0; i < segments; i++) {
+        const a = (Math.PI * 2 * i) / segments;
+        points.push([Math.cos(a) * r * sx, Math.sin(a) * r * sy]);
+      }
+      return { kind: 'polygon', points, ...opts };
+    }
+    case 'triangle': {
+      const base: [number, number][] = [
+        [0, -r],
+        [r * 0.866, r * 0.5],
+        [-r * 0.866, r * 0.5],
+      ];
+      return { kind: 'polygon', points: base.map(([x, y]) => [x * sx, y * sy]), ...opts };
+    }
+    case 'diamond': {
+      const base: [number, number][] = [[0, -r], [r, 0], [0, r], [-r, 0]];
+      return { kind: 'polygon', points: base.map(([x, y]) => [x * sx, y * sy]), ...opts };
+    }
+    case 'hexagon': {
+      const points: [number, number][] = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i - Math.PI / 2;
+        points.push([Math.cos(a) * r * sx, Math.sin(a) * r * sy]);
+      }
+      return { kind: 'polygon', points, ...opts };
+    }
     case 'star': {
       const points: [number, number][] = [];
       for (let i = 0; i < 10; i++) {
         const a = (Math.PI / 5) * i - Math.PI / 2;
-        const rad = i % 2 === 0 ? size / 2 : (size / 2) * 0.4;
-        points.push([rad * Math.cos(a), rad * Math.sin(a)]);
+        const rad = i % 2 === 0 ? r : r * 0.4;
+        points.push([rad * Math.cos(a) * sx, rad * Math.sin(a) * sy]);
       }
       return { kind: 'polygon', points, ...opts };
     }
     case 'square':
     default:
-      return { kind: 'rect', width: size, height: size, ...opts };
+      return { kind: 'rect', width: size * sx, height: size * sy, ...opts };
   }
 }
 
@@ -135,6 +166,64 @@ export function pieceTypeToShapeDef(type: PieceType, size: number, color: string
   }
 }
 
+export function stretchShapeDef(shape: ShapeDef, stretchX = 1, stretchY = 1): ShapeDef {
+  const sx = Math.max(0.2, Math.abs(stretchX));
+  const sy = Math.max(0.2, Math.abs(stretchY));
+
+  if (shape.kind === 'rect') {
+    return {
+      ...shape,
+      width: (shape.width ?? 40) * sx,
+      height: (shape.height ?? 40) * sy,
+    };
+  }
+
+  if (shape.kind === 'circle') {
+    const r = shape.radius ?? 20;
+    const points: [number, number][] = [];
+    const segments = 20;
+    for (let i = 0; i < segments; i++) {
+      const a = (Math.PI * 2 * i) / segments;
+      points.push([Math.cos(a) * r * sx, Math.sin(a) * r * sy]);
+    }
+    return {
+      kind: 'polygon',
+      points,
+      fillColor: shape.fillColor,
+      strokeColor: shape.strokeColor,
+      strokeWidth: shape.strokeWidth,
+      glowColor: shape.glowColor,
+      glowRadius: shape.glowRadius,
+      alpha: shape.alpha,
+    };
+  }
+
+  if (shape.kind === 'polygon') {
+    if (shape.points && shape.points.length > 0) {
+      return {
+        ...shape,
+        points: shape.points.map(([x, y]) => [x * sx, y * sy]),
+      };
+    }
+
+    const sides = shape.sides ?? 6;
+    const r = shape.radius ?? 20;
+    const points: [number, number][] = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (Math.PI * 2 * i) / sides - Math.PI / 2;
+      points.push([Math.cos(a) * r * sx, Math.sin(a) * r * sy]);
+    }
+    return {
+      ...shape,
+      points,
+      sides: undefined,
+      radius: undefined,
+    };
+  }
+
+  return shape;
+}
+
 export function buildBehaviorDefsForPlacedEvent(
   eventType: LevelEventType,
   behavior: LevelEvent['behavior'] | undefined,
@@ -151,7 +240,7 @@ export function buildBehaviorDefsForPlacedEvent(
   }
 
   if (eventType === 'pulse') {
-    defs.push({ kind: 'pulse', minScale: 0.75, maxScale: 1.25, period: 0.7 });
+    defs.push({ kind: 'pulse', minScale: 0.75, maxScale: 1.25, beatRate: 1.0 });
   }
 
   if (eventType === 'boss_move') {
@@ -188,11 +277,10 @@ export function buildBehaviorDefsForPlacedEvent(
     case 'bomb':
       defs.push({
         kind: 'bomb',
-        growthDuration: bombSettings?.growthDuration ?? 2.0,
+        growthBeats: bombSettings?.growthBeats ?? 4,
         initialScale: 0.1,
         maxScale: 1.5,
         particleCount: bombSettings?.particleCount ?? 12,
-        particleSpeed: bombSettings?.particleSpeed ?? 300,
       });
       break;
     case 'custom':

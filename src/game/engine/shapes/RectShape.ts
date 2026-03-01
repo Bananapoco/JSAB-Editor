@@ -9,6 +9,10 @@ export class RectShape extends PrimitiveShape {
         super(options);
     }
 
+    clone(): RectShape {
+        return new RectShape(this.width, this.height, { ...this.options });
+    }
+
     drawLocal(ctx: CanvasRenderingContext2D): void {
         const hw = this.width / 2;
         const hh = this.height / 2;

@@ -5,6 +5,7 @@ import {
   buildBehaviorDefsForPlacedEvent,
   pieceTypeToShapeDef,
   shapeTypeToShapeDef,
+  stretchShapeDef,
 } from './utils';
 
 export interface BuildModePayload {
@@ -38,7 +39,7 @@ export function createLevelPayload({
     metadata: { bossName, bpm, duration: audioDuration },
     theme: { enemyColor, backgroundColor: bgColor, playerColor },
     timeline: events
-      .map(({ id, shape, customShapeDef, bombSettings, behaviorSettings, customAnimation, ...rest }) => {
+      .map(({ id, shape, stretchX = 1, stretchY = 1, customShapeDef, bombSettings, behaviorSettings, customAnimation, ...rest }) => {
         if (rest.type === 'screen_shake') return rest;
 
         const size = rest.size ?? 40;
@@ -53,11 +54,17 @@ export function createLevelPayload({
         );
 
         if (customShapeDef) {
+          const sx = Math.max(0.2, Math.abs(stretchX));
+          const sy = Math.max(0.2, Math.abs(stretchY));
           const children: ChildDef[] = customShapeDef.pieces.map(piece => ({
-            offsetX: piece.x,
-            offsetY: piece.y,
+            offsetX: piece.x * sx,
+            offsetY: piece.y * sy,
             localRotation: piece.rotation,
-            shape: pieceTypeToShapeDef(piece.type, piece.size, piece.color || enemyColor),
+            shape: stretchShapeDef(
+              pieceTypeToShapeDef(piece.type, piece.size, piece.color || enemyColor),
+              sx,
+              sy,
+            ),
           }));
 
           const objectDef: ObjectDef = {
@@ -66,7 +73,7 @@ export function createLevelPayload({
             rotation: rest.rotation,
             children,
             spawnTime: rest.timestamp,
-            colliderRadius: customShapeDef.colliderRadius,
+            colliderRadius: customShapeDef.colliderRadius * Math.max(sx, sy),
             behaviors,
           };
 
@@ -81,7 +88,7 @@ export function createLevelPayload({
           x: rest.x,
           y: rest.y,
           rotation: rest.rotation,
-          shape: shapeTypeToShapeDef(shape ?? fallbackShape, size, enemyColor),
+          shape: shapeTypeToShapeDef(shape ?? fallbackShape, size, enemyColor, stretchX, stretchY),
           spawnTime: rest.timestamp,
           behaviors,
         };

@@ -43,6 +43,11 @@ export class CompositeObject extends GameObject {
         return this;
     }
 
+    /** Return a read-only view of the shape entries (for cloning). */
+    getShapeEntries(): ReadonlyArray<ShapeEntry> {
+        return this.shapes;
+    }
+
     draw(ctx: CanvasRenderingContext2D): void {
         if (!this.active) return;
 

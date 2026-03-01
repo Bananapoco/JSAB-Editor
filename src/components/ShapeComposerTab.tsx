@@ -46,9 +46,11 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
 
   const dragRef = useRef<{ pieceId: number; lastX: number; lastY: number } | null>(null);
   const rotDragRef = useRef<{ pieceId: number; startAngle: number; startRot: number } | null>(null);
+  type ResizeHandle = { sx: -1 | 0 | 1; sy: -1 | 0 | 1 };
+
   const resizeDragRef = useRef<{
     pieceId: number;
-    corner: { sx: -1 | 1; sy: -1 | 1 };
+    handle: ResizeHandle;
     startSize: number;
     startScaleX: number;
     startScaleY: number;
@@ -126,7 +128,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     return Math.sqrt((mx - hx) ** 2 + (my - hy) ** 2) <= 10;
   };
 
-  const getCornerHandleAt = (mx: number, my: number): { sx: -1 | 1; sy: -1 | 1 } | null => {
+  const getResizeHandleAt = (mx: number, my: number): ResizeHandle | null => {
     if (selectedId === null) return null;
     const piece = piecesRef.current.find(p => p.id === selectedId);
     if (!piece) return null;
@@ -139,43 +141,57 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     const c = Math.cos(rot);
     const s = Math.sin(rot);
 
-    for (const sx of [-1, 1] as const) {
-      for (const sy of [-1, 1] as const) {
-        const lx = sx * (r + pad) * sxScale;
-        const ly = sy * (r + pad) * syScale;
-        const hx = CX + piece.x + lx * c - ly * s;
-        const hy = CY + piece.y + lx * s + ly * c;
-        if (Math.hypot(mx - hx, my - hy) <= 10) {
-          return { sx, sy };
-        }
+    const handles: ResizeHandle[] = [
+      { sx: -1, sy: -1 },
+      { sx: 0, sy: -1 },
+      { sx: 1, sy: -1 },
+      { sx: -1, sy: 0 },
+      { sx: 1, sy: 0 },
+      { sx: -1, sy: 1 },
+      { sx: 0, sy: 1 },
+      { sx: 1, sy: 1 },
+    ];
+
+    for (const handle of handles) {
+      const lx = handle.sx * (r + pad) * sxScale;
+      const ly = handle.sy * (r + pad) * syScale;
+      const hx = CX + piece.x + lx * c - ly * s;
+      const hy = CY + piece.y + lx * s + ly * c;
+      const hitRadius = (handle.sx !== 0 && handle.sy !== 0) ? 10 : 9;
+      if (Math.hypot(mx - hx, my - hy) <= hitRadius) {
+        return handle;
       }
     }
 
     return null;
   };
 
-  const getResizeCursorForCorner = (corner: { sx: -1 | 1; sy: -1 | 1 }): string => (
-    corner.sx === corner.sy ? 'nwse-resize' : 'nesw-resize'
-  );
+  const getResizeCursorForHandle = (handle: ResizeHandle): string => {
+    if (handle.sx !== 0 && handle.sy !== 0) {
+      return handle.sx === handle.sy ? 'nwse-resize' : 'nesw-resize';
+    }
+    if (handle.sx === 0) return 'ns-resize';
+    return 'ew-resize';
+  };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasXY(e);
     if (!coords) return;
     const { mx, my } = coords;
 
-    const corner = getCornerHandleAt(mx, my);
-    if (corner && selectedId !== null) {
+    const handle = getResizeHandleAt(mx, my);
+    if (handle && selectedId !== null) {
       const piece = piecesRef.current.find(p => p.id === selectedId);
       if (!piece) return;
 
       resizeDragRef.current = {
         pieceId: piece.id,
-        corner,
+        handle,
         startSize: piece.size,
         startScaleX: piece.scaleX ?? 1,
         startScaleY: piece.scaleY ?? 1,
       };
-      setCanvasCursor(getResizeCursorForCorner(corner));
+      setCanvasCursor(getResizeCursorForHandle(handle));
       return;
     }
 
@@ -229,9 +245,9 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     if (!coords) return;
     const { mx, my } = coords;
 
-    const corner = getCornerHandleAt(mx, my);
-    if (corner) {
-      setCanvasCursor(getResizeCursorForCorner(corner));
+    const handle = getResizeHandleAt(mx, my);
+    if (handle) {
+      setCanvasCursor(getResizeCursorForHandle(handle));
       return;
     }
 
@@ -256,11 +272,11 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       const { mx, my } = coords;
 
       if (resizeDragRef.current) {
-        const { pieceId, corner, startScaleX, startScaleY } = resizeDragRef.current;
+        const { pieceId, handle, startScaleX, startScaleY, startSize } = resizeDragRef.current;
         const piece = piecesRef.current.find(p => p.id === pieceId);
         if (!piece) return;
 
-        setCanvasCursor(getResizeCursorForCorner(corner));
+        setCanvasCursor(getResizeCursorForHandle(handle));
 
         const dx = mx - (CX + piece.x);
         const dy = my - (CY + piece.y);
@@ -271,38 +287,42 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
         const localY = dx * s + dy * c;
         const pad = 8;
 
-        if (e.shiftKey) {
+        const baseHalf = Math.max(7, startSize / 2);
+        const baseScaleX = Math.max(0.2, Math.abs(startScaleX));
+        const baseScaleY = Math.max(0.2, Math.abs(startScaleY));
+
+        if (handle.sx !== 0 && handle.sy !== 0) {
+          // Corner handles resize uniformly.
+          const currentHalfX = Math.max(7, baseHalf * baseScaleX);
+          const currentHalfY = Math.max(7, baseHalf * baseScaleY);
           const targetHalfX = Math.max(7, Math.abs(localX) - pad);
           const targetHalfY = Math.max(7, Math.abs(localY) - pad);
-          const startHalfX = Math.max(7, (piece.size / 2) * Math.abs(startScaleX));
-          const startHalfY = Math.max(7, (piece.size / 2) * Math.abs(startScaleY));
-          const factor = Math.max(targetHalfX / startHalfX, targetHalfY / startHalfY);
-          const nextScaleX = Math.max(0.2, Math.min(4, Math.abs(startScaleX) * factor));
-          const nextScaleY = Math.max(0.2, Math.min(4, Math.abs(startScaleY) * factor));
-
-          setPieces(prev => prev.map(p => (
-            p.id === pieceId ? { ...p, scaleX: nextScaleX, scaleY: nextScaleY } : p
-          )));
-        } else if (e.altKey) {
-          const baseR = Math.max(7, (piece.size / 2));
-          const targetHalfX = Math.max(7, Math.abs(localX) - pad);
-          const targetHalfY = Math.max(7, Math.abs(localY) - pad);
-          const nextScaleX = Math.max(0.2, Math.min(4, targetHalfX / baseR));
-          const nextScaleY = Math.max(0.2, Math.min(4, targetHalfY / baseR));
-
-          setPieces(prev => prev.map(p => (
-            p.id === pieceId ? { ...p, scaleX: nextScaleX, scaleY: nextScaleY } : p
-          )));
-        } else {
-          const scaleX = Math.max(0.2, Math.abs(piece.scaleX ?? 1));
-          const scaleY = Math.max(0.2, Math.abs(piece.scaleY ?? 1));
-          const normalizedHalfX = Math.abs(localX) / scaleX;
-          const normalizedHalfY = Math.abs(localY) / scaleY;
-          const targetHalf = Math.max(7, Math.max(normalizedHalfX, normalizedHalfY) - pad);
-          const nextSize = Math.max(14, Math.min(260, targetHalf * 2));
+          const factor = Math.max(targetHalfX / currentHalfX, targetHalfY / currentHalfY);
+          const nextSize = Math.max(14, Math.min(260, startSize * factor));
 
           setPieces(prev => prev.map(p => (
             p.id === pieceId ? { ...p, size: nextSize } : p
+          )));
+          return;
+        }
+
+        // Edge handles stretch on one axis only.
+        if (handle.sx !== 0) {
+          const targetHalfX = Math.max(7, Math.abs(localX) - pad);
+          const nextScaleX = Math.max(0.2, Math.min(4, targetHalfX / baseHalf));
+
+          setPieces(prev => prev.map(p => (
+            p.id === pieceId ? { ...p, scaleX: nextScaleX } : p
+          )));
+          return;
+        }
+
+        if (handle.sy !== 0) {
+          const targetHalfY = Math.max(7, Math.abs(localY) - pad);
+          const nextScaleY = Math.max(0.2, Math.min(4, targetHalfY / baseHalf));
+
+          setPieces(prev => prev.map(p => (
+            p.id === pieceId ? { ...p, scaleY: nextScaleY } : p
           )));
         }
 
@@ -523,7 +543,7 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
         <p className="text-[10px] text-[#2a2a40] text-center leading-relaxed">
           Click a shape type on the left → click the canvas to place it
           <br />
-          Drag pieces to reposition · Corner drag = resize · Alt+drag = squish · Shift+drag = proportional
+          Drag pieces to reposition · Corner drag = resize · Side drag = stretch axis
           <br />
           Press Delete to remove selected · Esc to deselect
         </p>

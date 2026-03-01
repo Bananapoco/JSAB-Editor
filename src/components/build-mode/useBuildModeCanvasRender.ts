@@ -1,6 +1,14 @@
 import { RefObject, useEffect } from 'react';
 import { CANVAS_H, CANVAS_W, SCALE, TOOLS } from './constants';
-import { BehaviorType, CustomAnimationData, HoverPos, PlacedEvent, SelectionRect, ShapeType, Tool } from './types';
+import {
+  BehaviorType,
+  CustomAnimationData,
+  HoverPos,
+  PlacedEvent,
+  SelectionRect,
+  ShapeType,
+  Tool,
+} from './types';
 import { CustomShapeDef } from '../shape-composer/types';
 import { drawCompositeShape, drawShape, shiftColor } from './utils';
 
@@ -74,6 +82,8 @@ export function useBuildModeCanvasRender({
       const cx = event.x * SCALE;
       const cy = event.y * SCALE;
       const size = (event.size ?? 40) * SCALE;
+      const stretchX = Math.max(0.2, Math.abs(event.stretchX ?? 1));
+      const stretchY = Math.max(0.2, Math.abs(event.stretchY ?? 1));
       const isSelected = selectedIds.includes(event.id) || event.id === selectedId;
       const color = enemyColor;
       const shape = event.shape || 'square';
@@ -82,6 +92,7 @@ export function useBuildModeCanvasRender({
       ctx.globalAlpha = 1;
       ctx.translate(cx, cy);
       ctx.rotate(((event.rotation ?? 0) * Math.PI) / 180);
+      ctx.scale(stretchX, stretchY);
 
       if (event.customShapeDef) {
         drawCompositeShape(ctx, event.customShapeDef, SCALE, isSelected, enemyColor);
@@ -95,9 +106,9 @@ export function useBuildModeCanvasRender({
         ctx.fillStyle = '#FFF';
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.textAlign = 'center';
-        const labelRadius = event.customShapeDef
-          ? event.customShapeDef.colliderRadius * SCALE
-          : size / 2;
+        const labelRadius =
+          (event.customShapeDef ? event.customShapeDef.colliderRadius * SCALE : size / 2) *
+          Math.max(stretchX, stretchY);
         ctx.fillText(`${event.timestamp.toFixed(1)}s`, 0, -labelRadius - 8);
       }
 
@@ -105,15 +116,17 @@ export function useBuildModeCanvasRender({
     });
 
     if (!isPlacementMode) {
-      const ids = selectedIds.length > 0
-        ? selectedIds
-        : (selectedId !== null ? [selectedId] : []);
+      const ids = selectedIds.length > 0 ? selectedIds : selectedId !== null ? [selectedId] : [];
       if (ids.length === 1) {
         const selectedEvent = events.find(event => event.id === ids[0]);
         if (selectedEvent && !selectedEvent.customShapeDef) {
           const cx = selectedEvent.x * SCALE;
           const cy = selectedEvent.y * SCALE;
-          const half = ((selectedEvent.size ?? 40) * SCALE) / 2 + 8;
+          const baseHalf = ((selectedEvent.size ?? 40) * SCALE) / 2;
+          const stretchX = Math.max(0.2, Math.abs(selectedEvent.stretchX ?? 1));
+          const stretchY = Math.max(0.2, Math.abs(selectedEvent.stretchY ?? 1));
+          const halfX = baseHalf * stretchX + 8;
+          const halfY = baseHalf * stretchY + 8;
           const rot = ((selectedEvent.rotation ?? 0) * Math.PI) / 180;
           const c = Math.cos(rot);
           const s = Math.sin(rot);
@@ -124,7 +137,7 @@ export function useBuildModeCanvasRender({
           ctx.strokeStyle = 'rgba(255,255,255,0.55)';
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 3]);
-          ctx.strokeRect(-half, -half, half * 2, half * 2);
+          ctx.strokeRect(-halfX, -halfY, halfX * 2, halfY * 2);
           ctx.setLineDash([]);
           ctx.restore();
 
@@ -140,8 +153,8 @@ export function useBuildModeCanvasRender({
           ] as const;
 
           for (const [sx, sy] of handles) {
-            const lx = sx * half;
-            const ly = sy * half;
+            const lx = sx * halfX;
+            const ly = sy * halfY;
             const hx = cx + lx * c - ly * s;
             const hy = cy + lx * s + ly * c;
 
@@ -198,9 +211,10 @@ export function useBuildModeCanvasRender({
     // Draw custom animation path for selected event or active custom behavior
     {
       // Gather the animation data to draw: either from selected event or from active editing state
-      const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+      const ids = selectedIds.length > 0 ? selectedIds : selectedId !== null ? [selectedId] : [];
       const selectedEvt = ids.length === 1 ? events.find(ev => ev.id === ids[0]) : null;
-      const animData = selectedEvt?.customAnimation ?? (activeBehavior === 'custom' ? customAnimationData : null);
+      const animData =
+        selectedEvt?.customAnimation ?? (activeBehavior === 'custom' ? customAnimationData : null);
 
       if (animData && animData.keyframes.length > 0) {
         const kfs = animData.keyframes;
@@ -213,8 +227,10 @@ export function useBuildModeCanvasRender({
           const a = kfs[i];
           const b = kfs[i + 1];
           const handle = handles[i];
-          const ax = a.x * SCALE, ay = a.y * SCALE;
-          const bx = b.x * SCALE, by = b.y * SCALE;
+          const ax = a.x * SCALE;
+          const ay = a.y * SCALE;
+          const bx = b.x * SCALE;
+          const by = b.y * SCALE;
 
           ctx.beginPath();
           ctx.strokeStyle = handle?.enabled ? '#00FFFF' : 'rgba(255,255,255,0.3)';
@@ -256,7 +272,10 @@ export function useBuildModeCanvasRender({
             ctx.stroke();
 
             // Control point dots
-            for (const [cpx, cpy] of [[cp1x, cp1y], [cp2x, cp2y]]) {
+            for (const [cpx, cpy] of [
+              [cp1x, cp1y],
+              [cp2x, cp2y],
+            ]) {
               ctx.beginPath();
               ctx.fillStyle = '#00FFFF';
               ctx.arc(cpx, cpy, 4, 0, Math.PI * 2);
