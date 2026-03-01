@@ -63,6 +63,10 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const [bombGrowthBeats, setBombGrowthBeats] = useState(4);
   const [bombParticleCount, setBombParticleCount] = useState(12);
 
+  const [pulseBeatRate, setPulseBeatRate] = useState(1.0);
+  const [pulseMinScale, setPulseMinScale] = useState(0.75);
+  const [pulseMaxScale, setPulseMaxScale] = useState(1.25);
+
   const [homingSpeed, setHomingSpeed] = useState(110);  // px/beat
   const [spinSpeed, setSpinSpeed] = useState(Math.PI);
   const [bounceSpeed, setBounceSpeed] = useState(100); // px/beat
@@ -157,6 +161,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   bombGrowthBeatsRef.current = bombGrowthBeats;
   const bombParticleCountRef = useRef(bombParticleCount);
   bombParticleCountRef.current = bombParticleCount;
+
+  const pulseBeatRateRef = useRef(pulseBeatRate);
+  pulseBeatRateRef.current = pulseBeatRate;
+  const pulseMinScaleRef = useRef(pulseMinScale);
+  pulseMinScaleRef.current = pulseMinScale;
+  const pulseMaxScaleRef = useRef(pulseMaxScale);
+  pulseMaxScaleRef.current = pulseMaxScale;
 
   const homingSpeedRef = useRef(homingSpeed);
   homingSpeedRef.current = homingSpeed;
@@ -365,6 +376,9 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     customShapesRef,
     bombGrowthBeatsRef,
     bombParticleCountRef,
+    pulseBeatRateRef,
+    pulseMinScaleRef,
+    pulseMaxScaleRef,
     homingSpeedRef,
     spinSpeedRef,
     bounceSpeedRef,
@@ -475,6 +489,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     selectedId,
     selectedIds,
     currentTime,
+    bpm,
     hoverPos,
     selectionRect,
     activeTool,
@@ -605,6 +620,30 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       };
     }));
   }, [selectedId, selectedIds, setEventsTracked, bombGrowthBeats, bombParticleCount]);
+
+  const updateSelectedPulseSettings = useCallback((updates: {
+    beatRate?: number;
+    minScale?: number;
+    maxScale?: number;
+  }) => {
+    const ids = selectedIds.length > 0
+      ? selectedIds
+      : (selectedId !== null ? [selectedId] : []);
+    if (ids.length === 0) return;
+
+    setEventsTracked(prev => prev.map(event => {
+      if (!ids.includes(event.id)) return event;
+      return {
+        ...event,
+        pulseSettings: {
+          beatRate: event.pulseSettings?.beatRate ?? pulseBeatRate,
+          minScale: event.pulseSettings?.minScale ?? pulseMinScale,
+          maxScale: event.pulseSettings?.maxScale ?? pulseMaxScale,
+          ...updates,
+        },
+      };
+    }));
+  }, [selectedId, selectedIds, setEventsTracked, pulseBeatRate, pulseMinScale, pulseMaxScale]);
 
   useEffect(() => {
     if (!audioFile && savedAudio?.dataUrl) {
@@ -799,7 +838,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                   setEventsTracked(prev => prev.map(event => {
                     if (!ids.includes(event.id)) return event;
                     const filteredMods = (event.behaviorModifiers ?? []).filter(m => !incompatible.includes(m));
-                    return { ...event, behavior, behaviorModifiers: filteredMods };
+                    return { ...event, behavior: behavior as any, behaviorModifiers: filteredMods };
                   }));
                 }
 
@@ -822,6 +861,22 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 bombParticleCountRef.current = value;
                 setBombParticleCount(value);
               }}
+              pulseBeatRate={pulseBeatRate}
+              pulseMinScale={pulseMinScale}
+              pulseMaxScale={pulseMaxScale}
+              onPulseBeatRateChange={value => {
+                pulseBeatRateRef.current = value;
+                setPulseBeatRate(value);
+              }}
+              onPulseMinScaleChange={value => {
+                pulseMinScaleRef.current = value;
+                setPulseMinScale(value);
+              }}
+              onPulseMaxScaleChange={value => {
+                pulseMaxScaleRef.current = value;
+                setPulseMaxScale(value);
+              }}
+              onUpdateSelectedPulseSettings={updateSelectedPulseSettings}
               homingSpeed={homingSpeed}
               onHomingSpeedChange={value => {
                 homingSpeedRef.current = value;
@@ -868,22 +923,55 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               }}
               onUpdateSelectedSize={value => updateSelectedEvents({ size: value })}
               onUpdateSelectedDuration={value => updateSelectedEvents({ duration: value })}
-              activeShape={activeShape}
-              activeCustomShapeId={activeCustomShapeId}
+              activeShape={
+                selectedEvent?.shape && (selectedIds.length > 0 || selectedId !== null)
+                  ? selectedEvent.shape
+                  : activeShape
+              }
+              activeCustomShapeId={
+                selectedEvent && (selectedIds.length > 0 || selectedId !== null)
+                  ? (selectedEvent.customShapeDef?.id ?? null)
+                  : activeCustomShapeId
+              }
               customShapes={customShapes}
               onSelectShape={shape => {
+                // If events are selected, mutate their shape
+                const hasSelection = selectedIds.length > 0 || selectedId !== null;
+                if (hasSelection) {
+                  const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+                  setEventsTracked(prev => prev.map(event =>
+                    ids.includes(event.id)
+                      ? { ...event, shape, customShapeDef: undefined }
+                      : event
+                  ));
+                }
+                // Always update placement state
                 activeShapeRef.current = shape;
                 setActiveShape(shape);
                 setActiveCustomShapeId(null);
                 activeCustomShapeIdRef.current = null;
-                setIsPlacementMode(true);
-                isPlacementModeRef.current = true;
+                if (!hasSelection) {
+                  setIsPlacementMode(true);
+                  isPlacementModeRef.current = true;
+                }
               }}
               onSelectCustomShape={id => {
+                const hasSelection = selectedIds.length > 0 || selectedId !== null;
+                const shapeDef = customShapes.find(s => s.id === id);
+                if (hasSelection && shapeDef) {
+                  const ids = selectedIds.length > 0 ? selectedIds : (selectedId !== null ? [selectedId] : []);
+                  setEventsTracked(prev => prev.map(event =>
+                    ids.includes(event.id)
+                      ? { ...event, shape: undefined, customShapeDef: shapeDef }
+                      : event
+                  ));
+                }
                 setActiveCustomShapeId(id);
                 activeCustomShapeIdRef.current = id;
-                setIsPlacementMode(true);
-                isPlacementModeRef.current = true;
+                if (!hasSelection) {
+                  setIsPlacementMode(true);
+                  isPlacementModeRef.current = true;
+                }
               }}
               onOpenComposer={() => setActivePanel('compose')}
               audioFile={audioFile}

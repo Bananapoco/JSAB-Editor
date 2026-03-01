@@ -68,15 +68,15 @@ export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = (
           <div
             className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
             style={{
-              backgroundColor: `${TOOLS[selectedEvent.type]?.color}22`,
-              color: TOOLS[selectedEvent.type]?.color,
+              backgroundColor: `${(TOOLS as any)[selectedEvent.type]?.color}22`,
+              color: (TOOLS as any)[selectedEvent.type]?.color,
             }}
           >
             {(() => {
-              const Icon = TOOLS[selectedEvent.type]?.icon || Square;
+              const Icon = (TOOLS as any)[selectedEvent.type]?.icon || Square;
               return <Icon size={16} />;
             })()}
-            {TOOLS[selectedEvent.type]?.label || selectedEvent.type}
+            {(TOOLS as any)[selectedEvent.type]?.label || selectedEvent.type}
           </div>
 
           <div>

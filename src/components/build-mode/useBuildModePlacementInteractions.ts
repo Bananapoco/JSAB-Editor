@@ -38,7 +38,10 @@ interface UseBuildModePlacementInteractionsParams {
   customShapesRef: MutableRefObject<CustomShapeDef[]>;
   bombGrowthBeatsRef: MutableRefObject<number>;
   bombParticleCountRef: MutableRefObject<number>;
-  
+  pulseBeatRateRef: MutableRefObject<number>;
+  pulseMinScaleRef: MutableRefObject<number>;
+  pulseMaxScaleRef: MutableRefObject<number>;
+
   homingSpeedRef: MutableRefObject<number>;
   spinSpeedRef: MutableRefObject<number>;
   bounceSpeedRef: MutableRefObject<number>;
@@ -94,6 +97,9 @@ export function useBuildModePlacementInteractions({
   customShapesRef,
   bombGrowthBeatsRef,
   bombParticleCountRef,
+  pulseBeatRateRef,
+  pulseMinScaleRef,
+  pulseMaxScaleRef,
   homingSpeedRef,
   spinSpeedRef,
   bounceSpeedRef,
@@ -277,6 +283,7 @@ export function useBuildModePlacementInteractions({
       }
 
       const hasBombModifier = activeModifiersRef.current.includes('bomb');
+      const hasPulseModifier = activeModifiersRef.current.includes('pulse');
 
       const newEvent: PlacedEvent = {
         id,
@@ -285,7 +292,7 @@ export function useBuildModePlacementInteractions({
         x: Math.min(Math.max(Math.round(pos.gx), 0), GAME_W),
         y: Math.min(Math.max(Math.round(pos.gy), 0), GAME_H),
         size: activeSizeRef.current,
-        behavior: activeBehaviorRef.current,
+        behavior: activeBehaviorRef.current as any,
         behaviorModifiers: [...activeModifiersRef.current],
         duration: activeDurationRef.current,
         rotation: 0,
@@ -298,6 +305,15 @@ export function useBuildModePlacementInteractions({
               bombSettings: {
                 growthBeats: bombGrowthBeatsRef.current,
                 particleCount: bombParticleCountRef.current,
+              },
+            }
+          : {}),
+        ...(hasPulseModifier
+          ? {
+              pulseSettings: {
+                beatRate: pulseBeatRateRef.current,
+                minScale: pulseMinScaleRef.current,
+                maxScale: pulseMaxScaleRef.current,
               },
             }
           : {}),
@@ -619,7 +635,7 @@ export function useBuildModePlacementInteractions({
       x: Math.round(GAME_W / 2),
       y: Math.round(GAME_H / 2),
       size: activeSizeRef.current,
-      behavior: activeBehaviorRef.current,
+      behavior: activeBehaviorRef.current as any,
       behaviorModifiers: [...activeModifiersRef.current],
       duration: activeDurationRef.current,
       rotation: 0,

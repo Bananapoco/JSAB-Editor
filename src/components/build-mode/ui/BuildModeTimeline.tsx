@@ -99,7 +99,7 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
         const width = audioDuration > 0
           ? Math.max(0.5, ((event.duration ?? 1) / audioDuration) * 100)
           : 0.5;
-        const color = TOOLS[event.type]?.color ?? '#FF0099';
+        const color = (TOOLS as any)[event.type]?.color ?? '#FF0099';
         const isSelected = selectedIds.includes(event.id) || event.id === selectedId;
         const timeDiff = Math.abs(event.timestamp - currentTime);
         const isNearPlayhead = timeDiff < 0.5;

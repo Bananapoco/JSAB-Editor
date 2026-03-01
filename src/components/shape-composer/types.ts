@@ -12,6 +12,8 @@ export interface ComposerPiece {
   scaleY?: number;
   color: string;
   type: PieceType;
+  /** Opacity 0–100 (defaults to 100). Pieces below 100 have no hitbox. */
+  opacity?: number;
 }
 
 export interface CustomShapeDef {

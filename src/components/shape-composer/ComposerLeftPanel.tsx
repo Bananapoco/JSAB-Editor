@@ -8,6 +8,8 @@ import {
   Plus,
   MousePointer2,
   ChevronLeft,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { PIECE_TYPES } from './constants';
 import { ComposerPiece, PieceType } from './types';
@@ -113,6 +115,33 @@ export const ComposerLeftPanel: React.FC<ComposerLeftPanelProps> = ({
               className="w-8 h-8 rounded cursor-pointer border-2 border-[#252540]"
             />
             <span className="text-[11px] text-[#666]">Color</span>
+          </div>
+
+          {/* Opacity */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
+                <Eye size={9} /> Opacity
+              </span>
+              <span className="text-[10px] font-mono text-[#FF0099]">{selectedPiece.opacity ?? 100}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={selectedPiece.opacity ?? 100}
+              onChange={e => onUpdateSelected({ opacity: +e.target.value })}
+              className="w-full accent-[#FF0099] cursor-pointer"
+            />
+            {(selectedPiece.opacity ?? 100) < 100 && (
+              <div className="mt-1.5 flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-[#FF990011] border border-[#FF990033]">
+                <EyeOff size={10} className="text-[#FF9900] mt-px shrink-0" />
+                <span className="text-[9px] text-[#FF9900] leading-relaxed">
+                  No hitbox — transparent pieces are decorative only.
+                </span>
+              </div>
+            )}
           </div>
 
           <div>

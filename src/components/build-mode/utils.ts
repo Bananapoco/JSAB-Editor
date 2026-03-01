@@ -2,7 +2,7 @@ import { LevelEvent, LevelEventType } from '../../game/types';
 import type { ShapeDef, BehaviorDef } from '../../game/engine/ObjectFactory';
 import { drawPieceShape } from '../shape-composer/drawing';
 import { CustomShapeDef, PieceType } from '../shape-composer/types';
-import { BehaviorSettings, BombSettings, CustomAnimationData, ModifierBehavior, ShapeType } from './types';
+import { BehaviorSettings, BombSettings, CustomAnimationData, ModifierBehavior, PulseSettings, ShapeType } from './types';
 
 export function drawShape(
   ctx: CanvasRenderingContext2D,
@@ -242,6 +242,7 @@ export function buildBehaviorDefsForPlacedEvent(
   behaviorSettings?: BehaviorSettings,
   customAnimation?: CustomAnimationData,
   behaviorModifiers?: ModifierBehavior[],
+  pulseSettings?: PulseSettings,
 ): BehaviorDef[] {
   const defs: BehaviorDef[] = [];
 
@@ -255,6 +256,7 @@ export function buildBehaviorDefsForPlacedEvent(
     defs.push({ kind: 'dieAfter', lifetime: duration });
   }
 
+  // Backward compatibility: legacy pulse-type events still get the pulse behavior.
   if (eventType === 'pulse') {
     defs.push({ kind: 'pulse', minScale: 0.75, maxScale: 1.25, beatRate: 1.0 });
   }
@@ -336,6 +338,14 @@ export function buildBehaviorDefsForPlacedEvent(
         particleCount: bombSettings?.particleCount ?? 12,
       });
     }
+    if (behaviorModifiers.includes('pulse')) {
+      defs.push({
+        kind: 'pulse',
+        minScale: pulseSettings?.minScale ?? 0.75,
+        maxScale: pulseSettings?.maxScale ?? 1.25,
+        beatRate: pulseSettings?.beatRate ?? 1.0,
+      });
+    }
   }
 
   return defs;
@@ -351,8 +361,10 @@ export function drawCompositeShape(
   for (const piece of def.pieces) {
     const col = piece.color || fallbackColor;
     const r = (piece.size / 2) * scale;
+    const opacity = (piece.opacity ?? 100) / 100;
 
     ctx.save();
+    ctx.globalAlpha = opacity;
     ctx.translate(piece.x * scale, piece.y * scale);
     ctx.rotate((piece.rotation * Math.PI) / 180);
     ctx.fillStyle = col;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Activity,
   Bomb,
   Layers,
   Maximize2,
@@ -36,6 +37,13 @@ interface BuildModeLeftPanelProps {
   bombParticleCount: number;
   onBombGrowthBeatsChange: (value: number) => void;
   onBombParticleCountChange: (value: number) => void;
+  pulseBeatRate: number;
+  pulseMinScale: number;
+  pulseMaxScale: number;
+  onPulseBeatRateChange: (value: number) => void;
+  onPulseMinScaleChange: (value: number) => void;
+  onPulseMaxScaleChange: (value: number) => void;
+  onUpdateSelectedPulseSettings: (updates: { beatRate?: number; minScale?: number; maxScale?: number }) => void;
   homingSpeed: number;
   onHomingSpeedChange: (value: number) => void;
   spinSpeed: number;
@@ -130,6 +138,13 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   bombParticleCount,
   onBombGrowthBeatsChange,
   onBombParticleCountChange,
+  pulseBeatRate,
+  pulseMinScale,
+  pulseMaxScale,
+  onPulseBeatRateChange,
+  onPulseMinScaleChange,
+  onPulseMaxScaleChange,
+  onUpdateSelectedPulseSettings,
   homingSpeed,
   onHomingSpeedChange,
   spinSpeed,
@@ -210,6 +225,11 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   const sweepAngleValue   = isEditingSelection ? (selectedBehaviorSettings?.sweepAngle ?? sweepAngle) : sweepAngle;
   const bombGrowthBeatsValue   = isEditingSelection ? (selectedBombSettings?.growthBeats ?? bombGrowthBeats) : bombGrowthBeats;
   const bombParticleCountValue = isEditingSelection ? (selectedBombSettings?.particleCount ?? bombParticleCount) : bombParticleCount;
+
+  const selectedPulseSettings = selectedEvent?.pulseSettings;
+  const pulseBeatRateValue = isEditingSelection ? (selectedPulseSettings?.beatRate ?? pulseBeatRate) : pulseBeatRate;
+  const pulseMinScaleValue  = isEditingSelection ? (selectedPulseSettings?.minScale ?? pulseMinScale) : pulseMinScale;
+  const pulseMaxScaleValue  = isEditingSelection ? (selectedPulseSettings?.maxScale ?? pulseMaxScale) : pulseMaxScale;
 
   const toolForSettings = isEditingSelection ? selectedEvent.type : activeTool;
   const isBehaviorTool = toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle';
@@ -587,6 +607,81 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                       else onBombParticleCountChange(value);
                     }}
                     className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
+
+            {modifiersForSettings.includes('pulse') && isBehaviorTool && (
+              <>
+                <div className="w-full h-px bg-[#00FF8833]" />
+                <div className="text-[10px] uppercase tracking-widest text-[#00FF88] font-bold mb-2 flex items-center gap-1">
+                  <Activity size={10} /> Pulse Settings
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Beat Rate</span>
+                    <span className="text-xs font-mono text-[#00FF88]">
+                      {pulseBeatRateValue === 0.25 ? '÷4' : pulseBeatRateValue === 0.5 ? '÷2' : pulseBeatRateValue === 1 ? '×1' : pulseBeatRateValue === 2 ? '×2' : `×${pulseBeatRateValue}`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.25"
+                    max="4"
+                    step="0.25"
+                    value={pulseBeatRateValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedPulseSettings({ beatRate: value });
+                      else onPulseBeatRateChange(value);
+                    }}
+                    className="w-full accent-[#00FF88] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-[#555] mt-1">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Min Scale</span>
+                    <span className="text-xs font-mono text-[#00FF88]">{pulseMinScaleValue.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="0.99"
+                    step="0.05"
+                    value={pulseMinScaleValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedPulseSettings({ minScale: value });
+                      else onPulseMinScaleChange(value);
+                    }}
+                    className="w-full accent-[#00FF88] cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Max Scale</span>
+                    <span className="text-xs font-mono text-[#00FF88]">{pulseMaxScaleValue.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1.01"
+                    max="3.0"
+                    step="0.05"
+                    value={pulseMaxScaleValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedPulseSettings({ maxScale: value });
+                      else onPulseMaxScaleChange(value);
+                    }}
+                    className="w-full accent-[#00FF88] cursor-pointer"
                   />
                 </div>
               </>

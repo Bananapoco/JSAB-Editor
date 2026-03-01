@@ -60,7 +60,9 @@ export function drawPieceOnComposer(
   const r = piece.size / 2;
   const scaleX = piece.scaleX ?? 1;
   const scaleY = piece.scaleY ?? 1;
+  const opacity = (piece.opacity ?? 100) / 100;
   ctx.save();
+  ctx.globalAlpha = opacity;
   ctx.translate(CX + piece.x, CY + piece.y);
   ctx.rotate((piece.rotation * Math.PI) / 180);
   ctx.scale(scaleX, scaleY);
@@ -143,6 +145,8 @@ export function hitTestPiece(piece: ComposerPiece, mx: number, my: number): bool
 export function computeColliderRadius(pieces: ComposerPiece[]): number {
   let maxRadius = 0;
   for (const p of pieces) {
+    // Pieces with any transparency are purely decorative — no hitbox contribution
+    if ((p.opacity ?? 100) < 100) continue;
     const scaleMax = Math.max(Math.abs(p.scaleX ?? 1), Math.abs(p.scaleY ?? 1));
     const distance = Math.sqrt(p.x * p.x + p.y * p.y) + (p.size / 2) * scaleMax;
     if (distance > maxRadius) maxRadius = distance;
@@ -189,6 +193,7 @@ export function generateThumbnail(pieces: ComposerPiece[]): string {
   for (const p of pieces) {
     const r = (p.size / 2) * scale;
     tx.save();
+    tx.globalAlpha = (p.opacity ?? 100) / 100;
     tx.translate(offsetX + p.x * scale, offsetY + p.y * scale);
     tx.rotate((p.rotation * Math.PI) / 180);
     tx.scale(p.scaleX ?? 1, p.scaleY ?? 1);

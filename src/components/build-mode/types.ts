@@ -1,16 +1,16 @@
 import { LevelEvent } from '../../game/types';
 import { CustomShapeDef } from '../shape-composer/types';
 
-export type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'pulse' | 'boss_move';
+export type Tool = 'projectile_throw' | 'spawn_obstacle' | 'screen_shake' | 'boss_move';
 
 /** Primary movement behaviors – mutually exclusive (only one controls position at a time). */
 export type MovementBehavior = 'static' | 'bouncing' | 'sweep' | 'homing' | 'custom';
 
 /**
  * Modifier behaviors – stackable on top of any compatible movement.
- * Conflicts: 'custom' movement disables both modifiers (custom controls rotation + scale itself).
+ * Conflicts: 'custom' movement disables all modifiers that control scale/rotation.
  */
-export type ModifierBehavior = 'spinning' | 'bomb';
+export type ModifierBehavior = 'spinning' | 'bomb' | 'pulse';
 
 /** Union of all behavior kinds (kept for legacy compatibility). */
 export type BehaviorType = MovementBehavior | ModifierBehavior;
@@ -23,6 +23,15 @@ export interface BombSettings {
   /** How many beats the bomb grows before exploding */
   growthBeats: number;
   particleCount: number;
+}
+
+export interface PulseSettings {
+  /** How often the pulse fires relative to a beat (1 = every beat, 0.5 = every 2 beats, 2 = twice per beat). */
+  beatRate: number;
+  /** Minimum scale at the trough of the pulse. */
+  minScale: number;
+  /** Maximum scale at the peak (on the beat). */
+  maxScale: number;
 }
 
 export interface BehaviorSettings {
@@ -107,6 +116,7 @@ export interface PlacedEvent extends LevelEvent {
   stretchY?: number;
   customShapeDef?: CustomShapeDef;
   bombSettings?: BombSettings;
+  pulseSettings?: PulseSettings;
   behaviorSettings?: BehaviorSettings;
   customAnimation?: CustomAnimationData;
   /**

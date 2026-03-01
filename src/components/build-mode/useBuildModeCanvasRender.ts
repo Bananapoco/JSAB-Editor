@@ -11,6 +11,7 @@ import {
 } from './types';
 import { CustomShapeDef } from '../shape-composer/types';
 import { drawCompositeShape, drawShape, shiftColor } from './utils';
+import { getInterpolatedState } from './interpolation';
 
 interface UseBuildModeCanvasRenderParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -18,6 +19,7 @@ interface UseBuildModeCanvasRenderParams {
   selectedId: number | null;
   selectedIds: number[];
   currentTime: number;
+  bpm: number;
   hoverPos: HoverPos | null;
   selectionRect: SelectionRect | null;
   activeTool: Tool;
@@ -40,6 +42,7 @@ export function useBuildModeCanvasRender({
   selectedId,
   selectedIds,
   currentTime,
+  bpm,
   hoverPos,
   selectionRect,
   activeTool,
@@ -79,8 +82,12 @@ export function useBuildModeCanvasRender({
     }
 
     events.forEach(event => {
-      const cx = event.x * SCALE;
-      const cy = event.y * SCALE;
+      const state = getInterpolatedState(event, currentTime, bpm);
+
+      if (!state.visible) return;
+
+      const cx = state.x * SCALE;
+      const cy = state.y * SCALE;
       const size = (event.size ?? 40) * SCALE;
       const stretchX = Math.max(0.2, Math.abs(event.stretchX ?? 1));
       const stretchY = Math.max(0.2, Math.abs(event.stretchY ?? 1));
@@ -89,10 +96,10 @@ export function useBuildModeCanvasRender({
       const shape = event.shape || 'square';
 
       ctx.save();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = state.opacity;
       ctx.translate(cx, cy);
-      ctx.rotate(((event.rotation ?? 0) * Math.PI) / 180);
-      ctx.scale(stretchX, stretchY);
+      ctx.rotate((state.rotation * Math.PI) / 180);
+      ctx.scale(stretchX * state.scale, stretchY * state.scale);
 
       if (event.customShapeDef) {
         drawCompositeShape(ctx, event.customShapeDef, SCALE, isSelected, enemyColor);
@@ -101,14 +108,14 @@ export function useBuildModeCanvasRender({
       }
 
       if (isSelected) {
-        ctx.rotate(-((event.rotation ?? 0) * Math.PI) / 180);
+        ctx.rotate(-((state.rotation * Math.PI) / 180));
         ctx.globalAlpha = 1;
         ctx.fillStyle = '#FFF';
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.textAlign = 'center';
         const labelRadius =
           (event.customShapeDef ? event.customShapeDef.colliderRadius * SCALE : size / 2) *
-          Math.max(stretchX, stretchY);
+          Math.max(stretchX, stretchY) * state.scale;
         ctx.fillText(`${event.timestamp.toFixed(1)}s`, 0, -labelRadius - 8);
       }
 
@@ -120,53 +127,57 @@ export function useBuildModeCanvasRender({
       if (ids.length === 1) {
         const selectedEvent = events.find(event => event.id === ids[0]);
         if (selectedEvent && !selectedEvent.customShapeDef) {
-          const cx = selectedEvent.x * SCALE;
-          const cy = selectedEvent.y * SCALE;
-          const baseHalf = ((selectedEvent.size ?? 40) * SCALE) / 2;
-          const stretchX = Math.max(0.2, Math.abs(selectedEvent.stretchX ?? 1));
-          const stretchY = Math.max(0.2, Math.abs(selectedEvent.stretchY ?? 1));
-          const halfX = baseHalf * stretchX + 8;
-          const halfY = baseHalf * stretchY + 8;
-          const rot = ((selectedEvent.rotation ?? 0) * Math.PI) / 180;
-          const c = Math.cos(rot);
-          const s = Math.sin(rot);
-
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(rot);
-          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 3]);
-          ctx.strokeRect(-halfX, -halfY, halfX * 2, halfY * 2);
-          ctx.setLineDash([]);
-          ctx.restore();
-
-          const handles = [
-            [-1, -1],
-            [0, -1],
-            [1, -1],
-            [-1, 0],
-            [1, 0],
-            [-1, 1],
-            [0, 1],
-            [1, 1],
-          ] as const;
-
-          for (const [sx, sy] of handles) {
-            const lx = sx * halfX;
-            const ly = sy * halfY;
-            const hx = cx + lx * c - ly * s;
-            const hy = cy + lx * s + ly * c;
+          // Compute interpolated position for selection handles too
+          const state = getInterpolatedState(selectedEvent, currentTime, bpm);
+          if (state.visible) {
+            const cx = state.x * SCALE;
+            const cy = state.y * SCALE;
+            const baseHalf = ((selectedEvent.size ?? 40) * SCALE) / 2;
+            const stretchX = Math.max(0.2, Math.abs(selectedEvent.stretchX ?? 1));
+            const stretchY = Math.max(0.2, Math.abs(selectedEvent.stretchY ?? 1));
+            const halfX = baseHalf * stretchX * state.scale + 8;
+            const halfY = baseHalf * stretchY * state.scale + 8;
+            const rot = (state.rotation * Math.PI) / 180;
+            const c = Math.cos(rot);
+            const s = Math.sin(rot);
 
             ctx.save();
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeStyle = '#0a0a0f';
+            ctx.translate(cx, cy);
+            ctx.rotate(rot);
+            ctx.strokeStyle = 'rgba(255,255,255,0.55)';
             ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.rect(hx - 4, hy - 4, 8, 8);
-            ctx.fill();
-            ctx.stroke();
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(-halfX, -halfY, halfX * 2, halfY * 2);
+            ctx.setLineDash([]);
             ctx.restore();
+
+            const handles = [
+              [-1, -1],
+              [0, -1],
+              [1, -1],
+              [-1, 0],
+              [1, 0],
+              [-1, 1],
+              [0, 1],
+              [1, 1],
+            ] as const;
+
+            for (const [sx, sy] of handles) {
+              const lx = sx * halfX;
+              const ly = sy * halfY;
+              const hx = cx + lx * c - ly * s;
+              const hy = cy + lx * s + ly * c;
+
+              ctx.save();
+              ctx.fillStyle = '#ffffff';
+              ctx.strokeStyle = '#0a0a0f';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.rect(hx - 4, hy - 4, 8, 8);
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            }
           }
         }
       }
@@ -210,7 +221,6 @@ export function useBuildModeCanvasRender({
 
     // Draw custom animation path for selected event or active custom behavior
     {
-      // Gather the animation data to draw: either from selected event or from active editing state
       const ids = selectedIds.length > 0 ? selectedIds : selectedId !== null ? [selectedId] : [];
       const selectedEvt = ids.length === 1 ? events.find(ev => ev.id === ids[0]) : null;
       const animData =
@@ -222,7 +232,6 @@ export function useBuildModeCanvasRender({
 
         ctx.save();
 
-        // Draw segments between keyframes
         for (let i = 0; i < kfs.length - 1; i++) {
           const a = kfs[i];
           const b = kfs[i + 1];
@@ -254,14 +263,12 @@ export function useBuildModeCanvasRender({
           ctx.stroke();
           ctx.setLineDash([]);
 
-          // Draw control point handles if curve is enabled
           if (handle?.enabled) {
             const cp1x = ax + handle.cp1x * SCALE;
             const cp1y = ay + handle.cp1y * SCALE;
             const cp2x = bx + handle.cp2x * SCALE;
             const cp2y = by + handle.cp2y * SCALE;
 
-            // Lines from keyframe to control point
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0,255,255,0.3)';
             ctx.lineWidth = 1;
@@ -271,7 +278,6 @@ export function useBuildModeCanvasRender({
             ctx.lineTo(cp2x, cp2y);
             ctx.stroke();
 
-            // Control point dots
             for (const [cpx, cpy] of [
               [cp1x, cp1y],
               [cp2x, cp2y],
@@ -284,7 +290,6 @@ export function useBuildModeCanvasRender({
           }
         }
 
-        // Draw keyframe diamonds
         for (let i = 0; i < kfs.length; i++) {
           const kf = kfs[i];
           const kx = kf.x * SCALE;
@@ -305,7 +310,6 @@ export function useBuildModeCanvasRender({
           ctx.shadowBlur = 0;
           ctx.restore();
 
-          // Label
           ctx.save();
           ctx.fillStyle = isSelectedKf ? '#FF0099' : 'rgba(255,255,255,0.6)';
           ctx.font = 'bold 9px Inter, sans-serif';
@@ -333,6 +337,7 @@ export function useBuildModeCanvasRender({
     activeSize,
     activeTool,
     bgColor,
+    bpm,
     canvasRef,
     currentTime,
     customShapes,

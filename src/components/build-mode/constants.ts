@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Activity,
   ArrowRight,
   Bomb,
   Circle,
@@ -37,7 +38,6 @@ export const TOOLS: Record<Tool, { icon: React.FC<any>; color: string; label: st
   projectile_throw: { icon: Rocket, color: '#FF0099', label: 'Projectile' },
   spawn_obstacle: { icon: Square, color: '#FF6B00', label: 'Obstacle' },
   screen_shake: { icon: Zap, color: '#FFEE00', label: 'Shake' },
-  pulse: { icon: Target, color: '#00FF88', label: 'Pulse' },
   boss_move: { icon: Move, color: '#9966FF', label: 'Boss Move' },
 };
 
@@ -96,6 +96,13 @@ export const MODIFIER_BEHAVIORS: {
     icon: Bomb,
     label: 'Bomb',
     description: 'Grows then explodes into projectiles',
+    conflicts: ['custom'], // custom controls scale itself
+  },
+  {
+    type: 'pulse',
+    icon: Activity,
+    label: 'Pulse',
+    description: 'Scales in and out on the beat',
     conflicts: ['custom'], // custom controls scale itself
   },
 ];
