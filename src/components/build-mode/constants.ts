@@ -25,6 +25,7 @@ export const CANVAS_W = 640;
 export const CANVAS_H = Math.round((CANVAS_W * GAME_H) / GAME_W);
 export const SCALE = CANVAS_W / GAME_W;
 export const SELECTION_CLICK_DEADZONE_PX = 8;
+export const DEFAULT_ZOOM = 4;
 
 export const SNAP_INTERVALS: { value: SnapInterval; label: string; divisor: number }[] = [
   { value: '1/4', label: '1/4', divisor: 4 },

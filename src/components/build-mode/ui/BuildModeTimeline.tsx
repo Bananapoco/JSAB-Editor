@@ -1,8 +1,8 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SNAP_INTERVALS, TOOLS } from '../constants';
+import { DEFAULT_ZOOM, SNAP_INTERVALS, TOOLS } from '../constants';
 import { PlacedEvent, SnapInterval } from '../types';
-import { formatTime } from '../utils';
+import { formatTime, getBombDurationSeconds, hasBombBehavior } from '../utils';
 
 interface BuildModeTimelineProps {
   timelineRef: RefObject<HTMLDivElement | null>;
@@ -21,6 +21,8 @@ interface BuildModeTimelineProps {
   onScrubEnd: () => void;
   onTimelineClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onSelectEvent: (id: number) => void;
+  onDeselectEvents: () => void;
+  onDragEventToTime: (id: number, timestamp: number) => void;
 }
 
 export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
@@ -40,18 +42,98 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
   onScrubEnd,
   onTimelineClick,
   onSelectEvent,
+  onDeselectEvents,
+  onDragEventToTime,
 }) => {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ id: number; startX: number; startTimestamp: number } | null>(null);
+  const dragMovedRef = useRef(false);
+  const suppressTimelineClickRef = useRef(false);
+  const [timelineZoom, setTimelineZoom] = useState(DEFAULT_ZOOM);
+
+  const handleTimelineWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const viewportEl = viewportRef.current;
+    if (!viewportEl) return;
+
+    e.preventDefault();
+
+    const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const nextZoom = Math.max(1, Math.min(8, timelineZoom * zoomFactor));
+    if (Math.abs(nextZoom - timelineZoom) < 0.0001) return;
+
+    const rect = viewportEl.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const contentX = viewportEl.scrollLeft + mouseX;
+    const scale = nextZoom / timelineZoom;
+
+    setTimelineZoom(nextZoom);
+
+    window.requestAnimationFrame(() => {
+      const vp = viewportRef.current;
+      if (!vp) return;
+      vp.scrollLeft = Math.max(0, contentX * scale - mouseX);
+    });
+  }, [timelineZoom]);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current;
+      const timelineEl = timelineRef.current;
+      if (!drag || !timelineEl || audioDuration <= 0) return;
+
+      const deltaX = e.clientX - drag.startX;
+      if (Math.abs(deltaX) > 3) dragMovedRef.current = true;
+
+      const deltaRatio = deltaX / timelineEl.clientWidth;
+      let next = drag.startTimestamp + deltaRatio * audioDuration;
+      next = Math.max(0, Math.min(audioDuration, next));
+
+      if (snapEnabled && bpm > 0) {
+        const beatDuration = 60 / bpm;
+        const snapConfig = SNAP_INTERVALS.find(interval => interval.value === snapInterval);
+        const snapUnit = snapConfig ? beatDuration / snapConfig.divisor : beatDuration;
+        next = Math.round(next / snapUnit) * snapUnit;
+        next = Math.max(0, Math.min(audioDuration, next));
+      }
+
+      onDragEventToTime(drag.id, parseFloat(next.toFixed(3)));
+    };
+
+    const onMouseUp = () => {
+      if (dragRef.current && dragMovedRef.current) {
+        suppressTimelineClickRef.current = true;
+        window.setTimeout(() => {
+          suppressTimelineClickRef.current = false;
+        }, 0);
+      }
+      dragRef.current = null;
+      dragMovedRef.current = false;
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [audioDuration, bpm, onDragEventToTime, snapEnabled, snapInterval, timelineRef]);
+
   return (
     <div
-      ref={timelineRef}
-      className={`h-28 bg-[#08080c] border-t border-[#1a1a2e] relative overflow-hidden shrink-0 ${
-        isScrubbing ? 'cursor-grabbing' : ''
-      }`}
-      onMouseDown={onScrubStart}
-      onMouseMove={onScrubMove}
-      onMouseUp={onScrubEnd}
-      onMouseLeave={onScrubEnd}
+      ref={viewportRef}
+      className="h-28 bg-[#08080c] border-t border-[#1a1a2e] overflow-x-auto overflow-y-hidden shrink-0"
+      onWheel={handleTimelineWheel}
     >
+      <div
+        ref={timelineRef}
+        className={`h-full relative min-w-full ${isScrubbing ? 'cursor-grabbing' : ''}`}
+        style={{ width: `${timelineZoom * 100}%` }}
+        onMouseDown={onScrubStart}
+        onMouseMove={onScrubMove}
+        onMouseUp={onScrubEnd}
+        onMouseLeave={onScrubEnd}
+      >
       {bpm > 0 && audioDuration > 0 && (() => {
         const beatDuration = 60 / bpm;
         const snapConfig = SNAP_INTERVALS.find(interval => interval.value === snapInterval);
@@ -86,7 +168,11 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
       })()}
 
       <div
-        onClick={onTimelineClick}
+        onClick={e => {
+          if (suppressTimelineClickRef.current) return;
+          onDeselectEvents();
+          onTimelineClick(e);
+        }}
         className="absolute inset-0 bottom-6 z-[5]"
         style={{
           cursor: isScrubbing ? 'grabbing' : (isPlacementMode ? 'copy' : 'default'),
@@ -95,28 +181,47 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
       />
 
       {events.map(event => {
-        const left = audioDuration > 0 ? (event.timestamp / audioDuration) * 100 : 0;
+        const isBomb = hasBombBehavior(event.behavior, event.behaviorModifiers);
+        const bombDuration = isBomb ? getBombDurationSeconds(bpm, event.bombSettings) : 0;
+        const startTime = isBomb ? Math.max(0, event.timestamp - bombDuration) : event.timestamp;
+        const visualDuration = isBomb ? bombDuration : (event.duration ?? 1);
+
+        const left = audioDuration > 0 ? (startTime / audioDuration) * 100 : 0;
         const width = audioDuration > 0
-          ? Math.max(0.5, ((event.duration ?? 1) / audioDuration) * 100)
+          ? Math.max(0.5, (Math.max(0.001, visualDuration) / audioDuration) * 100)
           : 0.5;
         const color = (TOOLS as any)[event.type]?.color ?? '#FF0099';
         const isSelected = selectedIds.includes(event.id) || event.id === selectedId;
         const timeDiff = Math.abs(event.timestamp - currentTime);
         const isNearPlayhead = timeDiff < 0.5;
+        const sizePriority = Math.max(1, 10000 - Math.round(width * 100));
+        const zIndex = (isSelected ? 20000 : 6000) + sizePriority;
 
         return (
           <motion.div
             key={event.id}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: isNearPlayhead ? 1.05 : 1, opacity: 1 }}
+            onMouseDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              dragMovedRef.current = false;
+              dragRef.current = {
+                id: event.id,
+                startX: e.clientX,
+                startTimestamp: event.timestamp,
+              };
+              onSelectEvent(event.id);
+            }}
             onClick={e => {
               e.stopPropagation();
               onSelectEvent(event.id);
             }}
-            className="absolute top-2 h-14 rounded-lg cursor-pointer transition-all z-[6]"
+            className="absolute top-2 h-14 rounded-lg cursor-ew-resize transition-all"
             style={{
               left: `${left}%`,
               width: `${width}%`,
+              zIndex,
               minWidth: 8,
               backgroundColor: isSelected ? `${color}77` : isNearPlayhead ? `${color}55` : `${color}33`,
               border: `2px solid ${isSelected ? '#fff' : color}`,
@@ -131,7 +236,7 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
       })}
 
       <div
-        className="absolute top-0 bottom-6 z-20 group"
+        className="absolute top-0 bottom-6 z-[30000] group"
         style={{
           left: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`,
           transform: 'translateX(-50%)',
@@ -181,6 +286,7 @@ export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
             {formatTime(ratio * audioDuration)}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

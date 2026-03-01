@@ -6,6 +6,7 @@
 
 import { GAME_W, GAME_H } from './constants';
 import { PlacedEvent, CustomKeyframe, CustomSegmentHandle, CustomAnimationData } from './types';
+import { getBombDurationSeconds, hasBombBehavior } from './utils';
 
 export interface InterpolatedState {
   /** Whether the shape should be visible at this time. */
@@ -181,29 +182,29 @@ export function getInterpolatedState(
   const behavior = event.behavior ?? 'static';
   const modifiers = event.behaviorModifiers ?? [];
 
-  // Bomb has special lifecycle — it "lives" for growthBeats then explodes
-  const hasBomb = modifiers.includes('bomb') || behavior === 'bomb';
-  const bombGrowthBeats = event.bombSettings?.growthBeats ?? 4;
-  const effectiveBpm = bpm > 0 ? bpm : 120;
-  const bombDuration = hasBomb ? (bombGrowthBeats * 60) / effectiveBpm : 0;
+  // Bomb timestamps in the editor represent explosion time.
+  // Spawn time is back-computed so placement lines up with the explosion beat.
+  const hasBomb = hasBombBehavior(event.behavior, event.behaviorModifiers);
+  const bombDuration = hasBomb ? getBombDurationSeconds(bpm, event.bombSettings) : 0;
+  const bombSpawnTime = hasBomb ? Math.max(0, timestamp - bombDuration) : timestamp;
 
   // Determine effective lifetime
-  let effectiveDuration: number;
+  let startTime = timestamp;
+  let endTime: number;
   if (hasBomb) {
-    effectiveDuration = bombDuration;
+    startTime = bombSpawnTime;
+    endTime = timestamp;
   } else if (hasDuration) {
-    effectiveDuration = duration;
+    endTime = timestamp + duration;
   } else {
     // No duration specified — show for a long time (effectively infinite in editor)
-    effectiveDuration = 9999;
+    endTime = timestamp + 9999;
   }
-
-  const endTime = timestamp + effectiveDuration;
 
   // Visibility: active means the shape is "alive" at this time point.
   // Inactive shapes are still shown but ghosted so the user can always see
   // everything they've placed (like the old behaviour).
-  const isActive = currentTime >= timestamp && currentTime <= endTime;
+  const isActive = currentTime >= startTime && currentTime <= endTime;
 
   if (!isActive) {
     return {
@@ -216,7 +217,8 @@ export function getInterpolatedState(
     };
   }
 
-  const elapsed = currentTime - timestamp;
+  const effectiveBpm = bpm > 0 ? bpm : 120;
+  const elapsed = hasBomb ? currentTime - bombSpawnTime : currentTime - timestamp;
 
   // Start from the event's placed position and rotation
   let x = event.x;
@@ -294,7 +296,7 @@ export function getInterpolatedState(
     // Legacy bomb as primary (no behaviorModifiers)
     case 'bomb': {
       if (!modifiers.length) {
-        const t = elapsed / bombDuration;
+        const t = elapsed / Math.max(bombDuration, 0.0001);
         const eased = 1 - Math.pow(1 - Math.min(t, 1), 3);
         const initialScale = 0.1;
         const maxScale = 1.5;
@@ -315,7 +317,7 @@ export function getInterpolatedState(
   }
 
   if (modifiers.includes('bomb')) {
-    const t = elapsed / bombDuration;
+    const t = elapsed / Math.max(bombDuration, 0.0001);
     const eased = 1 - Math.pow(1 - Math.min(t, 1), 3);
     const initialScale = 0.1;
     const maxScale = event.bombSettings?.particleCount ? 1.5 : 1.5;

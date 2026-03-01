@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Save } from 'lucide-react';
 import { ComposerLeftPanel } from './shape-composer/ComposerLeftPanel';
-import { ComposerRightPanel } from './shape-composer/ComposerRightPanel';
 import { COMP_H, COMP_W, CX, CY } from './shape-composer/constants';
 import {
   computeColliderRadius,
@@ -26,8 +25,6 @@ let pieceIdCounter = 1000;
 export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
   onClose,
   onSave,
-  onDelete,
-  existingShapes,
   defaultColor,
 }) => {
   const [pieces, setPieces] = useState<ComposerPiece[]>([]);
@@ -550,7 +547,6 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
         </p>
       </div>
 
-      <ComposerRightPanel existingShapes={existingShapes} onDelete={onDelete} />
     </motion.div>
   );
 };

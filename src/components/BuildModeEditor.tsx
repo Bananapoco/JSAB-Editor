@@ -1046,6 +1046,17 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 setSelectedIds([id]);
                 setActivePanel('tools');
               }}
+              onDeselectEvents={() => {
+                setSelectedId(null);
+                setSelectedIds([]);
+              }}
+              onDragEventToTime={(id, timestamp) => {
+                setEventsTracked(prev => prev.map(event => (
+                  event.id === id
+                    ? { ...event, timestamp }
+                    : event
+                )));
+              }}
             />
 
 

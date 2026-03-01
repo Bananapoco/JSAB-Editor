@@ -41,6 +41,8 @@ interface BuildModeCenterPanelProps {
   onTimelineScrubEnd: () => void;
   onTimelineClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onSelectEvent: (id: number) => void;
+  onDeselectEvents: () => void;
+  onDragEventToTime: (id: number, timestamp: number) => void;
 }
 
 export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
@@ -79,6 +81,8 @@ export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
   onTimelineScrubEnd,
   onTimelineClick,
   onSelectEvent,
+  onDeselectEvents,
+  onDragEventToTime,
 }) => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -129,6 +133,8 @@ export const BuildModeCenterPanel: React.FC<BuildModeCenterPanelProps> = ({
         onScrubEnd={onTimelineScrubEnd}
         onTimelineClick={onTimelineClick}
         onSelectEvent={onSelectEvent}
+        onDeselectEvents={onDeselectEvents}
+        onDragEventToTime={onDragEventToTime}
       />
     </div>
   );

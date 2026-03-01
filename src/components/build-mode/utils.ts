@@ -398,6 +398,19 @@ export function drawCompositeShape(
   }
 }
 
+export function hasBombBehavior(
+  behavior: LevelEvent['behavior'] | undefined,
+  behaviorModifiers?: ModifierBehavior[],
+): boolean {
+  return behaviorModifiers?.includes('bomb') || behavior === 'bomb';
+}
+
+export function getBombDurationSeconds(bpm: number, bombSettings?: BombSettings): number {
+  const effectiveBpm = bpm > 0 ? bpm : 120;
+  const growthBeats = bombSettings?.growthBeats ?? 4;
+  return (growthBeats * 60) / effectiveBpm;
+}
+
 export function formatTime(t: number): string {
   const minutes = Math.floor(t / 60);
   const seconds = Math.floor(t % 60)

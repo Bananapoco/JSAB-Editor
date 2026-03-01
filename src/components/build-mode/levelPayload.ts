@@ -3,6 +3,8 @@ import { LevelData } from '../../game/types';
 import { PlacedEvent, ShapeType } from './types';
 import {
   buildBehaviorDefsForPlacedEvent,
+  getBombDurationSeconds,
+  hasBombBehavior,
   pieceTypeToShapeDef,
   shapeTypeToShapeDef,
   stretchShapeDef,
@@ -40,7 +42,17 @@ export function createLevelPayload({
     theme: { enemyColor, backgroundColor: bgColor, playerColor },
     timeline: events
       .map(({ id, shape, stretchX = 1, stretchY = 1, customShapeDef, bombSettings, pulseSettings, behaviorSettings, customAnimation, behaviorModifiers, ...rest }) => {
-        if (rest.type === 'screen_shake') return rest;
+        const isBomb = hasBombBehavior(rest.behavior, behaviorModifiers);
+        const runtimeTimestamp = isBomb
+          ? Math.max(0, rest.timestamp - getBombDurationSeconds(bpm, bombSettings))
+          : rest.timestamp;
+
+        if (rest.type === 'screen_shake') {
+          return {
+            ...rest,
+            timestamp: runtimeTimestamp,
+          };
+        }
 
         const size = rest.size ?? 40;
         const behaviors = buildBehaviorDefsForPlacedEvent(
@@ -74,13 +86,14 @@ export function createLevelPayload({
             y: rest.y,
             rotation: rest.rotation,
             children,
-            spawnTime: rest.timestamp,
+            spawnTime: runtimeTimestamp,
             colliderRadius: customShapeDef.colliderRadius * Math.max(sx, sy),
             behaviors,
           };
 
           return {
             ...rest,
+            timestamp: runtimeTimestamp,
             objectDef,
           };
         }
@@ -91,12 +104,13 @@ export function createLevelPayload({
           y: rest.y,
           rotation: rest.rotation,
           shape: shapeTypeToShapeDef(shape ?? fallbackShape, size, enemyColor, stretchX, stretchY),
-          spawnTime: rest.timestamp,
+          spawnTime: runtimeTimestamp,
           behaviors,
         };
 
         return {
           ...rest,
+          timestamp: runtimeTimestamp,
           objectDef,
         };
       })
