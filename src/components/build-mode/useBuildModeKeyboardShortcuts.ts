@@ -100,6 +100,7 @@ export function useBuildModeKeyboardShortcuts({
         const clones = copiedEventsRef.current.map(ev => ({
           ...JSON.parse(JSON.stringify(ev)),
           id: nextIdRef.current++,
+          timestamp: parseFloat(currentTimeRef.current.toFixed(3)),
           x: Math.max(0, Math.min(GAME_W, ev.x + nudge)),
           y: Math.max(0, Math.min(GAME_H, ev.y + nudge)),
         }));

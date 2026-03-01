@@ -315,6 +315,7 @@ export function buildBehaviorDefsForPlacedEvent(
           initialScale: 0.1,
           maxScale: 1.5,
           particleCount: bombSettings?.particleCount ?? 12,
+          particleSpeed: bombSettings?.particleSpeed ?? 400,
         });
       }
       break;
@@ -336,6 +337,7 @@ export function buildBehaviorDefsForPlacedEvent(
         initialScale: 0.1,
         maxScale: 1.5,
         particleCount: bombSettings?.particleCount ?? 12,
+        particleSpeed: bombSettings?.particleSpeed ?? 400,
       });
     }
     if (behaviorModifiers.includes('pulse')) {

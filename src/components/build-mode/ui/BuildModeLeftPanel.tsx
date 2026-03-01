@@ -5,12 +5,11 @@ import {
   Bomb,
   Layers,
   Maximize2,
-  MousePointer2,
   Music,
   Palette,
   Upload,
 } from 'lucide-react';
-import { MODIFIER_BEHAVIORS, MOVEMENT_BEHAVIORS, SHAPES, TOOLS } from '../constants';
+import { MODIFIER_BEHAVIORS, MOVEMENT_BEHAVIORS, SHAPES } from '../constants';
 import {
   ActivePanel,
   BehaviorType,
@@ -19,24 +18,22 @@ import {
   MovementBehavior,
   PlacedEvent,
   ShapeType,
-  Tool,
 } from '../types';
 import { CustomShapeDef } from '../../shape-composer/types';
 import { CustomAnimationPanel } from './CustomAnimationPanel';
 
 interface BuildModeLeftPanelProps {
   activePanel: Exclude<ActivePanel, 'compose'>;
-  isPlacementMode: boolean;
-  activeTool: Tool;
   activeBehavior: BehaviorType;
   activeModifiers: ModifierBehavior[];
   onBehaviorChange: (behavior: BehaviorType) => void;
   onModifierToggle: (modifier: ModifierBehavior) => void;
-  onSelectTool: (tool: Tool) => void;
   bombGrowthBeats: number;
   bombParticleCount: number;
   onBombGrowthBeatsChange: (value: number) => void;
   onBombParticleCountChange: (value: number) => void;
+  bombParticleSpeed: number;
+  onBombParticleSpeedChange: (value: number) => void;
   pulseBeatRate: number;
   pulseMinScale: number;
   pulseMaxScale: number;
@@ -64,7 +61,7 @@ interface BuildModeLeftPanelProps {
     sweepSpeed?: number;
     sweepAngle?: number;
   }) => void;
-  onUpdateSelectedBombSettings: (updates: { growthBeats?: number; particleCount?: number }) => void;
+  onUpdateSelectedBombSettings: (updates: { growthBeats?: number; particleCount?: number; particleSpeed?: number }) => void;
   activeSize: number;
   activeDuration: number;
   selectedEvent: PlacedEvent | null;
@@ -127,17 +124,16 @@ function getEffectiveModifiers(event: PlacedEvent): ModifierBehavior[] {
 
 export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   activePanel,
-  isPlacementMode,
-  activeTool,
   activeBehavior,
   activeModifiers,
   onBehaviorChange,
   onModifierToggle,
-  onSelectTool,
   bombGrowthBeats,
   bombParticleCount,
   onBombGrowthBeatsChange,
   onBombParticleCountChange,
+  bombParticleSpeed,
+  onBombParticleSpeedChange,
   pulseBeatRate,
   pulseMinScale,
   pulseMaxScale,
@@ -223,16 +219,18 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
   const bounceAngleValue  = isEditingSelection ? (selectedBehaviorSettings?.bounceAngle ?? bounceAngle) : bounceAngle;
   const sweepSpeedValue   = isEditingSelection ? (selectedBehaviorSettings?.sweepSpeed ?? sweepSpeed) : sweepSpeed;
   const sweepAngleValue   = isEditingSelection ? (selectedBehaviorSettings?.sweepAngle ?? sweepAngle) : sweepAngle;
-  const bombGrowthBeatsValue   = isEditingSelection ? (selectedBombSettings?.growthBeats ?? bombGrowthBeats) : bombGrowthBeats;
-  const bombParticleCountValue = isEditingSelection ? (selectedBombSettings?.particleCount ?? bombParticleCount) : bombParticleCount;
+  const bombGrowthBeatsValue    = isEditingSelection ? (selectedBombSettings?.growthBeats    ?? bombGrowthBeats)    : bombGrowthBeats;
+  const bombParticleCountValue  = isEditingSelection ? (selectedBombSettings?.particleCount  ?? bombParticleCount)  : bombParticleCount;
+  const bombParticleSpeedValue  = isEditingSelection ? (selectedBombSettings?.particleSpeed  ?? bombParticleSpeed)  : bombParticleSpeed;
 
   const selectedPulseSettings = selectedEvent?.pulseSettings;
   const pulseBeatRateValue = isEditingSelection ? (selectedPulseSettings?.beatRate ?? pulseBeatRate) : pulseBeatRate;
   const pulseMinScaleValue  = isEditingSelection ? (selectedPulseSettings?.minScale ?? pulseMinScale) : pulseMinScale;
   const pulseMaxScaleValue  = isEditingSelection ? (selectedPulseSettings?.maxScale ?? pulseMaxScale) : pulseMaxScale;
 
-  const toolForSettings = isEditingSelection ? selectedEvent.type : activeTool;
-  const isBehaviorTool = toolForSettings === 'projectile_throw' || toolForSettings === 'spawn_obstacle';
+  const isBehaviorTool = isEditingSelection
+    ? selectedEvent.type === 'projectile_throw' || selectedEvent.type === 'spawn_obstacle'
+    : true;
 
   return (
     <AnimatePresence mode="wait">
@@ -247,61 +245,6 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
         {activePanel === 'tools' && (
           <div className="space-y-6">
 
-            {/* Tool selector */}
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Tool</div>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.entries(TOOLS) as [Tool, (typeof TOOLS)[Tool]][]).map(([key, { icon: Icon, color, label }]) => {
-                  const isActive = isPlacementMode && activeTool === key;
-                  return (
-                    <motion.button
-                      key={key}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => onSelectTool(key)}
-                      className={`p-2 rounded-lg transition-all border text-left ${
-                        isActive
-                          ? 'text-white border-transparent'
-                          : 'bg-[#151520] border-[#252540] text-[#888] hover:text-white hover:bg-[#252540]'
-                      }`}
-                      style={isActive ? { backgroundColor: `${color}30`, borderColor: color } : undefined}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon size={14} style={{ color: isActive ? color : undefined }} />
-                        <span className="text-[10px] uppercase tracking-wide">{label}</span>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Placement mode indicator */}
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2">Mode</div>
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-[#151520] border border-[#252540]">
-                {isPlacementMode ? (
-                  (() => {
-                    const tool = TOOLS[activeTool];
-                    const Icon = tool.icon;
-                    return (
-                      <>
-                        <Icon size={18} style={{ color: tool.color }} />
-                        <span className="text-sm font-medium">Placing: {tool.label}</span>
-                      </>
-                    );
-                  })()
-                ) : (
-                  <>
-                    <MousePointer2 size={18} style={{ color: '#9ca3af' }} />
-                    <span className="text-sm font-medium text-[#bbb]">Select / Move</span>
-                  </>
-                )}
-              </div>
-              {isPlacementMode && (
-                <p className="text-[10px] text-[#666] mt-2">Press Esc to stop placing</p>
-              )}
-            </div>
 
             {/* ── Behavior grid ───────────────────────────────────────────── */}
             {isBehaviorTool && (
@@ -608,6 +551,30 @@ export const BuildModeLeftPanel: React.FC<BuildModeLeftPanelProps> = ({
                     }}
                     className="w-full accent-[#FF0099] cursor-pointer"
                   />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-[#444]">Velocity</span>
+                    <span className="text-xs font-mono text-[#FF0099]">{bombParticleSpeedValue} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="1200"
+                    step="25"
+                    value={bombParticleSpeedValue}
+                    onChange={e => {
+                      const value = +e.target.value;
+                      if (isEditingSelection) onUpdateSelectedBombSettings({ particleSpeed: value });
+                      else onBombParticleSpeedChange(value);
+                    }}
+                    className="w-full accent-[#FF0099] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-[#555] mt-1">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                  </div>
                 </div>
               </>
             )}

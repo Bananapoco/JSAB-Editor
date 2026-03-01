@@ -45,8 +45,6 @@ export class BombBehavior extends Behavior {
     private growthDurationSec: number;
 
     /** Default projectile speed (px/s) — fast enough to cross the screen. */
-    private static readonly PROJECTILE_SPEED = 400;
-
     constructor(
         private growthBeats = 4,
         private initialScale = 0.1,
@@ -54,6 +52,7 @@ export class BombBehavior extends Behavior {
         private particleCount = 12,
         private bpm = 120,
         private spawnTime = 0,
+        private projectileSpeed = 400,
     ) {
         super();
         const effectiveBpm = this.bpm > 0 ? this.bpm : 120;
@@ -91,7 +90,7 @@ export class BombBehavior extends Behavior {
             (this.object as any).explosionData = {
                 position: this.object.position.clone(),
                 particleCount: this.particleCount,
-                particleSpeed: BombBehavior.PROJECTILE_SPEED,
+                particleSpeed: this.projectileSpeed,
                 parentScale: this.object.scale,
                 shapeEntries: entries,
             } as ExplosionData;

@@ -38,6 +38,7 @@ interface UseBuildModePlacementInteractionsParams {
   customShapesRef: MutableRefObject<CustomShapeDef[]>;
   bombGrowthBeatsRef: MutableRefObject<number>;
   bombParticleCountRef: MutableRefObject<number>;
+  bombParticleSpeedRef: MutableRefObject<number>;
   pulseBeatRateRef: MutableRefObject<number>;
   pulseMinScaleRef: MutableRefObject<number>;
   pulseMaxScaleRef: MutableRefObject<number>;
@@ -97,6 +98,7 @@ export function useBuildModePlacementInteractions({
   customShapesRef,
   bombGrowthBeatsRef,
   bombParticleCountRef,
+  bombParticleSpeedRef,
   pulseBeatRateRef,
   pulseMinScaleRef,
   pulseMaxScaleRef,
@@ -305,6 +307,7 @@ export function useBuildModePlacementInteractions({
               bombSettings: {
                 growthBeats: bombGrowthBeatsRef.current,
                 particleCount: bombParticleCountRef.current,
+                particleSpeed: bombParticleSpeedRef.current,
               },
             }
           : {}),
@@ -648,6 +651,7 @@ export function useBuildModePlacementInteractions({
             bombSettings: {
               growthBeats: bombGrowthBeatsRef.current,
               particleCount: bombParticleCountRef.current,
+              particleSpeed: bombParticleSpeedRef.current,
             },
           }
         : {}),

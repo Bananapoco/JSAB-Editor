@@ -23,6 +23,8 @@ export interface BombSettings {
   /** How many beats the bomb grows before exploding */
   growthBeats: number;
   particleCount: number;
+  /** Speed of explosion projectiles in px/s */
+  particleSpeed: number;
 }
 
 export interface PulseSettings {

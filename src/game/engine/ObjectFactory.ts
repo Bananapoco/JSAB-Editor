@@ -94,6 +94,8 @@ export interface BehaviorDef {
     initialScale?: number;
     /** bomb: number of projectiles on explosion (default 12) */
     particleCount?: number;
+    /** bomb: speed of explosion projectiles in px/s (default 400) */
+    particleSpeed?: number;
     /** customAnimation: array of keyframes [{t,x,y,rotation,scale}] */
     customKeyframes?: { t: number; x: number; y: number; rotation: number; scale: number }[];
     /** customAnimation: bezier handles per segment */
@@ -238,6 +240,7 @@ export class ObjectFactory {
                     def.particleCount ?? 12,
                     def.bpm ?? 120,
                     def.spawnTime ?? 0,
+                    def.particleSpeed ?? 400,
                 );
             case 'customAnimation':
                 return new CustomAnimationBehavior(

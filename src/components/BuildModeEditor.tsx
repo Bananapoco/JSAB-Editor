@@ -62,6 +62,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
 
   const [bombGrowthBeats, setBombGrowthBeats] = useState(4);
   const [bombParticleCount, setBombParticleCount] = useState(12);
+  const [bombParticleSpeed, setBombParticleSpeed] = useState(400);
 
   const [pulseBeatRate, setPulseBeatRate] = useState(1.0);
   const [pulseMinScale, setPulseMinScale] = useState(0.75);
@@ -161,6 +162,8 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   bombGrowthBeatsRef.current = bombGrowthBeats;
   const bombParticleCountRef = useRef(bombParticleCount);
   bombParticleCountRef.current = bombParticleCount;
+  const bombParticleSpeedRef = useRef(bombParticleSpeed);
+  bombParticleSpeedRef.current = bombParticleSpeed;
 
   const pulseBeatRateRef = useRef(pulseBeatRate);
   pulseBeatRateRef.current = pulseBeatRate;
@@ -376,6 +379,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
     customShapesRef,
     bombGrowthBeatsRef,
     bombParticleCountRef,
+    bombParticleSpeedRef,
     pulseBeatRateRef,
     pulseMinScaleRef,
     pulseMaxScaleRef,
@@ -602,6 +606,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
   const updateSelectedBombSettings = useCallback((updates: {
     growthBeats?: number;
     particleCount?: number;
+    particleSpeed?: number;
   }) => {
     const ids = selectedIds.length > 0
       ? selectedIds
@@ -615,11 +620,12 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
         bombSettings: {
           growthBeats: event.bombSettings?.growthBeats ?? bombGrowthBeats,
           particleCount: event.bombSettings?.particleCount ?? bombParticleCount,
+          particleSpeed: event.bombSettings?.particleSpeed ?? bombParticleSpeed,
           ...updates,
         },
       };
     }));
-  }, [selectedId, selectedIds, setEventsTracked, bombGrowthBeats, bombParticleCount]);
+  }, [selectedId, selectedIds, setEventsTracked, bombGrowthBeats, bombParticleCount, bombParticleSpeed]);
 
   const updateSelectedPulseSettings = useCallback((updates: {
     beatRate?: number;
@@ -757,10 +763,13 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
       audioFile,
     });
 
+    const launchStartTime = currentTime < 0.05 ? 0 : currentTime;
+
     const launchPayload = {
       ...payload,
       source: 'build' as const,
       returnProject,
+      startTime: launchStartTime,
     };
 
     savePayloadToCommunity(payload);
@@ -818,8 +827,6 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
           <>
             <BuildModeLeftPanel
               activePanel={activePanel}
-              isPlacementMode={isPlacementMode}
-              activeTool={activeTool}
               activeBehavior={activeBehavior}
               activeModifiers={activeModifiers}
               onModifierToggle={handleModifierToggle}
@@ -845,12 +852,7 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
                 activeBehaviorRef.current = behavior;
                 setActiveBehavior(behavior);
               }}
-              onSelectTool={tool => {
-                activeToolRef.current = tool;
-                setActiveTool(tool);
-                setIsPlacementMode(true);
-                isPlacementModeRef.current = true;
-              }}
+
               bombGrowthBeats={bombGrowthBeats}
               bombParticleCount={bombParticleCount}
               onBombGrowthBeatsChange={value => {
@@ -860,6 +862,11 @@ export const BuildModeEditor: React.FC<Props> = ({ onClose, onSwitchToAI, initia
               onBombParticleCountChange={value => {
                 bombParticleCountRef.current = value;
                 setBombParticleCount(value);
+              }}
+              bombParticleSpeed={bombParticleSpeed}
+              onBombParticleSpeedChange={value => {
+                bombParticleSpeedRef.current = value;
+                setBombParticleSpeed(value);
               }}
               pulseBeatRate={pulseBeatRate}
               pulseMinScale={pulseMinScale}

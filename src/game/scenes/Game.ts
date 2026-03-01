@@ -25,6 +25,7 @@ interface LoadLevelPayload {
     audioUrl: string;
     source?: 'build' | 'community' | 'ai';
     returnProject?: any;
+    startTime?: number; // seconds — begin playback from this point in the timeline
 }
 
 export class Game extends Scene {
@@ -220,6 +221,9 @@ export class Game extends Scene {
 
         console.log('[Game] startLevel:', this.levelData.timeline.length, 'events, first 3:', this.levelData.timeline.slice(0, 3));
 
+        const rawStartTime = data.startTime ?? 0;
+        // Guard against tiny non-zero values when user intends "start at beginning".
+        const startTime = rawStartTime < 0.05 ? 0 : rawStartTime;
         this.timelineIndex = 0;
         this.isPlaying = false;
         this.hazards = [];
@@ -257,9 +261,23 @@ export class Game extends Scene {
         // Fire only when this exact audio key has been added to cache.
         this.load.once('filecomplete-audio-level-music', () => {
             audioLoaded = true;
-            console.log('[Game] Audio loaded, starting playback');
+            console.log('[Game] Audio loaded, starting playback at', startTime.toFixed(2), 's');
             this.music = this.sound.add('level-music');
-            this.music.play();
+            this.music.play({ seek: startTime });
+
+            // Advance the timeline index past events meaningfully before startTime.
+            // Keep events at/near startTime so "start from beginning" doesn't miss t=0 events.
+            const timeline = this.levelData?.timeline;
+            if (timeline) {
+                const skipBefore = Math.max(0, startTime - 0.001);
+                while (
+                    this.timelineIndex < timeline.length &&
+                    timeline[this.timelineIndex].timestamp < skipBefore
+                ) {
+                    this.timelineIndex++;
+                }
+            }
+
             this.isPlaying = true;
         });
 
