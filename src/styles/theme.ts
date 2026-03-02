@@ -37,6 +37,21 @@ export const THEME = {
 export type ThemeColor = keyof typeof THEME
 
 /**
+ * Global corner radii for editor UI.
+ * Tweak these to change roundness across panels, buttons, icon containers, etc.
+ */
+export const RADIUS = {
+  none: '0px',
+  sm: '1px',
+  md: '2px',
+  lg: '3px',
+  xl: '1px',
+  pill: '9999px',
+} as const
+
+export type ThemeRadius = keyof typeof RADIUS
+
+/**
  * Append a 2-digit hex alpha to any 6-digit hex color.
  *
  * @param hex   A 6-char hex string, e.g. THEME.accent
@@ -57,10 +72,15 @@ export function alpha(hex: string, pct: number): string {
  * Every key in THEME becomes  --color-<kebab-case-key>: <value>
  */
 export function buildCSSVars(): string {
-  return Object.entries(THEME)
-    .map(([k, v]) => {
-      const prop = '--color-' + k.replace(/([A-Z])/g, (m) => '-' + m.toLowerCase())
-      return `${prop}: ${v}`
-    })
-    .join('; ')
+  const colorVars = Object.entries(THEME).map(([k, v]) => {
+    const prop = '--color-' + k.replace(/([A-Z])/g, (m) => '-' + m.toLowerCase())
+    return `${prop}: ${v}`
+  })
+
+  const radiusVars = Object.entries(RADIUS).map(([k, v]) => {
+    const prop = '--radius-' + k.replace(/([A-Z])/g, (m) => '-' + m.toLowerCase())
+    return `${prop}: ${v}`
+  })
+
+  return [...colorVars, ...radiusVars].join('; ')
 }
