@@ -1,20 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  Trash2,
-  RotateCw,
-  Maximize2,
-  RefreshCw,
-  Plus,
-  MousePointer2,
-  ChevronLeft,
-  Eye,
-  EyeOff,
+  ChevronLeft, Eye, EyeOff, Maximize2, RefreshCw, RotateCw, Trash2,
 } from 'lucide-react';
 import { PIECE_TYPES } from './constants';
 import { ComposerPiece, PieceType } from './types';
+import { THEME, alpha } from '@/styles/theme';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ComposerLeftPanelProps {
+  panelWidth?: number;
   onClose: () => void;
   pieceColor: string;
   onPieceColorChange: (color: string) => void;
@@ -27,7 +24,24 @@ interface ComposerLeftPanelProps {
   hasPieces: boolean;
 }
 
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-[9px] font-semibold uppercase tracking-[0.12em] mb-2.5" style={{ color: THEME.textDim }}>
+    {children}
+  </div>
+);
+
+const SliderRow: React.FC<{ label: string; value: string; children: React.ReactNode }> = ({ label, value, children }) => (
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-between">
+      <span className="text-[10px]" style={{ color: THEME.textMuted }}>{label}</span>
+      <span className="text-[10px] font-mono tabular-nums" style={{ color: THEME.accent }}>{value}</span>
+    </div>
+    {children}
+  </div>
+);
+
 export const ComposerLeftPanel: React.FC<ComposerLeftPanelProps> = ({
+  panelWidth = 220,
   onClose,
   pieceColor,
   onPieceColorChange,
@@ -38,166 +52,145 @@ export const ComposerLeftPanel: React.FC<ComposerLeftPanelProps> = ({
   onDeleteSelected,
   onClearCanvas,
   hasPieces,
-}) => {
-  return (
-    <div className="w-52 bg-[#0a0a12] border-r border-[#1a1a2e] flex flex-col p-4 gap-5 shrink-0 overflow-y-auto">
+}) => (
+  <TooltipProvider delayDuration={300}>
+    <div
+      className="flex flex-col p-3 gap-4 shrink-0 overflow-y-auto border-r"
+      style={{ width: panelWidth, background: THEME.panel, borderColor: THEME.border }}
+    >
+      {/* Back */}
       <button
         onClick={onClose}
-        className="flex items-center gap-1.5 text-[#555] hover:text-white text-xs transition-all"
+        className="ui-btn flex items-center gap-1.5 text-xs transition-all cursor-pointer w-fit rounded-md px-1 py-0.5"
       >
         <ChevronLeft size={14} />
-        Back to editor
+        Back
       </button>
 
+      {/* Shape picker */}
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-[#444] mb-2 flex items-center gap-1">
-          <Plus size={10} /> Add Piece
-        </div>
-
-        <div className="flex items-center gap-2 mb-3">
-          <input
-            type="color"
-            value={pieceColor}
-            onChange={e => onPieceColorChange(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer border-2 border-[#252540]"
-          />
-          <span className="text-[11px] text-[#666]">Piece color</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-1.5">
-          {PIECE_TYPES.map(({ type, icon: Icon, label }) => (
-            <motion.button
-              key={type}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => onPendingTypeChange(pendingType === type ? null : type)}
-              title={label}
-              className={`aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all text-[10px] ${
-                pendingType === type
-                  ? 'bg-gradient-to-br from-[#FF0099] to-[#FF6600] text-white shadow-md shadow-[#FF009944]'
-                  : 'bg-[#151520] text-[#555] hover:text-white hover:bg-[#252540] border border-[#252540]'
-              }`}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </motion.button>
-          ))}
+        <SectionLabel>Add piece</SectionLabel>
+        <div className="shape-grid">
+          {PIECE_TYPES.map(({ type, icon: Icon, label }) => {
+            const on = pendingType === type;
+            return (
+              <Tooltip key={type}>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => onPendingTypeChange(on ? null : type)}
+                    className={`aspect-square flex items-center justify-center rounded-md transition-all duration-150 cursor-pointer ${on ? 'ui-cell-active' : 'ui-cell'}`}
+                  >
+                    <Icon size={22} strokeWidth={on ? 2 : 1.5} />
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="capitalize">{label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
 
         {pendingType && (
-          <p className="text-[10px] text-[#00FFFF] mt-2 text-center animate-pulse">
+          <p className="text-[10px] text-center mt-2" style={{ color: THEME.cyan }}>
             Click canvas to place
           </p>
         )}
       </div>
 
-      <div className="w-full h-px bg-[#1a1a2e]" />
+      <div className="w-full h-px" style={{ background: THEME.border }} />
 
-      {selectedPiece ? (
+      {/* Selected piece controls */}
+      {selectedPiece && (
         <div className="space-y-4">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-[#444]">Selected</span>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onDeleteSelected}
-              className="p-1.5 rounded bg-[#ff333322] text-[#ff4444] hover:bg-[#ff333344] transition-all"
-            >
-              <Trash2 size={13} />
-            </motion.button>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: THEME.textDim }}>
+              Selected
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  whileTap={{ scale: 0.88 }}
+                  onClick={onDeleteSelected}
+                  className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer border transition-all duration-150 hover:opacity-80"
+                  style={{
+                    background: alpha(THEME.danger, 0.08),
+                    color: THEME.danger,
+                    borderColor: alpha(THEME.danger, 0.2),
+                  }}
+                >
+                  <Trash2 size={13} />
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Delete</TooltipContent>
+            </Tooltip>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={selectedPiece.color}
-              onChange={e => onUpdateSelected({ color: e.target.value })}
-              className="w-8 h-8 rounded cursor-pointer border-2 border-[#252540]"
-            />
-            <span className="text-[11px] text-[#666]">Color</span>
+          {/* Color */}
+          <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md border"
+            style={{ background: THEME.surface, borderColor: THEME.border }}>
+            <label className="relative w-7 h-7 rounded cursor-pointer shrink-0 overflow-hidden"
+              style={{ background: selectedPiece.color, border: `1px solid ${THEME.borderBright}` }}>
+              <input type="color" value={selectedPiece.color}
+                onChange={e => onUpdateSelected({ color: e.target.value })}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+            </label>
+            <span className="text-[10px]" style={{ color: THEME.textMuted }}>Color</span>
+            <span className="ml-auto text-[9px] font-mono" style={{ color: THEME.textDim }}>
+              {selectedPiece.color.toUpperCase()}
+            </span>
           </div>
 
           {/* Opacity */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
-                <Eye size={9} /> Opacity
-              </span>
-              <span className="text-[10px] font-mono text-[#FF0099]">{selectedPiece.opacity ?? 100}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
+          <SliderRow label="Opacity" value={`${selectedPiece.opacity ?? 100}%`}>
+            <input type="range" min={0} max={100} step={1}
               value={selectedPiece.opacity ?? 100}
               onChange={e => onUpdateSelected({ opacity: +e.target.value })}
-              className="w-full accent-[#FF0099] cursor-pointer"
+              className="w-full cursor-pointer"
             />
             {(selectedPiece.opacity ?? 100) < 100 && (
-              <div className="mt-1.5 flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-[#FF990011] border border-[#FF990033]">
-                <EyeOff size={10} className="text-[#FF9900] mt-px shrink-0" />
-                <span className="text-[9px] text-[#FF9900] leading-relaxed">
+              <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-md mt-1"
+                style={{ background: alpha(THEME.amber, 0.08), border: `1px solid ${alpha(THEME.amber, 0.2)}` }}>
+                <EyeOff size={10} className="mt-px shrink-0" style={{ color: THEME.amber }} />
+                <span className="text-[9px] leading-relaxed" style={{ color: THEME.amber }}>
                   No hitbox — transparent pieces are decorative only.
                 </span>
               </div>
             )}
-          </div>
+          </SliderRow>
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
-                <Maximize2 size={9} /> Size
-              </span>
-              <span className="text-[10px] font-mono text-[#FF0099]">{Math.round(selectedPiece.size)}px</span>
-            </div>
-            <input
-              type="range"
-              min={14}
-              max={200}
-              step={1}
+          {/* Size */}
+          <SliderRow label="Size" value={`${Math.round(selectedPiece.size)}px`}>
+            <input type="range" min={14} max={200} step={1}
               value={selectedPiece.size}
               onChange={e => onUpdateSelected({ size: +e.target.value })}
-              className="w-full accent-[#FF0099] cursor-pointer"
+              className="w-full cursor-pointer"
             />
-          </div>
+          </SliderRow>
 
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
-                <RotateCw size={9} /> Rotation
-              </span>
-              <span className="text-[10px] font-mono text-[#FF0099]">{Math.round(selectedPiece.rotation)}°</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={359}
-              step={1}
+          {/* Rotation */}
+          <SliderRow label="Rotation" value={`${Math.round(selectedPiece.rotation)}°`}>
+            <input type="range" min={0} max={359} step={1}
               value={selectedPiece.rotation}
               onChange={e => onUpdateSelected({ rotation: +e.target.value })}
-              className="w-full accent-[#FF0099] cursor-pointer"
+              className="w-full cursor-pointer"
             />
-          </div>
+          </SliderRow>
 
-          <div className="grid grid-cols-2 gap-2">
-            {(['x', 'y'] as const).map(key => (
-              <div key={key}>
-                <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1">{key}</div>
+          {/* X / Y */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['x', 'y'] as const).map(k => (
+              <div key={k}>
+                <div className="text-[8px] font-mono uppercase mb-1" style={{ color: THEME.textDim }}>{k}</div>
                 <input
                   type="number"
-                  value={Math.round(selectedPiece[key])}
-                  onChange={e => onUpdateSelected({ [key]: +e.target.value })}
-                  className="w-full px-2 py-1 rounded bg-[#151520] border border-[#252540] text-white text-xs font-mono focus:outline-none focus:border-[#FF0099]"
+                  value={Math.round(selectedPiece[k])}
+                  onChange={e => onUpdateSelected({ [k]: +e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-md border text-[11px] font-mono ui-input"
                 />
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-2 text-center py-4">
-          <MousePointer2 size={24} className="text-[#252540]" />
-          <p className="text-[10px] text-[#444]">Click a piece<br />to edit it</p>
         </div>
       )}
 
@@ -205,14 +198,13 @@ export const ComposerLeftPanel: React.FC<ComposerLeftPanelProps> = ({
 
       {hasPieces && (
         <motion.button
-          whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           onClick={onClearCanvas}
-          className="w-full py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#252540] text-[#666] hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+          className="ui-btn w-full py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-all"
         >
           <RefreshCw size={13} /> Clear Canvas
         </motion.button>
       )}
     </div>
-  );
-};
+  </TooltipProvider>
+);

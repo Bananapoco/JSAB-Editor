@@ -322,15 +322,7 @@ export function useBuildModeCanvasRender({
       }
     }
 
-    const px = (GAME_W / 2) * SCALE;
-    const py = (GAME_H / 2) * SCALE;
-    ctx.save();
-    ctx.fillStyle = playerColor;
-    ctx.globalAlpha = 0.9;
-    ctx.shadowColor = playerColor;
-    ctx.shadowBlur = 12;
-    ctx.fillRect(px - 10, py - 10, 20, 20);
-    ctx.restore();
+    // Player hidden in build preview
   }, [
     activeCustomShapeId,
     activeShape,

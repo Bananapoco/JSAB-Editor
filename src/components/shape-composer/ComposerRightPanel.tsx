@@ -4,16 +4,21 @@ import { Layers, Trash2 } from 'lucide-react';
 import { CustomShapeDef } from './types';
 
 interface ComposerRightPanelProps {
+  panelWidth?: number;
   existingShapes: CustomShapeDef[];
   onDelete: (id: string) => void;
 }
 
 export const ComposerRightPanel: React.FC<ComposerRightPanelProps> = ({
+  panelWidth = 220,
   existingShapes,
   onDelete,
 }) => {
   return (
-    <div className="w-52 bg-[#0a0a12] border-l border-[#1a1a2e] flex flex-col p-4 gap-3 shrink-0 overflow-y-auto">
+    <div
+      className="bg-[#0a0a12] border-l border-[#1a1a2e] flex flex-col p-4 gap-3 shrink-0 overflow-y-auto"
+      style={{ width: panelWidth }}
+    >
       <div className="text-[10px] uppercase tracking-widest text-[#444] flex items-center gap-1">
         <Layers size={10} /> Saved Shapes
         <span className="ml-auto text-[#333]">{existingShapes.length}</span>

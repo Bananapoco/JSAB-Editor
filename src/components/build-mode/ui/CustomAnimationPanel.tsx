@@ -81,8 +81,8 @@ export const CustomAnimationPanel: React.FC<Props> = ({
 
   return (
     <div className="space-y-3">
-      <div className="w-full h-px bg-[#FF009933]" />
-      <div className="text-[10px] uppercase tracking-widest text-[#FF0099] font-bold flex items-center gap-1">
+      <div className="w-full h-px bg-[#2F80FF33]" />
+      <div className="text-[10px] uppercase tracking-widest text-[#2F80FF] font-bold flex items-center gap-1">
         <Pencil size={10} /> Custom Animation
       </div>
 
@@ -101,7 +101,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 onClick={() => onSelectKf(selectedKfIndex === i ? null : i)}
                 className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] transition-all ${
                   selectedKfIndex === i
-                    ? 'bg-[#FF009933] border border-[#FF0099] text-white'
+                    ? 'bg-[#2F80FF33] border border-[#2F80FF] text-white'
                     : 'bg-[#151520] border border-[#252540] text-[#888] hover:text-white'
                 }`}
               >
@@ -154,7 +154,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 max={100}
                 value={Math.round(kf.t * 100)}
                 onChange={e => updateKeyframe(selectedKfIndex, { t: Math.max(0, Math.min(1, +e.target.value / 100)) })}
-                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#FF0099]"
+                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#2F80FF]"
               />
             </div>
             <div>
@@ -165,7 +165,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 min={0.1}
                 value={kf.scale}
                 onChange={e => updateKeyframe(selectedKfIndex, { scale: +e.target.value || 1 })}
-                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#FF0099]"
+                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#2F80FF]"
               />
             </div>
             <div>
@@ -174,7 +174,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 type="number"
                 value={Math.round(kf.x)}
                 onChange={e => updateKeyframe(selectedKfIndex, { x: +e.target.value })}
-                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#FF0099]"
+                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#2F80FF]"
               />
             </div>
             <div>
@@ -183,7 +183,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 type="number"
                 value={Math.round(kf.y)}
                 onChange={e => updateKeyframe(selectedKfIndex, { y: +e.target.value })}
-                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#FF0099]"
+                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#2F80FF]"
               />
             </div>
             <div className="col-span-2">
@@ -192,7 +192,7 @@ export const CustomAnimationPanel: React.FC<Props> = ({
                 type="number"
                 value={kf.rotation}
                 onChange={e => updateKeyframe(selectedKfIndex, { rotation: +e.target.value })}
-                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#FF0099]"
+                className="w-full px-1.5 py-1 rounded bg-[#0a0a12] border border-[#252540] text-white text-[10px] font-mono focus:outline-none focus:border-[#2F80FF]"
               />
             </div>
           </div>

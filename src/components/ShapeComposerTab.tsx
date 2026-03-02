@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Save } from 'lucide-react';
 import { ComposerLeftPanel } from './shape-composer/ComposerLeftPanel';
+import { ComposerRightPanel } from './shape-composer/ComposerRightPanel';
 import { COMP_H, COMP_W, CX, CY } from './shape-composer/constants';
 import {
   computeColliderRadius,
@@ -25,6 +26,8 @@ let pieceIdCounter = 1000;
 export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
   onClose,
   onSave,
+  onDelete,
+  existingShapes,
   defaultColor,
 }) => {
   const [pieces, setPieces] = useState<ComposerPiece[]>([]);
@@ -34,6 +37,8 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
   const [pieceColor, setPieceColor] = useState(defaultColor);
   const [saveMsg, setSaveMsg] = useState('');
   const [canvasCursor, setCanvasCursor] = useState<string>('default');
+  const [leftPanelWidth, setLeftPanelWidth] = useState(220);
+  const [rightPanelWidth, setRightPanelWidth] = useState(220);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const piecesRef = useRef<ComposerPiece[]>(pieces);
@@ -43,6 +48,11 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
 
   const dragRef = useRef<{ pieceId: number; lastX: number; lastY: number } | null>(null);
   const rotDragRef = useRef<{ pieceId: number; startAngle: number; startRot: number } | null>(null);
+  const panelResizeRef = useRef<{
+    side: 'left' | 'right';
+    startX: number;
+    startWidth: number;
+  } | null>(null);
   type ResizeHandle = { sx: -1 | 0 | 1; sy: -1 | 0 | 1 };
 
   const resizeDragRef = useRef<{
@@ -420,6 +430,47 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedId]);
 
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const resize = panelResizeRef.current;
+      if (!resize) return;
+
+      const delta = e.clientX - resize.startX;
+
+      if (resize.side === 'left') {
+        const next = Math.max(170, Math.min(420, resize.startWidth + delta));
+        setLeftPanelWidth(next);
+      } else {
+        const next = Math.max(170, Math.min(420, resize.startWidth - delta));
+        setRightPanelWidth(next);
+      }
+    };
+
+    const onUp = () => {
+      panelResizeRef.current = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const beginPanelResize = (side: 'left' | 'right', e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    panelResizeRef.current = {
+      side,
+      startX: e.clientX,
+      startWidth: side === 'left' ? leftPanelWidth : rightPanelWidth,
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   const selectedPiece = useMemo(
     () => pieces.find(piece => piece.id === selectedId) ?? null,
     [pieces, selectedId],
@@ -469,30 +520,31 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
       className="flex-1 flex overflow-hidden"
       style={{ background: '#08080e' }}
     >
-      <ComposerLeftPanel
-        onClose={onClose}
-        pieceColor={pieceColor}
-        onPieceColorChange={setPieceColor}
-        pendingType={pendingType}
-        onPendingTypeChange={setPendingType}
-        selectedPiece={selectedPiece}
-        onUpdateSelected={updateSelected}
-        onDeleteSelected={deleteSelected}
-        onClearCanvas={() => {
-          setPieces([]);
-          setSelectedId(null);
-        }}
-        hasPieces={pieces.length > 0}
-      />
+      <div className="relative shrink-0">
+        <ComposerLeftPanel
+          panelWidth={leftPanelWidth}
+          onClose={onClose}
+          pieceColor={pieceColor}
+          onPieceColorChange={setPieceColor}
+          pendingType={pendingType}
+          onPendingTypeChange={setPendingType}
+          selectedPiece={selectedPiece}
+          onUpdateSelected={updateSelected}
+          onDeleteSelected={deleteSelected}
+          onClearCanvas={() => {
+            setPieces([]);
+            setSelectedId(null);
+          }}
+          hasPieces={pieces.length > 0}
+        />
+        <div
+          onMouseDown={e => beginPanelResize('left', e)}
+          className="absolute top-0 -right-1.5 h-full w-3 cursor-col-resize z-20 hover:bg-white/10"
+          title="Resize panel"
+        />
+      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 bg-[#060609]">
-        <div className="text-[11px] text-[#333] font-mono tracking-wider">
-          SHAPE COMPOSER · {pieces.length} piece{pieces.length !== 1 ? 's' : ''}
-          {pieces.length > 0 && (
-            <span className="ml-2 text-[#555]">· collider r≈{Math.round(computeColliderRadius(pieces))}px</span>
-          )}
-        </div>
-
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-5 min-w-0">
         <motion.canvas
           ref={canvasRef}
           width={COMP_W}
@@ -519,9 +571,9 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#FF0099] to-[#FF6600] text-white font-bold text-sm shadow-lg shadow-[#FF009933] flex items-center gap-2 whitespace-nowrap"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r text-white font-bold text-sm flex items-center gap-2 whitespace-nowrap"
           >
-            <Save size={15} /> Save Shape
+            <Save size={15} /> Save
           </motion.button>
         </div>
 
@@ -537,16 +589,20 @@ export const ShapeComposerTab: React.FC<ShapeComposerProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
-
-        <p className="text-[10px] text-[#2a2a40] text-center leading-relaxed">
-          Click a shape type on the left → click the canvas to place it
-          <br />
-          Drag pieces to reposition · Corner drag = resize · Side drag = stretch axis
-          <br />
-          Press Delete to remove selected · Esc to deselect
-        </p>
       </div>
 
+      <div className="relative shrink-0">
+        <div
+          onMouseDown={e => beginPanelResize('right', e)}
+          className="absolute top-0 -left-1.5 h-full w-3 cursor-col-resize z-20 hover:bg-white/10"
+          title="Resize panel"
+        />
+        <ComposerRightPanel
+          panelWidth={rightPanelWidth}
+          existingShapes={existingShapes}
+          onDelete={onDelete}
+        />
+      </div>
     </motion.div>
   );
 };

@@ -42,13 +42,13 @@ export const TOOLS: Record<Tool, { icon: React.FC<any>; color: string; label: st
   boss_move: { icon: Move, color: '#9966FF', label: 'Boss Move' },
 };
 
-export const SHAPES: { type: ShapeType; icon: React.FC<any>; label: string }[] = [
-  { type: 'square', icon: Square, label: 'Square' },
-  { type: 'circle', icon: Circle, label: 'Circle' },
-  { type: 'triangle', icon: Triangle, label: 'Triangle' },
-  { type: 'diamond', icon: Diamond, label: 'Diamond' },
-  { type: 'hexagon', icon: Hexagon, label: 'Hexagon' },
-  { type: 'star', icon: Star, label: 'Star' },
+export const SHAPES: { type: ShapeType; icon: React.FC<any>; }[] = [
+  { type: 'square', icon: Square},
+  { type: 'circle', icon: Circle},
+  { type: 'triangle', icon: Triangle},
+  { type: 'diamond', icon: Diamond},
+  { type: 'hexagon', icon: Hexagon},
+  { type: 'star', icon: Star},
 ];
 
 /** Legacy flat list – kept for any code that still references BEHAVIORS. */

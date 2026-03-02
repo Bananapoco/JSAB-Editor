@@ -67,17 +67,17 @@ export function drawPieceOnComposer(
   ctx.rotate((piece.rotation * Math.PI) / 180);
   ctx.scale(scaleX, scaleY);
 
-  ctx.fillStyle = `${piece.color}55`;
-  ctx.strokeStyle = selected ? '#ffffff' : piece.color;
-  ctx.lineWidth = selected ? 2.5 : 1.5;
+  ctx.fillStyle = piece.color;
   if (selected) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
     ctx.shadowColor = '#ffffff';
     ctx.shadowBlur = 8;
   }
 
   drawPieceShape(ctx, piece.type, r);
   ctx.fill();
-  ctx.stroke();
+  if (selected) ctx.stroke();
   ctx.shadowBlur = 0;
 
   if (selected) {
@@ -197,12 +197,9 @@ export function generateThumbnail(pieces: ComposerPiece[]): string {
     tx.translate(offsetX + p.x * scale, offsetY + p.y * scale);
     tx.rotate((p.rotation * Math.PI) / 180);
     tx.scale(p.scaleX ?? 1, p.scaleY ?? 1);
-    tx.fillStyle = `${p.color}88`;
-    tx.strokeStyle = p.color;
-    tx.lineWidth = 1.5;
+    tx.fillStyle = p.color;
     drawPieceShape(tx, p.type, r);
     tx.fill();
-    tx.stroke();
     tx.restore();
   }
 

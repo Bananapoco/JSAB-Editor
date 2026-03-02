@@ -1,16 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import {
-  Clock,
-  Maximize2,
-  MousePointer2,
-  Rocket,
-  RotateCw,
-  Square,
-  Trash2,
-} from 'lucide-react';
+import { Clock, Maximize2, MousePointer2, Play, RotateCw, Trash2 } from 'lucide-react';
 import { TOOLS } from '../constants';
 import { PlacedEvent } from '../types';
+import { THEME, alpha } from '@/styles/theme';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface BuildModeInspectorPanelProps {
   selectedEvent: PlacedEvent | null;
@@ -20,240 +16,247 @@ interface BuildModeInspectorPanelProps {
   onLaunch: () => void;
 }
 
+// ─── Field components ─────────────────────────────────────────────────────
+
+const FieldLabel: React.FC<{ icon?: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
+  <div className="flex items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.12em] mb-1" style={{ color: THEME.textDim }}>
+    {icon && <span>{icon}</span>}
+    {children}
+  </div>
+);
+
+const NumInput: React.FC<{
+  value: string;
+  step?: string;
+  onChange: (raw: string) => void;
+  onBlur: () => void;
+}> = ({ value, step, onChange, onBlur }) => (
+  <input
+    type="number"
+    step={step ?? '1'}
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    onBlur={onBlur}
+    className="w-full px-2 py-1.5 rounded-md border text-[11px] font-mono ui-input"
+  />
+);
+
+// ─── Component ────────────────────────────────────────────────────────────
+
 export const BuildModeInspectorPanel: React.FC<BuildModeInspectorPanelProps> = ({
-  selectedEvent,
-  eventCount,
-  onDeleteSelected,
-  onUpdateSelected,
-  onLaunch,
+  selectedEvent, eventCount, onDeleteSelected, onUpdateSelected, onLaunch,
 }) => {
-  const [timestampInput, setTimestampInput] = React.useState('0');
-  const [xInput, setXInput] = React.useState('0');
-  const [yInput, setYInput] = React.useState('0');
-  const [sizeInput, setSizeInput] = React.useState('40');
-  const [rotationInput, setRotationInput] = React.useState('0');
-  const [durationInput, setDurationInput] = React.useState('2');
+  const [tsInput,  setTsInput]  = React.useState('0');
+  const [xInput,   setXInput]   = React.useState('0');
+  const [yInput,   setYInput]   = React.useState('0');
+  const [szInput,  setSzInput]  = React.useState('40');
+  const [rotInput, setRotInput] = React.useState('0');
+  const [durInput, setDurInput] = React.useState('2');
 
   React.useEffect(() => {
     if (!selectedEvent) return;
-    setTimestampInput(String(selectedEvent.timestamp ?? 0));
+    setTsInput(String(selectedEvent.timestamp ?? 0));
     setXInput(String(selectedEvent.x ?? 0));
     setYInput(String(selectedEvent.y ?? 0));
-    setSizeInput(String(selectedEvent.size ?? 40));
-    setRotationInput(String(selectedEvent.rotation ?? 0));
-    setDurationInput(String(selectedEvent.duration ?? 2));
+    setSzInput(String(selectedEvent.size ?? 40));
+    setRotInput(String(selectedEvent.rotation ?? 0));
+    setDurInput(String(selectedEvent.duration ?? 2));
   }, [selectedEvent]);
 
+  const meta    = selectedEvent ? (TOOLS as any)[selectedEvent.type] : null;
+  const TypeIcon = meta?.icon;
+
   return (
-    <motion.div
-      initial={{ x: 20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ delay: 0.15 }}
-      className="w-56 bg-[#0a0a12] border-l border-[#1a1a2e] p-4 shrink-0 overflow-y-auto flex flex-col"
-    >
-      {selectedEvent ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-[#444]">Selected</span>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onDeleteSelected}
-              className="p-1.5 rounded bg-[#ff333322] text-[#ff4444] hover:bg-[#ff333344] transition-all"
-            >
-              <Trash2 size={14} />
-            </motion.button>
-          </div>
+    <TooltipProvider delayDuration={300}>
+      <motion.div
+        initial={{ x: 8, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.2 }}
+        className="w-52 flex flex-col shrink-0 overflow-hidden border-l"
+        style={{ background: THEME.panel, borderColor: THEME.border }}
+      >
+        <div className="flex-1 overflow-y-auto p-3">
+          {selectedEvent ? (
+            <div className="space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold"
+                  style={{
+                    background: alpha(meta?.color ?? THEME.accent, 0.08),
+                    color: meta?.color ?? THEME.accent,
+                    border: `1px solid ${alpha(meta?.color ?? THEME.accent, 0.22)}`,
+                  }}
+                >
+                  {TypeIcon && <TypeIcon size={12} />}
+                  {meta?.label ?? selectedEvent.type}
+                </div>
 
-          <div
-            className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-            style={{
-              backgroundColor: `${(TOOLS as any)[selectedEvent.type]?.color}22`,
-              color: (TOOLS as any)[selectedEvent.type]?.color,
-            }}
-          >
-            {(() => {
-              const Icon = (TOOLS as any)[selectedEvent.type]?.icon || Square;
-              return <Icon size={16} />;
-            })()}
-            {(TOOLS as any)[selectedEvent.type]?.label || selectedEvent.type}
-          </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      onClick={onDeleteSelected}
+                      className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer border transition-all duration-150 hover:opacity-80"
+                      style={{
+                        background: alpha(THEME.danger, 0.08),
+                        color: THEME.danger,
+                        borderColor: alpha(THEME.danger, 0.2),
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    Delete <span style={{ color: THEME.textMuted }} className="ml-1">Del</span>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
 
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1">Time</div>
-            <input
-              type="number"
-              step="0.01"
-              value={timestampInput}
-              onChange={e => {
-                const raw = e.target.value;
-                setTimestampInput(raw);
-                if (raw === '') return;
-                const value = Number(raw);
-                if (!Number.isFinite(value)) return;
-                onUpdateSelected({ timestamp: Math.max(0, value) });
-              }}
-              onBlur={() => {
-                const value = Number(timestampInput);
-                if (!Number.isFinite(value)) {
-                  setTimestampInput(String(selectedEvent.timestamp ?? 0));
-                  return;
-                }
-                const safe = Math.max(0, value);
-                setTimestampInput(String(safe));
-                onUpdateSelected({ timestamp: safe });
-              }}
-              className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
-            />
-          </div>
+              <div className="w-full h-px" style={{ background: THEME.border }} />
 
-          <div className="grid grid-cols-2 gap-2">
-            {(['x', 'y'] as const).map(key => (
-              <div key={key}>
-                <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1">{key}</div>
-                <input
-                  type="number"
-                  value={key === 'x' ? xInput : yInput}
-                  onChange={e => {
-                    const raw = e.target.value;
-                    if (key === 'x') setXInput(raw);
-                    else setYInput(raw);
-
-                    if (raw === '') return;
-                    const value = Number(raw);
-                    if (!Number.isFinite(value)) return;
-                    onUpdateSelected({ [key]: value });
+              {/* Timestamp */}
+              <div>
+                <FieldLabel icon={<Clock size={9} />}>Timestamp</FieldLabel>
+                <NumInput value={tsInput} step="0.01"
+                  onChange={raw => {
+                    setTsInput(raw);
+                    const v = Number(raw);
+                    if (!raw || !Number.isFinite(v)) return;
+                    onUpdateSelected({ timestamp: Math.max(0, v) });
                   }}
                   onBlur={() => {
-                    const raw = key === 'x' ? xInput : yInput;
-                    const value = Number(raw);
-                    if (!Number.isFinite(value)) {
-                      if (key === 'x') setXInput(String(selectedEvent.x ?? 0));
-                      else setYInput(String(selectedEvent.y ?? 0));
-                      return;
-                    }
-                    if (key === 'x') setXInput(String(value));
-                    else setYInput(String(value));
-                    onUpdateSelected({ [key]: value });
+                    const v = Number(tsInput);
+                    if (!Number.isFinite(v)) { setTsInput(String(selectedEvent.timestamp ?? 0)); return; }
+                    const safe = Math.max(0, v);
+                    setTsInput(String(safe));
+                    onUpdateSelected({ timestamp: safe });
                   }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
                 />
               </div>
-            ))}
-          </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1 flex items-center gap-1">
-                <Maximize2 size={10} /> Size
+              {/* Position */}
+              <div>
+                <FieldLabel>Position</FieldLabel>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(['x', 'y'] as const).map(k => (
+                    <div key={k}>
+                      <div className="text-[8px] font-mono uppercase mb-1" style={{ color: THEME.textDim }}>{k}</div>
+                      <input
+                        type="number"
+                        value={k === 'x' ? xInput : yInput}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          k === 'x' ? setXInput(raw) : setYInput(raw);
+                          const v = Number(raw);
+                          if (!raw || !Number.isFinite(v)) return;
+                          onUpdateSelected({ [k]: v });
+                        }}
+                        onBlur={() => {
+                          const raw = k === 'x' ? xInput : yInput;
+                          const v = Number(raw);
+                          if (!Number.isFinite(v)) {
+                            k === 'x' ? setXInput(String(selectedEvent.x ?? 0)) : setYInput(String(selectedEvent.y ?? 0));
+                            return;
+                          }
+                          onUpdateSelected({ [k]: v });
+                        }}
+                        className="w-full px-2 py-1.5 rounded-md border text-[11px] font-mono ui-input"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <input
-                type="number"
-                value={sizeInput}
-                onChange={e => {
-                  const raw = e.target.value;
-                  setSizeInput(raw);
-                  if (raw === '') return;
-                  const value = Number(raw);
-                  if (!Number.isFinite(value) || value <= 0) return;
-                  onUpdateSelected({ size: value });
-                }}
-                onBlur={() => {
-                  const value = Number(sizeInput);
-                  if (!Number.isFinite(value) || value <= 0) {
-                    setSizeInput(String(selectedEvent.size ?? 40));
-                    return;
-                  }
-                  setSizeInput(String(value));
-                  onUpdateSelected({ size: value });
-                }}
-                className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
-              />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1 flex items-center gap-1">
-                <RotateCw size={10} /> Rot
-              </div>
-              <input
-                type="number"
-                value={rotationInput}
-                onChange={e => {
-                  const raw = e.target.value;
-                  setRotationInput(raw);
-                  if (raw === '') return;
-                  const value = Number(raw);
-                  if (!Number.isFinite(value)) return;
-                  onUpdateSelected({ rotation: value });
-                }}
-                onBlur={() => {
-                  const value = Number(rotationInput);
-                  if (!Number.isFinite(value)) {
-                    setRotationInput(String(selectedEvent.rotation ?? 0));
-                    return;
-                  }
-                  setRotationInput(String(value));
-                  onUpdateSelected({ rotation: value });
-                }}
-                className="w-full px-2 py-1.5 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
-              />
-            </div>
-          </div>
 
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#444] mb-1 flex items-center gap-1">
-              <Clock size={10} /> Duration
+              {/* Size + Rotation */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <FieldLabel icon={<Maximize2 size={8} />}>Size</FieldLabel>
+                  <NumInput value={szInput}
+                    onChange={raw => {
+                      setSzInput(raw);
+                      const v = Number(raw);
+                      if (!raw || !Number.isFinite(v) || v <= 0) return;
+                      onUpdateSelected({ size: v });
+                    }}
+                    onBlur={() => {
+                      const v = Number(szInput);
+                      if (!Number.isFinite(v) || v <= 0) { setSzInput(String(selectedEvent.size ?? 40)); return; }
+                      onUpdateSelected({ size: v });
+                    }}
+                  />
+                </div>
+                <div>
+                  <FieldLabel icon={<RotateCw size={8} />}>Rotation</FieldLabel>
+                  <NumInput value={rotInput}
+                    onChange={raw => {
+                      setRotInput(raw);
+                      const v = Number(raw);
+                      if (!raw || !Number.isFinite(v)) return;
+                      onUpdateSelected({ rotation: v });
+                    }}
+                    onBlur={() => {
+                      const v = Number(rotInput);
+                      if (!Number.isFinite(v)) { setRotInput(String(selectedEvent.rotation ?? 0)); return; }
+                      onUpdateSelected({ rotation: v });
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <FieldLabel icon={<Clock size={9} />}>Duration</FieldLabel>
+                <NumInput value={durInput} step="0.1"
+                  onChange={raw => {
+                    setDurInput(raw);
+                    const v = Number(raw);
+                    if (!raw || !Number.isFinite(v) || v <= 0) return;
+                    onUpdateSelected({ duration: v });
+                  }}
+                  onBlur={() => {
+                    const v = Number(durInput);
+                    if (!Number.isFinite(v) || v <= 0) { setDurInput(String(selectedEvent.duration ?? 2)); return; }
+                    onUpdateSelected({ duration: v });
+                  }}
+                />
+              </div>
             </div>
-            <input
-              type="number"
-              step="0.1"
-              value={durationInput}
-              onChange={e => {
-                const raw = e.target.value;
-                setDurationInput(raw);
-                if (raw === '') return;
-                const value = Number(raw);
-                if (!Number.isFinite(value) || value <= 0) return;
-                onUpdateSelected({ duration: value });
-              }}
-              onBlur={() => {
-                const value = Number(durationInput);
-                if (!Number.isFinite(value) || value <= 0) {
-                  setDurationInput(String(selectedEvent.duration ?? 2));
-                  return;
-                }
-                setDurationInput(String(value));
-                onUpdateSelected({ duration: value });
-              }}
-              className="w-full px-3 py-2 rounded-lg bg-[#151520] border border-[#252540] text-white text-sm font-mono focus:outline-none focus:border-[#FF0099]"
-            />
-          </div>
+          ) : (
+            /* Empty state */
+            <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-8">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: THEME.surface, border: `1px solid ${THEME.border}` }}
+              >
+                <MousePointer2 size={22} style={{ color: THEME.borderBright }} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium" style={{ color: THEME.textDim }}>Nothing selected</p>
+                <p className="text-[10px]" style={{ color: alpha(THEME.textDim, 0.7) }}>
+                  Click the canvas to add events, or select one to edit
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <MousePointer2 size={32} className="text-[#252540] mb-3" />
-          <p className="text-xs text-[#444]">
-            Click canvas
-            <br />
-            to add stuff!
+
+        {/* Footer */}
+        <div className="p-3 space-y-2.5 border-t" style={{ borderColor: THEME.border }}>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={onLaunch}
+            className="w-full h-10 rounded-md font-bold text-xs tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-90"
+            style={{ background: THEME.accent, color: THEME.text }}
+          >
+            <Play size={14} />
+            PLAY LEVEL
+          </motion.button>
+          <p className="text-[9px] text-center tabular-nums" style={{ color: THEME.textDim }}>
+            {eventCount} event{eventCount !== 1 ? 's' : ''}
           </p>
         </div>
-      )}
-
-      <div className="flex-1" />
-
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={onLaunch}
-        className="w-full py-4 rounded-xl bg-gradient-to-r from-[#FF0099] to-[#FF6600] text-white font-bold text-sm tracking-wide shadow-lg shadow-[#FF009944] hover:shadow-[#FF009966] transition-all flex items-center justify-center gap-2"
-      >
-        <Rocket size={18} />
-        PLAY!
-      </motion.button>
-
-      <p className="text-[10px] text-[#333] text-center mt-2">
-        {eventCount} event{eventCount !== 1 ? 's' : ''} ready
-      </p>
-    </motion.div>
+      </motion.div>
+    </TooltipProvider>
   );
 };

@@ -4,6 +4,10 @@ import { Magnet, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { SNAP_INTERVALS } from '../constants';
 import { SnapInterval } from '../types';
 import { formatTime } from '../utils';
+import { THEME, alpha } from '@/styles/theme';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface BuildModePlaybackControlsProps {
   audioFile: File | null;
@@ -22,160 +26,182 @@ interface BuildModePlaybackControlsProps {
 }
 
 export const BuildModePlaybackControls: React.FC<BuildModePlaybackControlsProps> = ({
-  audioFile,
-  isPlaying,
-  currentTime,
-  audioDuration,
-  snapEnabled,
-  snapInterval,
-  showSnapMenu,
-  onTogglePlay,
-  onSkipByBeats,
-  onSeekRatio,
-  onToggleSnapMenu,
-  onToggleSnapEnabled,
-  onSelectSnapInterval,
+  audioFile, isPlaying, currentTime, audioDuration,
+  snapEnabled, snapInterval, showSnapMenu,
+  onTogglePlay, onSkipByBeats, onSeekRatio,
+  onToggleSnapMenu, onToggleSnapEnabled, onSelectSnapInterval,
 }) => {
+  const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+
   return (
-    <div className="h-14 flex items-center gap-3 px-4 bg-[#0a0a12] border-t border-[#1a1a2e] shrink-0">
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => onSkipByBeats(-4)}
-        className="p-2 rounded-lg bg-[#1a1a2e] text-[#666] hover:text-white hover:bg-[#252540] transition-all"
-        title="Skip back 4 beats"
-      >
-        <SkipBack size={14} />
-      </motion.button>
-
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={onTogglePlay}
-        disabled={!audioFile}
-        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-          audioFile
-            ? 'bg-gradient-to-r from-[#FF0099] to-[#FF6600] text-white shadow-lg shadow-[#FF009944]'
-            : 'bg-[#1a1a2e] text-[#444] cursor-not-allowed'
-        }`}
-      >
-        {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
-      </motion.button>
-
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => onSkipByBeats(4)}
-        className="p-2 rounded-lg bg-[#1a1a2e] text-[#666] hover:text-white hover:bg-[#252540] transition-all"
-        title="Skip forward 4 beats"
-      >
-        <SkipForward size={14} />
-      </motion.button>
-
-      <span className="text-sm font-mono text-[#666] min-w-[80px]">
-        {formatTime(currentTime)} / {formatTime(audioDuration)}
-      </span>
-
+    <TooltipProvider delayDuration={300}>
       <div
-        className="flex-1 flex items-center cursor-pointer relative"
-        style={{ height: 24 }}
-        onMouseDown={event => {
-          const el = event.currentTarget;
-          const seek = (ev: MouseEvent | React.MouseEvent) => {
-            const rect = el.getBoundingClientRect();
-            onSeekRatio(Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width)));
-          };
-
-          seek(event.nativeEvent);
-          const move = (ev: MouseEvent) => seek(ev);
-          const up = () => {
-            window.removeEventListener('mousemove', move);
-            window.removeEventListener('mouseup', up);
-          };
-
-          window.addEventListener('mousemove', move);
-          window.addEventListener('mouseup', up);
-        }}
+        className="h-12 flex items-center gap-2 px-3 shrink-0 border-t"
+        style={{ background: THEME.panel, borderColor: THEME.border }}
       >
+        {/* Skip back */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={() => onSkipByBeats(-4)} className="ui-btn w-7 h-7 flex items-center justify-center rounded-md cursor-pointer">
+              <SkipBack size={13} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Back 4 beats</TooltipContent>
+        </Tooltip>
+
+        {/* Play/pause */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={onTogglePlay}
+              disabled={!audioFile}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer"
+              style={
+                !audioFile
+                  ? { background: THEME.surface, color: THEME.textDim, cursor: 'not-allowed', border: `1px solid ${THEME.border}` }
+                  : isPlaying
+                    ? { background: THEME.accent, color: THEME.text }
+                    : {
+                        background: alpha(THEME.accent, 0.1),
+                        color: THEME.accent,
+                        border: `1px solid ${alpha(THEME.accent, 0.3)}`,
+                      }
+              }
+            >
+              {isPlaying
+                ? <Pause size={14} />
+                : <Play size={14} style={{ marginLeft: 1 }} />
+              }
+            </motion.button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {isPlaying ? 'Pause' : 'Play'}{' '}
+            <span style={{ color: THEME.textMuted }} className="ml-1">Space</span>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Skip forward */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={() => onSkipByBeats(4)} className="ui-btn w-7 h-7 flex items-center justify-center rounded-md cursor-pointer">
+              <SkipForward size={13} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Forward 4 beats</TooltipContent>
+        </Tooltip>
+
+        {/* Time */}
+        <span className="text-[10px] font-mono tabular-nums whitespace-nowrap select-none min-w-[72px]" style={{ color: THEME.textMuted }}>
+          {formatTime(currentTime)} <span style={{ color: THEME.textDim }}>/</span> {formatTime(audioDuration)}
+        </span>
+
+        {/* Scrubber */}
         <div
-          className="absolute inset-x-0 rounded-full bg-[#1a1a2e]"
-          style={{ height: 6, top: '50%', transform: 'translateY(-50%)' }}
+          className="flex-1 flex items-center cursor-pointer relative group"
+          style={{ height: 28 }}
+          onMouseDown={event => {
+            const el = event.currentTarget;
+            const seek = (ev: MouseEvent | React.MouseEvent) => {
+              const r = el.getBoundingClientRect();
+              onSeekRatio(Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)));
+            };
+            seek(event.nativeEvent);
+            const mv = (ev: MouseEvent) => seek(ev);
+            const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+            window.addEventListener('mousemove', mv);
+            window.addEventListener('mouseup', up);
+          }}
         >
+          {/* Track */}
           <div
-            className="h-full bg-gradient-to-r from-[#FF0099] to-[#FF6600] rounded-full"
-            style={{ width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
+            className="absolute inset-x-0 rounded-full"
+            style={{ height: 3, top: '50%', transform: 'translateY(-50%)', background: THEME.surfaceActive }}
+          >
+            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: THEME.accent }} />
+          </div>
+          {/* Thumb */}
+          <div
+            className="absolute rounded-full pointer-events-none transition-transform group-hover:scale-125"
+            style={{
+              width: 11, height: 11,
+              left: `${progress}%`,
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: THEME.accent,
+              border: '2px solid rgba(255,255,255,0.3)',
+              boxShadow: `0 0 6px ${alpha(THEME.accent, 0.6)}`,
+            }}
           />
         </div>
 
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: 16,
-            height: 16,
-            left: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`,
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'linear-gradient(135deg, #FF0099, #FF6600)',
-            boxShadow: '0 0 8px rgba(255,0,153,0.7), 0 2px 4px rgba(0,0,0,0.5)',
-            border: '2px solid rgba(255,255,255,0.4)',
-          }}
-        />
-      </div>
-
-      <div className="relative">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onToggleSnapMenu}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-            snapEnabled
-              ? 'bg-[#00FFFF22] text-[#00FFFF] border border-[#00FFFF66]'
-              : 'bg-[#1a1a2e] text-[#666] border border-transparent'
-          }`}
-          title="Beat Snap"
-        >
-          <Magnet size={14} />
-          <span className="text-xs font-bold">{snapInterval}</span>
-        </motion.button>
-
-        <AnimatePresence>
-          {showSnapMenu && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#12121a] border border-[#252540] rounded-xl p-2 shadow-xl z-50"
-            >
-              <button
-                onClick={onToggleSnapEnabled}
-                className={`w-full px-3 py-2 rounded-lg text-xs font-medium mb-2 transition-all ${
-                  snapEnabled ? 'bg-[#00FFFF22] text-[#00FFFF]' : 'bg-[#1a1a2e] text-[#666]'
-                }`}
+        {/* Snap */}
+        <div className="relative">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={onToggleSnapMenu}
+                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md border cursor-pointer transition-all duration-150"
+                style={
+                  snapEnabled
+                    ? { background: alpha(THEME.cyan, 0.1), color: THEME.cyan, borderColor: alpha(THEME.cyan, 0.35) }
+                    : { background: THEME.surface, color: THEME.textMuted, borderColor: THEME.border }
+                }
               >
-                {snapEnabled ? '🧲 Snap ON' : '🧲 Snap OFF'}
-              </button>
+                <Magnet size={12} />
+                <span className="text-[10px] font-bold font-mono">{snapInterval}</span>
+              </motion.button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Beat snap</TooltipContent>
+          </Tooltip>
 
-              <div className="flex gap-1">
-                {SNAP_INTERVALS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => onSelectSnapInterval(value)}
-                    className={`w-10 h-10 rounded-lg text-xs font-bold transition-all ${
-                      snapInterval === value && snapEnabled
-                        ? 'bg-[#FF0099] text-white'
-                        : 'bg-[#1a1a2e] text-[#666] hover:text-white hover:bg-[#252540]'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-[9px] text-[#444] text-center mt-2">beats</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {showSnapMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                transition={{ duration: 0.12 }}
+                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-lg p-2.5 shadow-2xl z-50 min-w-[140px]"
+                style={{ background: THEME.surface, border: `1px solid ${THEME.borderBright}` }}
+              >
+                <button
+                  onClick={onToggleSnapEnabled}
+                  className="w-full px-3 py-1.5 rounded-md text-[10px] font-semibold mb-2.5 cursor-pointer border transition-all duration-150"
+                  style={
+                    snapEnabled
+                      ? { background: alpha(THEME.cyan, 0.1), color: THEME.cyan, borderColor: alpha(THEME.cyan, 0.35) }
+                      : { background: THEME.surfaceHover, color: THEME.textMuted, borderColor: THEME.border }
+                  }
+                >
+                  {snapEnabled ? 'Snap: ON' : 'Snap: OFF'}
+                </button>
+                <div className="flex gap-1">
+                  {SNAP_INTERVALS.map(({ value, label }) => {
+                    const on = snapInterval === value && snapEnabled;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => onSelectSnapInterval(value)}
+                        className="flex-1 h-8 rounded-md text-[10px] font-bold cursor-pointer border transition-all duration-150"
+                        style={
+                          on
+                            ? { background: THEME.accent, color: THEME.text, borderColor: 'transparent' }
+                            : { background: THEME.surfaceHover, color: THEME.textMuted, borderColor: THEME.border }
+                        }
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="text-[8px] text-center mt-2 uppercase tracking-wider" style={{ color: THEME.textDim }}>beats</div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };

@@ -1,7 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Clock, Play, Redo2, Save, Square, Undo2, X } from 'lucide-react';
+import { ChevronLeft, Clock, Play, Redo2, Save, Square, Undo2 } from 'lucide-react';
 import { formatTime } from '../utils';
+import { THEME, alpha } from '@/styles/theme';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface BuildModeTopBarProps {
   onClose: () => void;
@@ -29,84 +33,135 @@ export const BuildModeTopBar: React.FC<BuildModeTopBarProps> = ({
   canRedo,
   eventCount,
   audioDuration,
-}) => {
-  return (
+}) => (
+  <TooltipProvider delayDuration={400}>
     <motion.div
-      initial={{ y: -20, opacity: 0 }}
+      initial={{ y: -8, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="h-14 flex items-center px-4 gap-3 border-b border-[#1a1a2e] bg-[#0c0c14] shrink-0"
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="h-12 flex items-center px-3 gap-1 border-b shrink-0"
+      style={{ background: THEME.panel, borderColor: THEME.border }}
     >
-      <button
-        onClick={onClose}
-        title="Back to Main Menu"
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1a1a2e] hover:bg-[#252540] text-[#888] hover:text-white transition-all"
-      >
-        <ChevronLeft size={16} />
-      </button>
+      {/* Back */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onClose} className="ui-btn h-8 w-8 flex items-center justify-center rounded-md cursor-pointer">
+            <ChevronLeft size={16} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Back to menu</TooltipContent>
+      </Tooltip>
 
-      <div className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#FF009920] to-[#FF660020] border border-[#FF0099] text-[#FF0099] font-bold text-sm tracking-wide">
-        🛠️ BUILD
+      {/* BUILD badge */}
+      <div
+        className="h-6 px-2.5 flex items-center rounded-sm ml-1"
+        style={{
+          background: alpha(THEME.accent, 0.08),
+          border: `1px solid ${alpha(THEME.accent, 0.28)}`,
+        }}
+      >
+        <span
+          className="text-[10px] font-bold tracking-[0.15em] uppercase"
+          style={{ color: THEME.accent }}
+        >
+          Build
+        </span>
       </div>
 
-      <button
-        onClick={onSaveProject}
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1a1a2e] text-[#9fb4ff] hover:text-white hover:bg-[#252540] transition-all"
-      >
-        <Save size={14} />
-        Save Project
-      </button>
+      {/* Divider */}
+      <div className="w-px h-5 mx-2" style={{ background: THEME.border }} />
 
-      <button
-        onClick={onLaunch}
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#FF0099] text-white hover:bg-[#ff1aa3] transition-all"
-      >
-        <Play size={14} />
-        Play
-      </button>
+      {/* Save */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button onClick={onSaveProject} className="ui-btn h-8 w-8 flex items-center justify-center rounded-md cursor-pointer">
+            <Save size={15} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Save project <span style={{ color: THEME.textMuted }} className="ml-1">⌘S</span>
+        </TooltipContent>
+      </Tooltip>
 
+      {/* Play */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            onClick={onLaunch}
+            whileTap={{ scale: 0.92 }}
+            className="h-8 px-3 flex items-center gap-1.5 rounded-md font-semibold text-xs tracking-wide cursor-pointer transition-opacity hover:opacity-90"
+            style={{ background: THEME.accent, color: THEME.text }}
+          >
+            <Play size={13} />
+            Play
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Test level <span style={{ color: THEME.textMuted }} className="ml-1">⌘↵</span>
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Save status */}
       {saveStatusText && (
-        <span className="text-xs text-[#5ad6ff] whitespace-nowrap">{saveStatusText}</span>
+        <motion.span
+          key={saveStatusText}
+          initial={{ opacity: 0, x: -4 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-[10px] ml-1 whitespace-nowrap"
+          style={{ color: THEME.cyan }}
+        >
+          {saveStatusText}
+        </motion.span>
       )}
 
       <div className="flex-1" />
 
-      <button
-        onClick={onUndo}
-        disabled={!canUndo}
-        title="Undo (Cmd/Ctrl+Z)"
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1a1a2e] text-[#888] hover:text-white hover:bg-[#252540] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1a1a2e]"
-      >
-        <Undo2 size={14} />
-        Undo
-      </button>
-
-      <button
-        onClick={onRedo}
-        disabled={!canRedo}
-        title="Redo (Cmd/Ctrl+Shift+Z)"
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1a1a2e] text-[#888] hover:text-white hover:bg-[#252540] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1a1a2e]"
-      >
-        <Redo2 size={14} />
-        Redo
-      </button>
-
-      <div className="flex items-center gap-4 text-xs text-[#666]">
-        <span className="flex items-center gap-1">
-          <Square size={12} className="text-[#FF0099]" />
+      {/* Stats */}
+      <div className="flex items-center gap-3 px-3 mr-1">
+        <span className="flex items-center gap-1.5 text-[11px] tabular-nums" style={{ color: THEME.textMuted }}>
+          <Square size={10} style={{ color: THEME.accent }} />
           {eventCount}
         </span>
-        <span className="flex items-center gap-1">
-          <Clock size={12} />
+        <span className="flex items-center gap-1.5 text-[11px] tabular-nums" style={{ color: THEME.textMuted }}>
+          <Clock size={10} />
           {formatTime(audioDuration)}
         </span>
       </div>
 
-      <button
-        onClick={onClose}
-        className="p-2 rounded-lg hover:bg-[#1a1a2e] text-[#666] hover:text-white transition-all"
-      >
-        <X size={18} />
-      </button>
+      {/* Divider */}
+      <div className="w-px h-5 mx-1" style={{ background: THEME.border }} />
+
+      {/* Undo */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="ui-btn h-8 w-8 flex items-center justify-center rounded-md cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+          >
+            <Undo2 size={15} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Undo <span style={{ color: THEME.textMuted }} className="ml-1">⌘Z</span>
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Redo */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className="ui-btn h-8 w-8 flex items-center justify-center rounded-md cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+          >
+            <Redo2 size={15} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Redo <span style={{ color: THEME.textMuted }} className="ml-1">⌘⇧Z</span>
+        </TooltipContent>
+      </Tooltip>
     </motion.div>
-  );
-};
+  </TooltipProvider>
+);

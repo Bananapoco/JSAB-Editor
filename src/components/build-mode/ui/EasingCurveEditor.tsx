@@ -78,7 +78,7 @@ export const EasingCurveEditor: React.FC<Props> = ({ easing, easingCurve, onChan
             onClick={() => onChange(p.key, p.key === 'custom' ? resolvedCurve : undefined)}
             className={`px-1.5 py-0.5 rounded text-[9px] font-medium border transition-all ${
               easing === p.key
-                ? 'bg-[#FF009933] border-[#FF0099] text-[#FF0099]'
+                ? 'bg-[#2F80FF33] border-[#2F80FF] text-[#2F80FF]'
                 : 'bg-[#151520] border-[#252540] text-[#666] hover:text-white hover:border-[#444]'
             }`}
           >
@@ -89,7 +89,7 @@ export const EasingCurveEditor: React.FC<Props> = ({ easing, easingCurve, onChan
           onClick={() => onChange('custom', resolvedCurve)}
           className={`px-1.5 py-0.5 rounded text-[9px] font-medium border transition-all ${
             easing === 'custom'
-              ? 'bg-[#FF009933] border-[#FF0099] text-[#FF0099]'
+              ? 'bg-[#2F80FF33] border-[#2F80FF] text-[#2F80FF]'
               : 'bg-[#151520] border-[#252540] text-[#666] hover:text-white hover:border-[#444]'
           }`}
         >
@@ -115,14 +115,14 @@ export const EasingCurveEditor: React.FC<Props> = ({ easing, easingCurve, onChan
         <line x1={p0x} y1={p0y} x2={p3x} y2={p3y} stroke="#252540" strokeWidth={0.5} strokeDasharray="3,3" />
 
         {/* Handle lines */}
-        <line x1={p0x} y1={p0y} x2={c1x} y2={c1y} stroke="#FF009966" strokeWidth={1} />
+        <line x1={p0x} y1={p0y} x2={c1x} y2={c1y} stroke="#2F80FF66" strokeWidth={1} />
         <line x1={p3x} y1={p3y} x2={c2x} y2={c2y} stroke="#00FFFF66" strokeWidth={1} />
 
         {/* The curve */}
         <path
           d={`M ${p0x} ${p0y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p3x} ${p3y}`}
           fill="none"
-          stroke="#FF0099"
+          stroke="#2F80FF"
           strokeWidth={2}
         />
 
@@ -133,8 +133,8 @@ export const EasingCurveEditor: React.FC<Props> = ({ easing, easingCurve, onChan
         {/* Draggable control points */}
         <circle
           cx={c1x} cy={c1y} r={5}
-          fill={dragging === 'cp1' ? '#FF0099' : '#FF009999'}
-          stroke="#FF0099" strokeWidth={1.5}
+          fill={dragging === 'cp1' ? '#2F80FF' : '#2F80FF99'}
+          stroke="#2F80FF" strokeWidth={1.5}
           className="cursor-grab active:cursor-grabbing"
           onPointerDown={handlePointerDown('cp1')}
         />

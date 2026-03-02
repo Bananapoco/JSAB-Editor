@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { DEFAULT_ZOOM, SNAP_INTERVALS, TOOLS } from '../constants';
 import { PlacedEvent, SnapInterval } from '../types';
 import { formatTime, getBombDurationSeconds, hasBombBehavior } from '../utils';
+import { THEME, alpha } from '@/styles/theme';
 
 interface BuildModeTimelineProps {
   timelineRef: RefObject<HTMLDivElement | null>;
@@ -26,267 +27,219 @@ interface BuildModeTimelineProps {
 }
 
 export const BuildModeTimeline: React.FC<BuildModeTimelineProps> = ({
-  timelineRef,
-  isScrubbing,
-  bpm,
-  audioDuration,
-  snapInterval,
-  snapEnabled,
-  currentTime,
-  isPlacementMode,
-  events,
-  selectedId,
-  selectedIds,
-  onScrubStart,
-  onScrubMove,
-  onScrubEnd,
-  onTimelineClick,
-  onSelectEvent,
-  onDeselectEvents,
-  onDragEventToTime,
+  timelineRef, isScrubbing, bpm, audioDuration,
+  snapInterval, snapEnabled, currentTime, isPlacementMode,
+  events, selectedId, selectedIds,
+  onScrubStart, onScrubMove, onScrubEnd,
+  onTimelineClick, onSelectEvent, onDeselectEvents, onDragEventToTime,
 }) => {
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ id: number; startX: number; startTimestamp: number } | null>(null);
+  const viewportRef  = useRef<HTMLDivElement | null>(null);
+  const dragRef      = useRef<{ id: number; startX: number; startTimestamp: number } | null>(null);
   const dragMovedRef = useRef(false);
-  const suppressTimelineClickRef = useRef(false);
-  const [timelineZoom, setTimelineZoom] = useState(DEFAULT_ZOOM);
+  const suppressRef  = useRef(false);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
 
-  const handleTimelineWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const viewportEl = viewportRef.current;
-    if (!viewportEl) return;
-
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const vp = viewportRef.current;
+    if (!vp) return;
     e.preventDefault();
-
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    const nextZoom = Math.max(1, Math.min(8, timelineZoom * zoomFactor));
-    if (Math.abs(nextZoom - timelineZoom) < 0.0001) return;
-
-    const rect = viewportEl.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const contentX = viewportEl.scrollLeft + mouseX;
-    const scale = nextZoom / timelineZoom;
-
-    setTimelineZoom(nextZoom);
-
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const next = Math.max(1, Math.min(8, zoom * factor));
+    if (Math.abs(next - zoom) < 0.0001) return;
+    const rect = vp.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const cx = vp.scrollLeft + mx;
+    const scale = next / zoom;
+    setZoom(next);
     window.requestAnimationFrame(() => {
-      const vp = viewportRef.current;
-      if (!vp) return;
-      vp.scrollLeft = Math.max(0, contentX * scale - mouseX);
+      const el = viewportRef.current;
+      if (el) el.scrollLeft = Math.max(0, cx * scale - mx);
     });
-  }, [timelineZoom]);
+  }, [zoom]);
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       const drag = dragRef.current;
-      const timelineEl = timelineRef.current;
-      if (!drag || !timelineEl || audioDuration <= 0) return;
-
-      const deltaX = e.clientX - drag.startX;
-      if (Math.abs(deltaX) > 3) dragMovedRef.current = true;
-
-      const deltaRatio = deltaX / timelineEl.clientWidth;
-      let next = drag.startTimestamp + deltaRatio * audioDuration;
+      const el = timelineRef.current;
+      if (!drag || !el || audioDuration <= 0) return;
+      const dx = e.clientX - drag.startX;
+      if (Math.abs(dx) > 3) dragMovedRef.current = true;
+      let next = drag.startTimestamp + (dx / el.clientWidth) * audioDuration;
       next = Math.max(0, Math.min(audioDuration, next));
-
       if (snapEnabled && bpm > 0) {
-        const beatDuration = 60 / bpm;
-        const snapConfig = SNAP_INTERVALS.find(interval => interval.value === snapInterval);
-        const snapUnit = snapConfig ? beatDuration / snapConfig.divisor : beatDuration;
-        next = Math.round(next / snapUnit) * snapUnit;
+        const bd = 60 / bpm;
+        const sc = SNAP_INTERVALS.find(i => i.value === snapInterval);
+        const su = sc ? bd / sc.divisor : bd;
+        next = Math.round(next / su) * su;
         next = Math.max(0, Math.min(audioDuration, next));
       }
-
       onDragEventToTime(drag.id, parseFloat(next.toFixed(3)));
     };
-
-    const onMouseUp = () => {
+    const onUp = () => {
       if (dragRef.current && dragMovedRef.current) {
-        suppressTimelineClickRef.current = true;
-        window.setTimeout(() => {
-          suppressTimelineClickRef.current = false;
-        }, 0);
+        suppressRef.current = true;
+        window.setTimeout(() => { suppressRef.current = false; }, 0);
       }
       dragRef.current = null;
       dragMovedRef.current = false;
     };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [audioDuration, bpm, onDragEventToTime, snapEnabled, snapInterval, timelineRef]);
 
   return (
     <div
       ref={viewportRef}
-      className="h-28 bg-[#08080c] border-t border-[#1a1a2e] overflow-x-auto overflow-y-hidden shrink-0"
-      onWheel={handleTimelineWheel}
+      className="h-24 overflow-x-auto overflow-y-hidden shrink-0 border-t"
+      style={{ background: THEME.base, borderColor: THEME.border }}
+      onWheel={handleWheel}
     >
       <div
         ref={timelineRef}
         className={`h-full relative min-w-full ${isScrubbing ? 'cursor-grabbing' : ''}`}
-        style={{ width: `${timelineZoom * 100}%` }}
+        style={{ width: `${zoom * 100}%` }}
         onMouseDown={onScrubStart}
         onMouseMove={onScrubMove}
         onMouseUp={onScrubEnd}
         onMouseLeave={onScrubEnd}
       >
-      {bpm > 0 && audioDuration > 0 && (() => {
-        const beatDuration = 60 / bpm;
-        const snapConfig = SNAP_INTERVALS.find(interval => interval.value === snapInterval);
-        const snapUnit = snapConfig ? beatDuration / snapConfig.divisor : beatDuration;
-        const totalSnaps = Math.floor(audioDuration / snapUnit);
+        {/* Beat grid */}
+        {bpm > 0 && audioDuration > 0 && (() => {
+          const bd = 60 / bpm;
+          const sc = SNAP_INTERVALS.find(i => i.value === snapInterval);
+          const su = sc ? bd / sc.divisor : bd;
+          const total = Math.floor(audioDuration / su);
+          return Array.from({ length: total + 1 }).map((_, idx) => {
+            const t = idx * su;
+            const left = (t / audioDuration) * 100;
+            const bi = t / bd;
+            const isMeasure = Math.abs(bi % 4) < 0.01;
+            const isBeat    = Math.abs(bi % 1) < 0.01;
+            return (
+              <div
+                key={idx}
+                className="absolute top-0 bottom-5"
+                style={{
+                  left: `${left}%`,
+                  width: 1,
+                  background: isMeasure
+                    ? alpha(THEME.accent, 0.25)
+                    : isBeat
+                      ? alpha(THEME.accent, 0.1)
+                      : snapEnabled
+                        ? alpha(THEME.text, 0.04)
+                        : 'transparent',
+                }}
+              />
+            );
+          });
+        })()}
 
-        return Array.from({ length: totalSnaps + 1 }).map((_, i) => {
-          const t = i * snapUnit;
-          const left = (t / audioDuration) * 100;
-          const beatIndex = t / beatDuration;
-          const isMeasure = Math.abs(beatIndex % 4) < 0.01;
-          const isBeat = Math.abs(beatIndex % 1) < 0.01;
+        {/* Click-to-deselect / place area */}
+        <div
+          onClick={e => { if (suppressRef.current) return; onDeselectEvents(); onTimelineClick(e); }}
+          className="absolute inset-0 bottom-5 z-[5]"
+          style={{
+            cursor: isScrubbing ? 'grabbing' : isPlacementMode ? 'copy' : 'default',
+            pointerEvents: isScrubbing ? 'none' : 'auto',
+          }}
+        />
+
+        {/* Events */}
+        {events.map(event => {
+          const isBomb = hasBombBehavior(event.behavior, event.behaviorModifiers);
+          const bombDur   = isBomb ? getBombDurationSeconds(bpm, event.bombSettings) : 0;
+          const startTime = isBomb ? Math.max(0, event.timestamp - bombDur) : event.timestamp;
+          const visDur    = isBomb ? bombDur : (event.duration ?? 1);
+          const left  = audioDuration > 0 ? (startTime / audioDuration) * 100 : 0;
+          const width = audioDuration > 0 ? Math.max(0.5, (Math.max(0.001, visDur) / audioDuration) * 100) : 0.5;
+          const color = (TOOLS as any)[event.type]?.color ?? THEME.accent;
+          const isSelected = selectedIds.includes(event.id) || event.id === selectedId;
+          const isNear     = Math.abs(event.timestamp - currentTime) < 0.5;
+          const zIndex     = (isSelected ? 20000 : 6000) + Math.max(1, 10000 - Math.round(width * 100));
 
           return (
-            <div
-              key={i}
-              className="absolute top-0 bottom-6"
+            <motion.div
+              key={event.id}
+              initial={{ scaleY: 0, opacity: 0 }}
+              animate={{ scaleY: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 600, damping: 40 }}
+              onMouseDown={e => {
+                e.preventDefault(); e.stopPropagation();
+                dragMovedRef.current = false;
+                dragRef.current = { id: event.id, startX: e.clientX, startTimestamp: event.timestamp };
+                onSelectEvent(event.id);
+              }}
+              onClick={e => { e.stopPropagation(); onSelectEvent(event.id); }}
+              className="absolute cursor-ew-resize rounded-sm"
               style={{
+                top: 6,
+                height: 'calc(100% - 26px)',
                 left: `${left}%`,
-                width: isMeasure ? '2px' : '1px',
-                backgroundColor: isMeasure
-                  ? 'rgba(255,0,153,0.35)'
-                  : isBeat
-                    ? 'rgba(255,0,153,0.15)'
-                    : snapEnabled
-                      ? 'rgba(0,255,255,0.08)'
-                      : 'rgba(255,0,153,0.04)',
+                width: `${width}%`,
+                minWidth: 6,
+                zIndex,
+                background: isSelected ? alpha(color, 0.35) : isNear ? alpha(color, 0.22) : alpha(color, 0.15),
+                borderLeft: `2px solid ${isSelected ? color : alpha(color, 0.6)}`,
+                borderTop: `1px solid ${alpha(color, isSelected ? 0.4 : 0.2)}`,
+                borderBottom: `1px solid ${alpha(color, isSelected ? 0.4 : 0.2)}`,
+                boxShadow: isSelected ? `0 0 10px ${alpha(color, 0.3)}` : 'none',
               }}
             />
           );
-        });
-      })()}
+        })}
 
-      <div
-        onClick={e => {
-          if (suppressTimelineClickRef.current) return;
-          onDeselectEvents();
-          onTimelineClick(e);
-        }}
-        className="absolute inset-0 bottom-6 z-[5]"
-        style={{
-          cursor: isScrubbing ? 'grabbing' : (isPlacementMode ? 'copy' : 'default'),
-          pointerEvents: isScrubbing ? 'none' : 'auto',
-        }}
-      />
-
-      {events.map(event => {
-        const isBomb = hasBombBehavior(event.behavior, event.behaviorModifiers);
-        const bombDuration = isBomb ? getBombDurationSeconds(bpm, event.bombSettings) : 0;
-        const startTime = isBomb ? Math.max(0, event.timestamp - bombDuration) : event.timestamp;
-        const visualDuration = isBomb ? bombDuration : (event.duration ?? 1);
-
-        const left = audioDuration > 0 ? (startTime / audioDuration) * 100 : 0;
-        const width = audioDuration > 0
-          ? Math.max(0.5, (Math.max(0.001, visualDuration) / audioDuration) * 100)
-          : 0.5;
-        const color = (TOOLS as any)[event.type]?.color ?? '#FF0099';
-        const isSelected = selectedIds.includes(event.id) || event.id === selectedId;
-        const timeDiff = Math.abs(event.timestamp - currentTime);
-        const isNearPlayhead = timeDiff < 0.5;
-        const sizePriority = Math.max(1, 10000 - Math.round(width * 100));
-        const zIndex = (isSelected ? 20000 : 6000) + sizePriority;
-
-        return (
-          <motion.div
-            key={event.id}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: isNearPlayhead ? 1.05 : 1, opacity: 1 }}
-            onMouseDown={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              dragMovedRef.current = false;
-              dragRef.current = {
-                id: event.id,
-                startX: e.clientX,
-                startTimestamp: event.timestamp,
-              };
-              onSelectEvent(event.id);
-            }}
-            onClick={e => {
-              e.stopPropagation();
-              onSelectEvent(event.id);
-            }}
-            className="absolute top-2 h-14 rounded-lg cursor-ew-resize transition-all"
+        {/* Playhead */}
+        <div
+          className="absolute top-0 bottom-5 z-[30000] pointer-events-none"
+          style={{ left: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`, transform: 'translateX(-50%)' }}
+        >
+          <div className="absolute left-1/2 -translate-x-1/2 w-px h-full" style={{ background: 'rgba(255,255,255,0.65)' }} />
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-0"
             style={{
-              left: `${left}%`,
-              width: `${width}%`,
-              zIndex,
-              minWidth: 8,
-              backgroundColor: isSelected ? `${color}77` : isNearPlayhead ? `${color}55` : `${color}33`,
-              border: `2px solid ${isSelected ? '#fff' : color}`,
-              boxShadow: isSelected
-                ? `0 0 16px ${color}88, inset 0 0 20px ${color}44`
-                : isNearPlayhead
-                  ? `0 0 12px ${color}66`
-                  : 'none',
+              width: 0, height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: '7px solid rgba(255,255,255,0.8)',
             }}
           />
-        );
-      })}
-
-      <div
-        className="absolute top-0 bottom-6 z-[30000] group"
-        style={{
-          left: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`,
-          transform: 'translateX(-50%)',
-        }}
-      >
-        <div className="absolute left-1/2 -translate-x-1/2 w-0.5 h-full bg-white shadow-lg shadow-white/60" />
-
-        <div
-          className="absolute left-1/2 -translate-x-1/2 -top-3 w-6 h-6 rounded-full cursor-grab active:cursor-grabbing flex items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, #FF0099, #FF6600)',
-            boxShadow: '0 0 10px rgba(255,0,153,0.7), 0 2px 8px rgba(0,0,0,0.5)',
-            border: '2px solid rgba(255,255,255,0.3)',
-          }}
-        >
-          <div className="w-2 h-2 rounded-full bg-white opacity-60" />
+          {isScrubbing && (
+            <motion.div
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute left-1/2 -translate-x-1/2 -top-7 px-2 py-1 rounded-md whitespace-nowrap"
+              style={{ background: THEME.surface, border: `1px solid ${THEME.borderBright}` }}
+            >
+              <span className="text-[9px] font-mono tabular-nums" style={{ color: THEME.text }}>
+                {currentTime.toFixed(2)}s
+              </span>
+            </motion.div>
+          )}
         </div>
 
-        {isScrubbing && (
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-1 rounded bg-[#FF0099] text-white text-[10px] font-mono whitespace-nowrap"
-          >
-            {currentTime.toFixed(2)}s
-            {snapEnabled && bpm > 0 && (
-              <span className="ml-1 opacity-70">(beat {(currentTime / (60 / bpm)).toFixed(1)})</span>
-            )}
-          </motion.div>
-        )}
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 h-6 border-t border-[#1a1a2e] bg-[#0a0a10] flex items-center px-2">
-        {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
-          <div
-            key={ratio}
-            className="absolute text-[10px] text-[#555] font-mono"
-            style={{
-              left: `${ratio * 100}%`,
-              transform: ratio > 0.9
-                ? 'translateX(-100%)'
-                : ratio > 0
-                  ? 'translateX(-50%)'
-                  : 'none',
-            }}
-          >
-            {formatTime(ratio * audioDuration)}
-          </div>
-        ))}
-      </div>
+        {/* Time ruler */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-5 border-t flex items-center"
+          style={{ borderColor: THEME.border, background: THEME.panel }}
+        >
+          {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
+            <div
+              key={ratio}
+              className="absolute text-[8px] font-mono tabular-nums"
+              style={{
+                color: THEME.textDim,
+                left: `${ratio * 100}%`,
+                transform: ratio > 0.9
+                  ? 'translateX(-100%) translateX(-4px)'
+                  : ratio > 0 ? 'translateX(-50%)' : 'translateX(4px)',
+              }}
+            >
+              {formatTime(ratio * audioDuration)}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
